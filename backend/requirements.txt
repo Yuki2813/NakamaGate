@@ -1,0 +1,17 @@
+# Framework principal (incluye uvicorn, pydantic, starlette, python-multipart...)
+fastapi[standard]
+
+# Base de datos
+sqlmodel
+pymysql
+alembic
+
+# Variables de entorno
+python-dotenv
+
+# Autenticación
+bcrypt
+PyJWT
+
+# Cliente HTTP (para llamar a AniList)
+httpx
