@@ -1,6 +1,8 @@
-from pydantic import BaseModel
-from sqlmodel import Enum, Field, SQLModel
+from typing import List
 
+from sqlmodel import Field, Relationship, SQLModel
+
+from enum import Enum
 
 class Rol(str,Enum):
     admin="admin"
@@ -13,3 +15,5 @@ class Users(SQLModel,table=True):
     password:str=Field(nullable=True)
     picture:str = Field(default="/static/profile_pics/default.jpg")
     rol:Rol = Field(default=Rol.user,nullable=False)
+    reviews = Relationship(back_populates="user",passive_deletes=True)
+    favorites= Relationship(back_populates="user",passive_deletes=True)
