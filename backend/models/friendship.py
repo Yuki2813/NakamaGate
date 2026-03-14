@@ -1,6 +1,10 @@
 from datetime import datetime,timezone
 from enum import Enum
-from sqlmodel import  Field,SQLModel
+from typing import TYPE_CHECKING
+from sqlmodel import  Field, Relationship,SQLModel
+
+if TYPE_CHECKING:
+    from backend.models.users import Users
 
 class FriendshipStatus(str,Enum):
     friends="friends"
@@ -11,3 +15,15 @@ class Friendship(SQLModel,table=True):
     receiver_id:int= Field(foreign_key="users.id",primary_key=True)
     status:FriendshipStatus=Field(default=FriendshipStatus.pending,nullable=False)
     datefrienship:datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    requester: "Users" = Relationship(
+        sa_relationship_kwargs={
+            "primaryjoin": "Friendship.requester_id == Users.id",
+            "back_populates": "sent_friendships"
+        }
+    )
+    receiver: "Users" = Relationship(
+        sa_relationship_kwargs={
+            "primaryjoin": "Friendship.receiver_id == Users.id",
+            "back_populates": "received_friendships"
+        }
+    )

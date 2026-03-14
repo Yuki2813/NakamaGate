@@ -1,4 +1,4 @@
-from sqlmodel import Field, Relationship, SQLModel
+from sqlmodel import Field, Relationship, SQLModel, UniqueConstraint
 
 from enum import Enum
 
@@ -9,7 +9,8 @@ class status_favorite(Enum):
 
 class UserFavorite(SQLModel,table=True):
     user_id:int=Field(primary_key=True,foreign_key="users.id")
-    favorite_id_api:int=Field(primary_key=True,foreign_key="favorite.id_api")
+    favorite_id:int=Field(primary_key=True,foreign_key="favorite.id",ondelete="CASCADE")
     status:status_favorite=Field(default=status_favorite.pending,nullable=False)
     user= Relationship(back_populates="favorites")
-    favorite= Relationship(back_populates="users")                            
+    favorite= Relationship(back_populates="user_links")
+                         
