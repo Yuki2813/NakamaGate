@@ -16,14 +16,16 @@ class Friendship(SQLModel,table=True):
     status:FriendshipStatus=Field(default=FriendshipStatus.pending,nullable=False)
     datefrienship:datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     requester: "Users" = Relationship(
+        back_populates="sent_friendships",
         sa_relationship_kwargs={
             "primaryjoin": "Friendship.requester_id == Users.id",
-            "back_populates": "sent_friendships"
-        }
-    )
+            "foreign_keys": "[Friendship.requester_id]"  
+    }
+)
     receiver: "Users" = Relationship(
+        back_populates="received_friendships",  
         sa_relationship_kwargs={
             "primaryjoin": "Friendship.receiver_id == Users.id",
-            "back_populates": "received_friendships"
-        }
-    )
+            "foreign_keys": "[Friendship.receiver_id]"
+    }
+)
