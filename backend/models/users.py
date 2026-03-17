@@ -17,7 +17,7 @@ class Users(SQLModel,table=True):
     id:int | None = Field(default=None, primary_key=True)
     alias:str = Field(unique=True,nullable=False)
     email:str = Field(unique=True,nullable=False)
-    password:str=Field(nullable=True)
+    password:str=Field(nullable=False)
     picture:str = Field(default="/static/profile_pics/default.jpg")
     rol:Rol = Field(default=Rol.user,nullable=False)
     reviews :List["Review"]= Relationship(back_populates="user",sa_relationship_kwargs={"cascade": "all, delete-orphan"})
