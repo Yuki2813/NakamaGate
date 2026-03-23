@@ -20,6 +20,7 @@ class Users(SQLModel,table=True):
     password:str=Field(nullable=False)
     picture:str = Field(default="/static/profile_pics/default.jpg")
     rol:Rol = Field(default=Rol.user,nullable=False)
+    isAdult:bool = Field(default=False,nullable=False)
     reviews :List["Review"]= Relationship(back_populates="user",sa_relationship_kwargs={"cascade": "all, delete-orphan"})
     favorites:List["UserFavorite"]= Relationship(back_populates="user",sa_relationship_kwargs={"cascade": "all, delete-orphan"})
     sent_friendships: List["Friendship"] = Relationship(
@@ -30,7 +31,7 @@ class Users(SQLModel,table=True):
         }
     )
     received_friendships: List["Friendship"] = Relationship(
-        back_populates="receiver",                   
+        back_populates="receiver",          
         sa_relationship_kwargs={
             "primaryjoin": "Users.id == Friendship.receiver_id",
              "cascade": "all, delete-orphan"
