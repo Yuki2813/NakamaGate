@@ -1,4 +1,4 @@
-from sqlmodel import Session
+from sqlmodel import Session, text, select
 from database import engine
 from models.users import Users, Rol
 from models.favorite import Favorite, Mediatype
@@ -9,32 +9,65 @@ import bcrypt
 from datetime import datetime, timezone
 
 def hash_password(password: str) -> str:
+    """Hashea la contraseña usando bcrypt"""
     return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 
 def seed():
     with Session(engine) as session:
+        print("--- 🛠️ Iniciando limpieza de base de datos ---")
+        
+        # 1. Desactivar restricciones de clave foránea en MySQL
+        session.exec(text("SET FOREIGN_KEY_CHECKS = 0;"))
+        
+        # 2. Lista de tablas a vaciar (ajusta los nombres si SQLModel usa otros)
+        tablas_a_limpiar = [
+            "userfavorite", 
+            "friendship", 
+            "review", 
+            "favorite", 
+            "users"
+        ]
+        
+        for tabla in tablas_a_limpiar:
+            try:
+                session.exec(text(f"TRUNCATE TABLE {tabla};"))
+                print(f"  🗑️ Tabla '{tabla}' vaciada y IDs reiniciados.")
+            except Exception as e:
+                print(f"  ⚠️ No se pudo limpiar '{tabla}': {e}")
+        
+        # 3. Reactivar restricciones
+        session.exec(text("SET FOREIGN_KEY_CHECKS = 1;"))
+        session.commit()
+        
+        print("\n--- 🚀 Insertando nuevos datos de prueba ---")
 
         # ─── USUARIOS ───────────────────────────────────────
         user1 = Users(
             alias="yago",
             email="yago@gmail.com",
             password=hash_password("1234abcd"),
-            rol=Rol.admin
+            rol=Rol.admin,
+            isAdult=True
         )
         user2 = Users(
             alias="sara",
             email="sara@gmail.com",
             password=hash_password("1234abcd"),
-            rol=Rol.user
+            rol=Rol.user,
+            isAdult=True
         )
         user3 = Users(
             alias="carlos",
             email="carlos@gmail.com",
             password=hash_password("1234abcd"),
-            rol=Rol.user
+            rol=Rol.user,
+            isAdult=False
         )
+        
         session.add_all([user1, user2, user3])
         session.commit()
+        
+        # Refrescamos para obtener los IDs generados por la DB
         session.refresh(user1)
         session.refresh(user2)
         session.refresh(user3)
@@ -44,8 +77,10 @@ def seed():
         fav1 = Favorite(id_api=1, media_type=Mediatype.anime)   # Attack on Titan
         fav2 = Favorite(id_api=2, media_type=Mediatype.manga)   # Berserk
         fav3 = Favorite(id_api=3, media_type=Mediatype.anime)   # Naruto
+        
         session.add_all([fav1, fav2, fav3])
         session.commit()
+        
         session.refresh(fav1)
         session.refresh(fav2)
         session.refresh(fav3)
@@ -56,6 +91,7 @@ def seed():
         uf2 = UserFavorite(user_id=user1.id, favorite_id=fav2.id, status=status_favorite.watching)
         uf3 = UserFavorite(user_id=user2.id, favorite_id=fav1.id, status=status_favorite.pending)
         uf4 = UserFavorite(user_id=user3.id, favorite_id=fav3.id, status=status_favorite.watching)
+        
         session.add_all([uf1, uf2, uf3, uf4])
         session.commit()
         print("✅ UserFavorites creados")
@@ -72,12 +108,12 @@ def seed():
             status=FriendshipStatus.pending
         )
         fs3 = Friendship(
-            requester_id=user2.id,  # sara envía a yago
+            requester_id=user2.id,
             receiver_id=user1.id,
             status=FriendshipStatus.friends
         )
 
-        session.add_all([fs1, fs2,fs3])
+        session.add_all([fs1, fs2, fs3])
         session.commit()
         print("✅ Amistades creadas")
 
@@ -103,11 +139,12 @@ def seed():
             score=5,
             content="El mejor manga que he leído en mi vida.",
         )
+        
         session.add_all([r1, r2, r3])
         session.commit()
         print("✅ Reviews creadas")
 
-        print("\n🎉 Seed completado correctamente")
+        print("\n🎉 Seed completado correctamente. ¡Base de datos reseteada!")
 
 if __name__ == "__main__":
     seed()

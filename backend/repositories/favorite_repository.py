@@ -3,7 +3,7 @@ from sqlmodel import Session, select
 
 from backend.database import get_db
 from backend.models.favorite import Favorite, Mediatype
-from backend.models.userfavorite import UserFavorite
+from backend.models.userfavorite import UserFavorite, status_favorite
 
 
 def new_favorite(iduser:int,id_fav:int,mediatype:Mediatype,session:Session=Depends(get_db)):
@@ -28,3 +28,5 @@ def new_favorite(iduser:int,id_fav:int,mediatype:Mediatype,session:Session=Depen
         session.add(newuserfavorite)
         session.commit()
 
+def update_status_favorite(iduser:int,idfavorite:int,status:status_favorite,session:Session=Depends(get_db)):
+    return
