@@ -29,4 +29,9 @@ def new_favorite(iduser:int,id_fav:int,mediatype:Mediatype,session:Session=Depen
         session.commit()
 
 def update_status_favorite(iduser:int,idfavorite:int,status:status_favorite,session:Session=Depends(get_db)):
-    return
+    statement=select(UserFavorite).where(idfavorite==UserFavorite.favorite_id,iduser==UserFavorite.user_id)
+    favorite=session.exec(statement=statement).first()
+    favorite.status=status
+    session.add(favorite)
+    session.commit()
+    session.refresh(favorite)
