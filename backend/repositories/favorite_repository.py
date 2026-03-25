@@ -4,9 +4,10 @@ from sqlmodel import Session, select
 from backend.database import get_db
 from backend.models.favorite import Favorite, Mediatype
 from backend.models.userfavorite import UserFavorite, status_favorite
+from backend.models.users import Users
 
 
-def new_favorite(iduser:int,id_fav:int,mediatype:Mediatype,session:Session=Depends(get_db)):
+def new_favorite(iduser:int,id_fav:int,mediatype:Mediatype,session:Session):
     statement=select(Favorite).where(id_fav==Favorite.id_api,mediatype==Favorite.media_type)
 
     favorite=session.exec(statement=statement).first()
@@ -28,10 +29,30 @@ def new_favorite(iduser:int,id_fav:int,mediatype:Mediatype,session:Session=Depen
         session.add(newuserfavorite)
         session.commit()
 
-def update_status_favorite(iduser:int,idfavorite:int,status:status_favorite,session:Session=Depends(get_db)):
-    statement=select(UserFavorite).where(idfavorite==UserFavorite.favorite_id,iduser==UserFavorite.user_id)
-    favorite=session.exec(statement=statement).first()
-    favorite.status=status
-    session.add(favorite)
-    session.commit()
-    session.refresh(favorite)
+def update_status_favorite(iduser:int,idfavorite:int,status:status_favorite,session:Session):
+    link = session.get(UserFavorite, {"user_id": iduser, "favorite_id": idfavorite})
+    
+    if link:
+        link.status = status
+        session.add(link)
+        session.commit()
+        session.refresh(link)
+        return link
+    return None
+
+def delete_user_favorite(id_user:int,media:Mediatype,idapi:int,session:Session):
+    statement = select(Favorite).where(Favorite.id_api == idapi, Favorite.media_type == media)
+    favorite = session.exec(statement).first()
+
+    if favorite:
+        link = session.get(UserFavorite, {"user_id": id_user, "favorite_id": favorite.id})
+        if link:
+            session.delete(link)
+            session.commit()
+            return True
+    return False
+def get_user_favorites(id_user:int,session:Session):
+    statement=select(Users).where(Users.id==id_user)
+    user=session.exec(statement=statement).first()
+
+    return user.favorites
