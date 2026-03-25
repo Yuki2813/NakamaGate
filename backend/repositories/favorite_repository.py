@@ -5,6 +5,7 @@ from backend.database import get_db
 from backend.models.favorite import Favorite, Mediatype
 from backend.models.userfavorite import UserFavorite, status_favorite
 from backend.models.users import Users
+from sqlalchemy.orm import joinedload
 
 
 def new_favorite(iduser:int,id_fav:int,mediatype:Mediatype,session:Session):
@@ -51,8 +52,15 @@ def delete_user_favorite(id_user:int,media:Mediatype,idapi:int,session:Session):
             session.commit()
             return True
     return False
-def get_user_favorites(id_user:int,session:Session):
-    statement=select(Users).where(Users.id==id_user)
-    user=session.exec(statement=statement).first()
+def get_user_favorites(id_user: int, session: Session):
 
-    return user.favorites
+    statement = (
+        select(UserFavorite)
+        .where(UserFavorite.user_id == id_user)
+        .options(joinedload(UserFavorite.favorite)) # <--- Magia de SQLModel/SQLAlchemy
+    )
+    
+    favorites = session.exec(statement).all()
+
+    
+    return favorites
