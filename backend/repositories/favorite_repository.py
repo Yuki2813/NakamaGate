@@ -1,10 +1,6 @@
-from fastapi import Depends
 from sqlmodel import Session, select
-
-from backend.database import get_db
 from backend.models.favorite import Favorite, Mediatype
-from backend.models.userfavorite import UserFavorite, status_favorite
-from backend.models.users import Users
+from backend.models.userfavorite import UserFavorite, status_favorite 
 from sqlalchemy.orm import joinedload
 
 
@@ -57,10 +53,8 @@ def get_user_favorites(id_user: int, session: Session):
     statement = (
         select(UserFavorite)
         .where(UserFavorite.user_id == id_user)
-        .options(joinedload(UserFavorite.favorite)) # <--- Magia de SQLModel/SQLAlchemy
+        .options(joinedload(UserFavorite.favorite))
     )
     
     favorites = session.exec(statement).all()
-
-    
     return favorites

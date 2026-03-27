@@ -1,7 +1,4 @@
-from fastapi import Depends
 from sqlmodel import Session, select
-
-from backend.database import get_db
 from backend.models.users import Users
 
 
@@ -39,3 +36,26 @@ def delete_user(id:int,session: Session ):
 
     session.delete(user)
     session.commit()
+def update_user_alias(user_id:int, new_alias:str, session:Session):
+    statement= select(Users).where(Users.alias==new_alias)
+    useralias=session.exec(statement=statement).first()
+
+    if not useralias:
+        user=session.get(Users,user_id)
+        user.alias=new_alias
+        session.add(user)
+        session.commit()
+        session.refresh(user)
+    else:
+        return {"message":"Alias ya en uso intenta otro"}
+
+def update_user_avatar(user_id:int,ruta:str,session:Session):
+    user:Users=session.get(Users,user_id)
+    if user:
+        user.picture=ruta
+        session.add(user)
+        session.commit()
+        session.refresh(user)
+        return {"message":"Avatar cambiado"}
+    else:
+        return{"message":"Seleccione un usuario valido"}
