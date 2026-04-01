@@ -1,11 +1,12 @@
 import httpx
 from sqlmodel import Session, select
-from database import engine
-from models.users import Users
-from models.review import Review
-from models.friendship import Friendship
-from models.favorite import Favorite
-from models.userfavorite import UserFavorite
+from backend.database import engine
+from backend.clients.anilist_client import anilist_client
+from backend.models.users import Users
+from backend.models.review import Review
+from backend.models.friendship import Friendship
+from backend.models.favorite import Favorite
+from backend.models.userfavorite import UserFavorite
 
 ANILIST_URL = "https://graphql.anilist.co"
 

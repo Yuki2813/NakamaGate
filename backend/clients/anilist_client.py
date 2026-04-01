@@ -8,7 +8,7 @@ class AniListClient:
         self.transport = AIOHTTPTransport(url="https://graphql.anilist.co")
         self.client = Client(
             transport=self.transport, 
-            fetch_schema_from_transport=True
+            
         )
 
     async def get_home_data(self, is_adult: bool, random_genre: str, excluded_genres: list[str]):
