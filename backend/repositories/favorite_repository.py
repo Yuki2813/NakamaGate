@@ -20,12 +20,13 @@ def new_favorite(iduser:int,id_fav:int,mediatype:Mediatype,session:Session):
     else:
         exist_link = session.get(UserFavorite, {"user_id": iduser, "favorite_id": favorite.id})
         if exist_link:
-            return {"message": "Ya está en tus favoritos"}
+            return False
         
         newuserfavorite=UserFavorite(favorite_id=favorite.id,user_id=iduser)
         session.add(newuserfavorite)
         session.commit()
-
+        
+        return True
 def update_status_favorite(iduser:int,idfavorite:int,status:status_favorite,session:Session):
     link = session.get(UserFavorite, {"user_id": iduser, "favorite_id": idfavorite})
     
