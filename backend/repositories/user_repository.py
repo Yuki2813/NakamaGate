@@ -84,3 +84,13 @@ def check_alias_exist(alias:str,session:Session):
         return True
     else:
         return False
+    
+def check_id_exist(id:int,session:Session):
+    statement=select(Users).where(Users.id==id)
+
+    user=session.exec(statement=statement).first()
+
+    if user:
+        return True
+    else:
+        return False
