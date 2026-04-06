@@ -1,16 +1,12 @@
 class MediaAdapter:
     @staticmethod
-    def to_pro_format(anilist_item: dict) -> dict:
-        """
-        Transforma un objeto crudo de AniList a nuestro formato estándar.
-        """
+    def to_standar_format(anilist_item: dict) -> dict:
+
         if not anilist_item:
             return {}
 
-        # Unificamos unidades: Episodios para Anime, Capítulos para Manga
         units = anilist_item.get("episodes") or anilist_item.get("chapters")
         
-        # Limpieza de descripción (AniList a veces envía <br> o HTML)
         description = anilist_item.get("description", "")
         if description:
             description = description.replace("<br>", "\n").replace("<i>", "").replace("</i>", "")
@@ -33,8 +29,13 @@ class MediaAdapter:
         }
 
     @staticmethod
-    def list_to_pro_format(anilist_list: list) -> list:
-        """Transforma una lista completa de resultados de forma segura"""
+    def list_to_standar_format(anilist_list: list) -> list:
         if not anilist_list:
             return []
-        return [MediaAdapter.to_pro_format(item) for item in anilist_list if item]
+        lista_formateada = []
+        for item in anilist_list:
+            if item:
+                item_standar = MediaAdapter.to_pro_format(item)
+                lista_formateada.append(item_standar)
+                
+        return lista_formateada

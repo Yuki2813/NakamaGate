@@ -4,7 +4,7 @@ from backend.services.adapter.anilist_adapter import MediaAdapter
 
 class AniListClient:
     def __init__(self):
-        # Transporte asíncrono para FastAPI
+
         self.transport = AIOHTTPTransport(url="https://graphql.anilist.co")
         self.client = Client(
             transport=self.transport, 
@@ -37,11 +37,10 @@ class AniListClient:
         async with self.client as session:
             result = await session.execute(query, variable_values=variables)
             
-            # Adaptamos cada sección del diccionario de respuesta
             return {
-                "top_animes": MediaAdapter.list_to_pro_format(result.get("topAnimes", {}).get("media")),
-                "top_mangas": MediaAdapter.list_to_pro_format(result.get("topMangas", {}).get("media")),
-                "recommended": MediaAdapter.list_to_pro_format(result.get("genreRecommended", {}).get("media"))
+                "top_animes": MediaAdapter.list_to_standar_format(result.get("topAnimes", {}).get("media")),
+                "top_mangas": MediaAdapter.list_to_standar_format(result.get("topMangas", {}).get("media")),
+                "recommended": MediaAdapter.list_to_standar_format(result.get("genreRecommended", {}).get("media"))
             }
 
     async def search_predictive(self, search_text: str, is_adult: bool, media_type: str):
@@ -60,7 +59,7 @@ class AniListClient:
         async with self.client as session:
             result = await session.execute(query, variable_values=variables)
             raw_list = result.get("Page", {}).get("media", [])
-            return MediaAdapter.list_to_pro_format(raw_list)
+            return MediaAdapter.list_to_standar_format(raw_list)
 
     async def get_media_details(self, media_id: int):
         """Ficha técnica completa adaptada"""
@@ -77,7 +76,7 @@ class AniListClient:
         
         async with self.client as session:
             result = await session.execute(query, variable_values=variables)
-            return MediaAdapter.to_pro_format(result.get("Media"))
+            return MediaAdapter.to_standar_format(result.get("Media"))
 
     async def get_media_batch(self, ids: list[int]):
         """Carga una lista (ej. favoritos) y la adapta"""
@@ -96,7 +95,47 @@ class AniListClient:
         async with self.client as session:
             result = await session.execute(query, variable_values=variables)
             raw_list = result.get("Page", {}).get("media", [])
-            return MediaAdapter.list_to_pro_format(raw_list)
+            return MediaAdapter.list_to_standar_format(raw_list)
+        
+
+
+    # Añadimos genre: str = None como parámetro opcional
+    async def get_directory_page(self, page: int, per_page: int, media_type: str, is_adult: bool, sort: str = "POPULARITY_DESC", genre: str = None):
+        """Carga una página del directorio con soporte para paginación y filtrado por género"""
+        query = gql("""
+            # 1. Declaramos $genre como String en GraphQL
+            query ($page: Int, $perPage: Int, $type: MediaType, $sort: [MediaSort], $isAdult: Boolean, $genre: String) {
+              Page(page: $page, perPage: $perPage) {
+                pageInfo {
+                  total currentPage lastPage hasNextPage
+                }
+                # 2. Le pasamos el genre al buscador de media
+                media(type: $type, sort: $sort, isAdult: $isAdult, genre: $genre) {
+                  id type title { romaji } coverImage { large } averageScore format seasonYear status genres
+                }
+              }
+            }
+        """)
+        
+        variables = {
+            "page": page,
+            "perPage": per_page,
+            "type": media_type.upper(),
+            "sort": [sort],
+            "isAdult": is_adult
+        }
+        
+        # 3. Si nos pasaron un género, lo añadimos a la petición
+        if genre:
+            variables["genre"] = genre
+            
+        async with self.client as session:
+            result = await session.execute(query, variable_values=variables)
+            page_data = result.get("Page", {})
+            return {
+                "page_info": page_data.get("pageInfo", {}),
+                "items": MediaAdapter.list_to_pro_format(page_data.get("media", []))
+            }
 
 # Instancia para exportar
 anilist_client = AniListClient()

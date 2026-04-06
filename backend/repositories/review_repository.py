@@ -55,3 +55,8 @@ def delete_review(review_id:int,session:Session):
         return True
     else:
         return False
+
+def get_review_by_id(review_id: int, session: Session):
+    statement = select(Review).where(Review.id == review_id)
+    review = session.exec(statement=statement).first()
+    return review

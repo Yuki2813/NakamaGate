@@ -17,6 +17,7 @@ def new_favorite(iduser:int,id_fav:int,mediatype:Mediatype,session:Session):
         newuserfavorite=UserFavorite(favorite_id=newFavorite.id,user_id=iduser)
         session.add(newuserfavorite)
         session.commit()
+        return True
     else:
         exist_link = session.get(UserFavorite, {"user_id": iduser, "favorite_id": favorite.id})
         if exist_link:
@@ -35,7 +36,7 @@ def update_status_favorite(iduser:int,idfavorite:int,status:status_favorite,sess
         session.add(link)
         session.commit()
         session.refresh(link)
-        return link
+        return True
     return None
 
 def delete_user_favorite(id_user:int,media:Mediatype,idapi:int,session:Session):
