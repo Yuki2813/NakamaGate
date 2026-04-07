@@ -18,7 +18,15 @@ def get_user_by_email(email:str,session: Session):
         return user
     
     return None
+def get_user_by_id(id:int,session: Session):
+    
+    statement=select(Users).where(Users.id==id)
 
+    user=session.exec(statement=statement).first()
+    if user:
+        return user
+    
+    return None
 def get_user_by_alias(alias:str,session: Session ):
     
     statement=select(Users).where(alias==Users.alias)

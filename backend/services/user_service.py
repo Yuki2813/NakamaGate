@@ -3,8 +3,10 @@ import shutil
 import uuid
 from fastapi import UploadFile, HTTPException, status
 from sqlmodel import Session
-from backend.repositories.friendship_repository import accept_friend_request, get_friends, get_pending_requests, remove_friendship, send_friend_request
+from backend.models.friendship import FriendshipStatus
+from backend.repositories.friendship_repository import accept_friend_request, get_friends, get_friendship_status, get_pending_requests, remove_friendship, send_friend_request
 from backend.repositories.user_repository import check_id_exist, delete_user, update_user_alias, update_user_avatar
+from backend.services.interacction_service import get_favorite_list
 
 UPLOAD_DIR = "static/profile_pics"
 # Nos aseguramos de que la carpeta exista cuando arranque el servidor
@@ -32,6 +34,8 @@ def update_avatar(user_id: int, file: UploadFile, session: Session):
     nuevo_nombre = f"user_{user_id}_{uuid.uuid4().hex}.{extension}"
     
     ruta_fisica = os.path.join(UPLOAD_DIR, nuevo_nombre)
+
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
 
     with open(ruta_fisica, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
@@ -97,3 +101,21 @@ def get_user_social_data(user_id: int, session: Session):
     # 1. Pedir al repo la lista de amigos confirmados.
     # 2. Pedir al repo la lista de peticiones pendientes (donde user_id sea el receptor).
     # 3. Devolver un diccionario con ambas listas, ej: {"friends": [...], "pending": [...]}
+async def get_user_favorites_protected(current_user_id: int, target_user_id: int, session: Session):
+    
+
+    if current_user_id == target_user_id:
+        return await get_favorite_list(user_id=target_user_id, session=session)
+
+
+    estado_amistad = get_friendship_status(user_id_A=current_user_id, user_id_B=target_user_id, session=session)
+
+
+    if estado_amistad != FriendshipStatus.friends:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You must be friends with this user to see their list."
+        )
+
+
+    return await get_favorite_list(user_id=target_user_id, session=session)

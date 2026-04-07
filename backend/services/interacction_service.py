@@ -2,9 +2,13 @@ from fastapi import HTTPException, status
 from sqlmodel import Session
 
 from backend.clients import anilist_client
+from backend.models.friendship import FriendshipStatus
 from backend.models.review import MediaType
+from backend.models.users import Rol
 from backend.repositories.favorite_repository import delete_user_favorite, get_user_favorites, new_favorite, update_status_favorite
+from backend.repositories.friendship_repository import get_friendship_status
 from backend.repositories.review_repository import create_review, delete_review, get_review_by_id, get_user_review_for_media, update_review
+from backend.repositories.user_repository import get_user_by_id
 
 # Aquí importarás tus repositorios y el cliente de la API cuando los tengas:
 # from backend.repositories.favorite_repository import ...
@@ -101,11 +105,7 @@ def create_review_service(user_id: int, id_api: int, media_type: MediaType, scor
 
     return review
 
-    # 1. Validar la nota: si score < 1 o score > 5 (o 10, según tu escala), lanzar HTTPException 400.
-    # 2. Validar texto: si len(content) > 255 (o el límite que le pongas en la BD), lanzar HTTPException 400.
-    # 3. Comprobar en el repo si este usuario YA hizo una reseña para este id_api. 
-    #    Si es así, lanzar HTTPException 400 ("You already reviewed this media, please edit your existing review").
-    # 4. Llamar al repo para crear la review y devolverla.
+
 
 def update_review_service(review_id: int, user_id: int, score: int, content: str, session: Session):
     if score<0 or score>5:
@@ -122,23 +122,22 @@ def update_review_service(review_id: int, user_id: int, score: int, content: str
     updated_review = update_review(review_id=review_id, score=score, content=content, session=session)
     
     return updated_review
-    # 1. Validar la nota y la longitud del texto (igual que en create_review).
-    # 2. Llamar al repo para buscar la review por su ID. Si no existe, lanzar HTTPException 404.
-    # 3. SEGURIDAD: Comprobar que review.user_id == user_id. Si un usuario intenta editar 
-    #    la reseña de otro, lanzar HTTPException 403 ("You can only edit your own reviews").
-    # 4. Llamar al repo para guardar los cambios y devolver la review actualizada.
 
 
 def delete_review_service(review_id: int, user_id: int, session: Session):
     review = get_review_by_id(review_id=review_id, session=session)
     if not review:
         raise HTTPException(status_code=404, detail="Review not found")
-    if review.id_user != user_id:
+    user = get_user_by_id(id=user_id, session=session)
+    
+    is_owner = (review.id_user == user_id)
+    is_admin = (user.rol == Rol.admin) 
+    
+    if not is_owner and not is_admin:
         raise HTTPException(status_code=403, detail="You can only delete your own reviews")
-    if(delete_review(review_id=review_id,session=session)):
-        return {"message":"Review deleted correctly"}
+        
+    if delete_review(review_id=review_id, session=session):
+        return {"message": "Review deleted correctly"}
     else:
-        raise HTTPException(status_code=400,detail="We were unable to delete your review. Please try again later.")
-    # 1. Llamar al repo para buscar la review por su ID. Si no existe, lanzar HTTPException 404.
-    # 2. SEGURIDAD: Comprobar que review.user_id == user_id. Si intenta borrar la de otro, lanzar HTTPException 403.
-    # 3. Llamar al repo para borrarla y devolver un mensaje de éxito.
+        raise HTTPException(status_code=400, detail="Unable to delete review")
+    
