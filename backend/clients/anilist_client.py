@@ -78,7 +78,7 @@ class AniListClient:
               }
             }
         """)
-        variables = {"search": search_text, "type": media_type}
+        variables = {"search": search_text, "type": media_type.strip().upper()}
         
         async with self.client as session:
             result = await session.execute(query, variable_values=variables)
@@ -144,7 +144,7 @@ class AniListClient:
         variables = {
             "page": page,
             "perPage": per_page,
-            "type": media_type.upper(),
+            "type": media_type.strip().upper(),
             "sort": [sort],
         }
         

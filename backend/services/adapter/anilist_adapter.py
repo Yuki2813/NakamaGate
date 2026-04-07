@@ -35,7 +35,7 @@ class MediaAdapter:
         lista_formateada = []
         for item in anilist_list:
             if item:
-                item_standar = MediaAdapter.to_pro_format(item)
+                item_standar = MediaAdapter.to_standar_format(item)
                 lista_formateada.append(item_standar)
                 
         return lista_formateada

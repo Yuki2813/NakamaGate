@@ -39,7 +39,11 @@ def register_user(email: str, alias: str, password: str, is_adult: bool, session
     
     if len(password)<8:
         raise  HTTPException(status_code=400, detail="The password is too short, try another with more characters")
-    
+    if len(password) > 72:
+        raise HTTPException(
+            status_code=400, 
+            detail="The password is too long. Maximum 72 characters."
+        )
     user_check_email=check_email_exist(email=email,session=session)
     if user_check_email :
         raise  HTTPException(status_code=400, detail="This email is already in use login or try another email")
@@ -49,7 +53,7 @@ def register_user(email: str, alias: str, password: str, is_adult: bool, session
     if user_check_alias :
         raise  HTTPException(status_code=400, detail="The alias is already in use try to use another alias")
     
-    new_user=createUser(email=email,alias=alias,password=get_password_hash(password=password),is_adult=is_adult)
+    new_user=createUser(email=email,alias=alias,password=get_password_hash(password=password),is_adult=is_adult,session=session)
 
     return new_user
 

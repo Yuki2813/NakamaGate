@@ -1,7 +1,11 @@
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 import os
-
+from backend.models.users import Users
+from backend.models.review import Review 
+from backend.models.favorite import Favorite
+from backend.models.userfavorite import UserFavorite
+from backend.models.friendship import Friendship
 from backend.routes import auth_router, content_router, favorite_router, review_router
 
 app = FastAPI(title="NakameGate", version="1.0")

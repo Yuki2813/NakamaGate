@@ -1,23 +1,23 @@
 import jwt
 import os
 from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import HTTPBearer
 
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
+security=HTTPBearer()
 
 # Usa las mismas variables que tienes en tu auth_service
 SECRET_KEY = os.getenv("SECRET_KEY", "TU_CLAVE_SUPER_SECRETA")
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
 
-def get_current_user_id(token: str = Depends(oauth2_scheme)) -> int:
+def get_current_user_id(credentials = Depends(security)) -> int:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
-
+        token=credentials.credentials
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         
 

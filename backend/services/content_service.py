@@ -2,7 +2,7 @@ from fastapi import HTTPException, status
 from sqlmodel import Session
 import random
 
-from backend.clients import anilist_client
+from backend.clients.anilist_client import anilist_client
 from backend.models.favorite import Mediatype
 from backend.repositories.user_repository import get_user_by_id
 
