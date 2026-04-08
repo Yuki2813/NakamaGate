@@ -1,6 +1,7 @@
 from sqlmodel import Session,select
 
 from backend.models.review import MediaType, Review
+from backend.models.users import Users
 
 
 def create_review(user_id:int , id_api:int, media_type:MediaType, score:int, content:str,session:Session):
@@ -12,7 +13,12 @@ def create_review(user_id:int , id_api:int, media_type:MediaType, score:int, con
     return new_review
 
 def get_reviews_by_media(id_api:int, media_type:MediaType,session:Session):
-    statement=select(Review).where(Review.id_api==id_api,Review.media_type==media_type)
+    statement = (
+        select(Review, Users)
+        .join(Users, Review.id_user == Users.id)
+        .where(Review.id_api == id_api, Review.media_type == media_type)
+        .order_by(Review.id.desc())
+    )
 
     reviews=session.exec(statement=statement).all()
 

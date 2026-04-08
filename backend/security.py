@@ -12,7 +12,7 @@ ALGORITHM = os.getenv("ALGORITHM", "HS256")
 
 def get_current_user_id(credentials = Depends(security)) -> int:
     credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
+        status_code=401,
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )

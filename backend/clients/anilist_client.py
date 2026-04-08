@@ -1,5 +1,6 @@
 from gql import gql, Client
 from gql.transport.aiohttp import AIOHTTPTransport
+from graphql import GraphQLError
 from backend.models.favorite import Mediatype
 from backend.services.adapter.anilist_adapter import MediaAdapter
 
@@ -13,8 +14,7 @@ class AniListClient:
         )
 
     async def get_home_data(self, genres: list[str]):
-        """Carga la Home con Tops y 3 géneros dinámicos"""
-        # Usamos alias (g1, g2, g3) para pedir 3 géneros en la misma consulta
+
         query = gql("""
             query ($g1: String, $g2: String, $g3: String) {
                 topAnimes: Page(perPage: 10) {
@@ -68,7 +68,6 @@ class AniListClient:
             }
 
     async def search_predictive(self, search_text: str, media_type: Mediatype):
-        """Buscador optimizado para ser rápido y adaptado"""
         query = gql("""
             query ($search: String, $type: MediaType) {
               Page(perPage: 5) {
@@ -86,7 +85,6 @@ class AniListClient:
             return MediaAdapter.list_to_standar_format(raw_list)
 
     async def get_media_details(self, media_id: int):
-        """Ficha técnica completa adaptada"""
         query = gql("""
             query ($id: Int) {
               Media(id: $id) {
@@ -98,12 +96,21 @@ class AniListClient:
         """)
         variables = {"id": media_id}
         
-        async with self.client as session:
-            result = await session.execute(query, variable_values=variables)
-            return MediaAdapter.to_standar_format(result.get("Media"))
+        try:
+            async with self.client as session:
+                result = await session.execute(query, variable_values=variables)
+                media_data = result.get("Media")
+                
+                if not media_data:
+                    return None
+                    
+                return MediaAdapter.to_standar_format(media_data)
+
+        except GraphQLError:
+
+            return None
 
     async def get_media_batch(self, ids: list[int]):
-        """Carga una lista (ej. favoritos) y la adapta"""
         if not ids: return []
         query = gql("""
             query ($ids: [Int]) {
@@ -123,9 +130,8 @@ class AniListClient:
         
 
 
-    # Añadimos genre: str = None como parámetro opcional
+
     async def get_directory_page(self, page: int, per_page: int, media_type: str, sort: str = "POPULARITY_DESC", genre: str = None):
-        """Carga una página del directorio con soporte para paginación y filtrado por género"""
         query = gql("""
             # 1. Declaramos $genre como String en GraphQL
             query ($page: Int, $perPage: Int, $type: MediaType, $sort: [MediaSort],  $genre: String) {
@@ -148,7 +154,6 @@ class AniListClient:
             "sort": [sort],
         }
         
-        # 3. Si nos pasaron un género, lo añadimos a la petición
         if genre:
             variables["genre"] = genre
             
@@ -160,5 +165,5 @@ class AniListClient:
                 "items": MediaAdapter.list_to_standar_format(page_data.get("media", []))
             }
 
-# Instancia para exportar
+
 anilist_client = AniListClient()

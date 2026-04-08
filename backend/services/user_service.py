@@ -9,7 +9,6 @@ from backend.repositories.user_repository import check_id_exist, delete_user, up
 from backend.services.interacction_service import get_favorite_list
 
 UPLOAD_DIR = "static/profile_pics"
-# Nos aseguramos de que la carpeta exista cuando arranque el servidor
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 # ==========================================
 # GESTIÓN DE PERFIL
@@ -51,12 +50,13 @@ def update_avatar(user_id: int, file: UploadFile, session: Session):
         os.remove(ruta_fisica)
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
 
-    return ruta_web
+    return {"message":"Your avatar save correctly"}
 
 def delete_account(user_id: int, session: Session):
     check=delete_user(id=user_id,session=session)
     if check==None:
         raise HTTPException(status_code=404, detail="User doesn't exist")
+    
 # ==========================================
 # SISTEMA DE AMIGOS
 # ==========================================
@@ -64,27 +64,30 @@ def delete_account(user_id: int, session: Session):
 def send_friend_request_service(requester_id: int, receiver_id: int, session: Session):
     if requester_id==receiver_id:
         raise HTTPException(status_code=400, detail="You can't send a friend request to yourself")
+    
     check=check_id_exist(id=receiver_id,session=session)
+
     if  not check:
         raise HTTPException(status_code=404, detail="The user you are trying to send the request to doesn't exist")
+    
     check=send_friend_request(receiver_id=receiver_id,requester_id=requester_id,session=session)
+
     if not check:
         raise HTTPException(status_code=404, detail="You already have a  request with this user")
     else:
         return {"message":"the request has been submitted"}
-    # 1. Validar que requester_id != receiver_id (no puedes ser tu propio amigo).
-    # 2. Comprobar en el repo si el receiver_id existe. Si no, HTTP 404.
-    # 3. Comprobar en el repo de amigos si ya hay una petición o ya son amigos. Si sí, HTTP 400.
-    # 4. Crear la petición en el repo con estado "pendiente".
+
         
 
 def accept_friend_request_service(requester_id: int, current_user_id: int, session: Session):
+
     if(accept_friend_request(requester_id=requester_id,receiver_id=current_user_id,session=session)):
         return {"message":"All is correct"}
     else:
         raise HTTPException(status_code=404, detail="Something went wrong")
 
 def remove_friend(user_id_a: int, user_id_b: int, session: Session):
+
     if(remove_friendship(user_id_A=user_id_a,user_id_B=user_id_b,session=session)):
         return {"message":"All is correct"}
     else:
@@ -98,9 +101,7 @@ def get_user_social_data(user_id: int, session: Session):
 
 
     return {"friends":friends,"pending":pending}
-    # 1. Pedir al repo la lista de amigos confirmados.
-    # 2. Pedir al repo la lista de peticiones pendientes (donde user_id sea el receptor).
-    # 3. Devolver un diccionario con ambas listas, ej: {"friends": [...], "pending": [...]}
+
 async def get_user_favorites_protected(current_user_id: int, target_user_id: int, session: Session):
     
 
@@ -113,7 +114,7 @@ async def get_user_favorites_protected(current_user_id: int, target_user_id: int
 
     if estado_amistad != FriendshipStatus.friends:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
+            status_code=403,
             detail="You must be friends with this user to see their list."
         )
 

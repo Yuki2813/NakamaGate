@@ -2,7 +2,7 @@ from fastapi import HTTPException
 
 from sqlmodel import Session
 from passlib.context import CryptContext
-from backend.repositories.user_repository import check_alias_exist, check_email_exist, createUser, get_user_by_email
+from backend.repositories.user_repository import check_alias_exist, check_email_exist, createUser, get_user_by_email, get_user_by_id
 import os
 import jwt
 from datetime import datetime, timedelta, timezone
@@ -74,3 +74,11 @@ def login_user(email: str, password: str, session: Session):
     access_token = create_access_token(data=token_data)
 
     return {"access_token": access_token, "token_type": "bearer"}
+
+def get_user_by_id_service(id_user:int,session:Session):
+    user=get_user_by_id(id=id_user,session=session)
+
+    if not user:
+        raise HTTPException(status_code=404,detail="User not found")
+    else:
+        return user
