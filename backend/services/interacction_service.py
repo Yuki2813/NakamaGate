@@ -1,7 +1,8 @@
 from fastapi import HTTPException, status
 from sqlmodel import Session
 
-from backend.clients import anilist_client
+from backend.clients.anilist_client import anilist_client
+from backend.models.favorite import Mediatype
 from backend.models.friendship import FriendshipStatus
 from backend.models.review import MediaType
 from backend.models.users import Rol
@@ -31,8 +32,8 @@ def update_media_status(user_id: int, favorite_id: int, new_status: str, session
         raise HTTPException(status_code=404,detail="The anime/manga could not be found ")
 
 
-def remove_media_from_list(user_id: int, id_api: int, session: Session):
-    if(delete_user_favorite(id_user=user_id,idapi=id_api,session=session)):
+def remove_media_from_list(user_id: int, id_api: int,media_type:Mediatype,session: Session):
+    if(delete_user_favorite(id_user=user_id,idapi=id_api,session=session,media=media_type)):
         return {"message":"The anime/manga was properly removed"}
     else:
         raise HTTPException(status_code=404,detail="At this time, we are unable to remove the manga/anime you requested")

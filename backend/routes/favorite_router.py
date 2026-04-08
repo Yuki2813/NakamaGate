@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlmodel import Session
@@ -37,12 +37,13 @@ async def add_favorite(
 # ==========================================
 @router.delete("/{media_id}", summary="Quitar un anime/manga de favoritos")
 async def remove_favorite(
-    media_id: int, # El ID de AniList
+    media_id: int,
+    media_type:Mediatype=Query(...,description="Tipo de contenido a buscar"),
     user_id: int = Depends(get_current_user_id),
     session: Session = Depends(get_db)
 ):
 
-    result = remove_media_from_list(id_api=media_id, user_id=user_id, session=session)
+    result = remove_media_from_list(id_api=media_id, user_id=user_id, session=session,media_type=media_type)
     return result
 
 # ==========================================
@@ -56,7 +57,7 @@ async def get_my_favorites(
     session: Session = Depends(get_db)
 ):
    
-    result=get_favorite_list(user_id=user_id,session=session)
+    result= await get_favorite_list(user_id=user_id,session=session)
     return result
 
 # ==========================================

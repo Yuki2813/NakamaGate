@@ -69,7 +69,7 @@ async def get_my_profile(
     session: Session = Depends(get_db)
 ):
    
-    user=get_user_by_id_service(id=user_id,session=session)
+    user=get_user_by_id_service(id_user=user_id,session=session)
     return {
         "id":user.id,
         "email":user.email,
