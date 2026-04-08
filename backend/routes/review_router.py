@@ -45,7 +45,7 @@ async def create_review(
     user_id: int = Depends(get_current_user_id),
     session: Session = Depends(get_db)
 ):
-    return create_review_service(
+    return await create_review_service(
         user_id=user_id,
         id_api=review_data.id_api,
         media_type=review_data.media_type,

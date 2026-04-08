@@ -5,23 +5,61 @@ from fastapi import UploadFile, HTTPException, status
 from sqlmodel import Session
 from backend.models.friendship import FriendshipStatus
 from backend.repositories.friendship_repository import accept_friend_request, get_friends, get_friendship_status, get_pending_requests, remove_friendship, send_friend_request
-from backend.repositories.user_repository import check_id_exist, delete_user, update_user_alias, update_user_avatar
+from backend.repositories.user_repository import check_alias_exist, check_id_exist, delete_user, get_user_by_id, update_user_alias, update_user_avatar
+from backend.services.auth_service import create_access_token
 from backend.services.interacction_service import get_favorite_list
 
-UPLOAD_DIR = "static/profile_pics"
+UPLOAD_DIR = "./backend/static/profile_pics"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 # ==========================================
 # GESTIÓN DE PERFIL
 # ==========================================
 
 def update_alias(user_id: int, new_alias: str, session: Session):
-    if len(new_alias.strip())<4:
-        raise HTTPException(status_code=400,detail="Your alias needs more than 3 characters")
-    check=update_user_alias(user_id=user_id,new_alias=new_alias,session=session)
-    if check:
-        return new_alias
-    else:
-        raise HTTPException(status_code=400,detail="In this moment we can't change your alias try again later")
+    
+    # 1. Obtener usuario actual
+    user = get_user_by_id(id=user_id, session=session)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found.")
+
+    # 2. Validaciones básicas del negocio
+    if len(new_alias) < 3 or len(new_alias) > 20:
+        raise HTTPException(
+            status_code=400, 
+            detail="The alias must be between 3 and 20 characters."
+        )
+
+    # 3. DELEGAR EN EL REPOSITORIO (Aquí está la magia limpia)
+    # Tu función update_user_alias devuelve True si se actualiza, o False si el alias ya existe
+    if new_alias != user.alias:
+        update_success = update_user_alias(user_id=user_id, new_alias=new_alias, session=session)
+        
+        if not update_success:
+            raise HTTPException(
+                status_code=400, 
+                detail="This alias is already in use. Please try another alias."
+            )
+
+    # 4. Traemos los datos frescos del usuario para generar el token
+    updated_user = get_user_by_id(id=user_id, session=session)
+
+    # 5. GENERAMOS EL NUEVO TOKEN
+    token_data = {
+        "sub": updated_user.email,         
+        "user_id": updated_user.id,        
+        "alias": updated_user.alias,  # 👈 Este ya es el nuevo gracias a tu repositorio   
+        "is_adult": updated_user.isAdult,
+        "rol": updated_user.rol  
+    }
+
+    new_access_token = create_access_token(data=token_data)
+
+    # 6. Devolvemos la respuesta
+    return {
+        "message": "Alias updated successfully.",
+        "access_token": new_access_token, 
+        "token_type": "bearer"
+    }
     
 
 def update_avatar(user_id: int, file: UploadFile, session: Session):

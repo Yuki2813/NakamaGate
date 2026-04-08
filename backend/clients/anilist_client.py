@@ -110,25 +110,35 @@ class AniListClient:
 
             return None
 
-    async def get_media_batch(self, ids: list[int]):
-        if not ids: return []
+    async def get_media_batch(self, ids: list[int], media_type: str = None):
+        if not ids: 
+            return []
+
+        # 2. Modificamos la query para que acepte el parámetro $type
         query = gql("""
-            query ($ids: [Int]) {
-              Page(perPage: 50) {
-                media(id_in: $ids) {
-                  id type title { romaji } coverImage { large } averageScore
+            query ($ids: [Int], $type: MediaType) {
+            Page(perPage: 50) {
+                media(id_in: $ids, type: $type) {
+                id 
+                type 
+                title { romaji } 
+                coverImage { large } 
+                averageScore
                 }
-              }
+            }
             }
         """)
-        variables = {"ids": ids}
+
+        # 3. Pasamos el tipo a las variables
+        variables = {
+            "ids": ids,
+            "type": media_type  # Aquí llegará "ANIME" o "MANGA"
+        }
         
         async with self.client as session:
             result = await session.execute(query, variable_values=variables)
             raw_list = result.get("Page", {}).get("media", [])
             return MediaAdapter.list_to_standar_format(raw_list)
-        
-
 
 
     async def get_directory_page(self, page: int, per_page: int, media_type: str, sort: str = "POPULARITY_DESC", genre: str = None):

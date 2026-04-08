@@ -29,7 +29,8 @@ async def add_favorite(
     user_id: int = Depends(get_current_user_id),
     session: Session = Depends(get_db)
 ):
-    result = add_media_to_list(user_id, id_api=favorite_data.media_id,media_type=favorite_data.media_type, session=session)
+
+    result = await add_media_to_list(user_id, id_api=favorite_data.media_id,media_type=favorite_data.media_type, session=session)
     return result
 
 # ==========================================

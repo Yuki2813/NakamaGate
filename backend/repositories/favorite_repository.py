@@ -53,10 +53,11 @@ def delete_user_favorite(id_user:int,media:Mediatype,idapi:int,session:Session):
 def get_user_favorites(id_user: int, session: Session):
 
     statement = (
-        select(UserFavorite)
+        select(UserFavorite, Favorite)
+        .join(Favorite, UserFavorite.favorite_id == Favorite.id)
         .where(UserFavorite.user_id == id_user)
-        .options(joinedload(UserFavorite.favorite))
     )
     
     favorites = session.exec(statement).all()
+    print(favorites)
     return favorites
