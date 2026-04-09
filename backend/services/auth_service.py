@@ -54,8 +54,13 @@ def register_user(email: str, alias: str, password: str, is_adult: bool, session
         raise  HTTPException(status_code=400, detail="The alias is already in use try to use another alias")
     
     new_user=createUser(email=email,alias=alias,password=get_password_hash(password=password),is_adult=is_adult,session=session)
+    return_user={
+        "email":new_user.email,
+        "alias":new_user.alias,
+        "picture":new_user.picture
+    }
 
-    return new_user
+    return return_user
 
 def login_user(email: str, password: str, session: Session):
     user=get_user_by_email(email=email,session=session)
