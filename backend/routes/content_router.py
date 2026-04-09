@@ -28,7 +28,7 @@ async def get_home(
 # ==========================================
 @router.get("/directory")
 async def get_directory(
-    media_type: str = Query(..., description="'ANIME' o 'MANGA'"),
+    media_type: Mediatype = Query(..., description="'ANIME' o 'MANGA'"),
 
     page: int = Query(default=1, ge=1, description="Número de página (mínimo 1)"),
 
