@@ -17,9 +17,7 @@ from backend.repositories.user_repository import get_user_by_id
 # ==========================================
 
 async def add_media_to_list(user_id: int, id_api: int, media_type: MediaType, session: Session):
-    """
-    Añade un nuevo favorito verificando primero en AniList que el ID y el tipo coinciden.
-    """
+
     # 1. VALIDACIÓN EXTERNA: Preguntamos a AniList qué es realmente este ID
     info_real = await anilist_client.get_media_details(id_api)
     

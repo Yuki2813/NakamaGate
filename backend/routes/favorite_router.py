@@ -52,8 +52,6 @@ async def remove_favorite(
 # ==========================================
 @router.get("/", summary="Obtener lista de favoritos del usuario")
 async def get_my_favorites(
-    # Opcional: Podemos añadir un filtro para pedir solo "ANIME" o "MANGA"
-    # type_filter: str = None, 
     user_id: int = Depends(get_current_user_id),
     session: Session = Depends(get_db)
 ):
