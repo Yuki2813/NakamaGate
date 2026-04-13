@@ -1,130 +1,62 @@
-import { useState } from "react"
-import { useNavigate, Link } from "react-router-dom"
-import { useAuth } from "@/context/AuthContext"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent } from "@/components/ui/card"
+import { useState } from 'react';
+import { apiClient } from '../api/client';
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Link } from "react-router-dom";
 
 export default function Login() {
-  const navigate = useNavigate()
-  const { login } = useAuth()
-  const [form, setForm] = useState({ email: "", password: "" })
-  const [error, setError] = useState("")
-  const [loading, setLoading] = useState(false)
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setForm({ ...form, [e.target.name]: e.target.value })
-    setError("")
-  }
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setIsLoading(true);
 
-  const handleSubmit = async (e: React.MouseEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    setError("")
     try {
-      await login(form.email, form.password)
-      navigate("/")
+      const response = await apiClient.post('/users/login', { email, password });
+      if (response.data.access_token) {
+        localStorage.setItem('token', response.data.access_token);
+        window.location.href = '/'; // O usar navigate('/')
+      }
     } catch (err: any) {
-      setError(err.response?.data?.detail || "Credenciales incorrectas")
+      setError('Credenciales incorrectas o error de conexión.');
     } finally {
-      setLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   return (
-    <div className="dark min-h-screen bg-background flex items-center justify-center px-4">
-      <div className="w-full max-w-sm">
-
-        {/* Logo */}
-        <div className="flex flex-col items-center mb-8">
-          <div className="w-12 h-12 rounded-xl bg-muted border border-border flex items-center justify-center mb-4">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-              <path
-                d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="text-foreground"
-              />
-            </svg>
-          </div>
-          <h1 className="text-2xl font-semibold text-foreground tracking-tight">NakamaGate</h1>
-          <p className="text-sm text-muted-foreground mt-1.5">Bienvenido de vuelta</p>
-        </div>
-
-        {/* Card */}
-        <Card className="border-border bg-card">
-          <CardContent className="pt-6 space-y-4">
-
-            {/* Email */}
-            <div className="space-y-1.5">
-              <Label htmlFor="email">Correo electrónico</Label>
-              <Input
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
-                placeholder="tu@email.com"
-                value={form.email}
-                onChange={handleChange}
-              />
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
+      <Card className="w-full max-w-md shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] border-4 border-black rounded-xl bg-white">
+        <CardHeader className="text-center">
+          <CardTitle className="text-3xl font-black italic uppercase">Login</CardTitle>
+          <CardDescription className="font-bold">¡Bienvenido de nuevo, Nakama!</CardDescription>
+        </CardHeader>
+        <form onSubmit={handleSubmit}>
+          <CardContent className="space-y-4">
+            {error && <div className="p-3 text-sm bg-red-100 border-2 border-red-400 font-bold">{error}</div>}
+            <div className="space-y-2">
+              <Label className="font-bold uppercase text-xs">Email</Label>
+              <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="border-2 border-black focus-visible:ring-0" />
             </div>
-
-            {/* Contraseña */}
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="password">Contraseña</Label>
-                <a
-                  href="#"
-                  className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  ¿Olvidaste tu contraseña?
-                </a>
-              </div>
-              <Input
-                id="password"
-                name="password"
-                type="password"
-                autoComplete="current-password"
-                placeholder="••••••••"
-                value={form.password}
-                onChange={handleChange}
-              />
+            <div className="space-y-2">
+              <Label className="font-bold uppercase text-xs">Contraseña</Label>
+              <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required className="border-2 border-black focus-visible:ring-0" />
             </div>
-
-            {/* Error */}
-            {error && (
-              <div className="bg-destructive/10 border border-destructive/30 text-destructive text-sm rounded-lg px-3 py-2">
-                {error}
-              </div>
-            )}
-
-            {/* Botón */}
-            <Button
-              onClick={handleSubmit}
-              disabled={loading || !form.email || !form.password}
-              className="w-full"
-            >
-              {loading ? "Iniciando sesión..." : "Iniciar sesión"}
-            </Button>
-
           </CardContent>
-        </Card>
-
-        {/* Link registro */}
-        <p className="text-center text-sm text-muted-foreground mt-6">
-          ¿No tienes cuenta?{" "}
-          <Link
-            to="/register"
-            className="text-foreground font-medium hover:underline underline-offset-4"
-          >
-            Regístrate gratis
-          </Link>
-        </p>
-
-      </div>
+          <CardFooter className="flex flex-col gap-4">
+            <Button className="w-full font-black text-lg bg-black hover:bg-white hover:text-black border-2 border-black transition-all" type="submit" disabled={isLoading}>
+              {isLoading ? 'CARGANDO...' : 'ENTRAR'}
+            </Button>
+            <p className="text-sm font-bold">¿No tienes cuenta? <Link to="/register" className="text-purple-600 underline">Regístrate aquí</Link></p>
+          </CardFooter>
+        </form>
+      </Card>
     </div>
-  )
+  );
 }

@@ -1,161 +1,82 @@
-import { useState } from "react"
-import { useNavigate, Link } from "react-router-dom"
-import { useAuth } from "@/context/AuthContext"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent } from "@/components/ui/card"
+import { useState } from 'react';
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Link } from "react-router-dom";
 
 export default function Register() {
-  const navigate = useNavigate()
-  const { register } = useAuth()
-  const [form, setForm] = useState({ email: "", username: "", password: "", passwordConfirm: "" })
-  const [error, setError] = useState("")
-  const [loading, setLoading] = useState(false)
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+    confirmPassword: '',
+    acceptPolicies: false,
+    isOlderThan18: false
+  });
+  const [error, setError] = useState('');
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setForm({ ...form, [e.target.name]: e.target.value })
-    setError("")
-  }
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
 
-  const handleSubmit = async (e: React.MouseEvent) => {
-    e.preventDefault()
-    setError("")
-
-    // Validaciones
-    if (form.password !== form.passwordConfirm) {
-      setError("Las contraseñas no coinciden")
-      return
+    if (formData.password !== formData.confirmPassword) {
+      return setError('Las contraseñas no coinciden.');
+    }
+    if (!formData.acceptPolicies || !formData.isOlderThan18) {
+      return setError('Debes aceptar todos los términos y ser mayor de edad.');
     }
 
-    if (form.password.length < 6) {
-      setError("La contraseña debe tener al menos 6 caracteres")
-      return
-    }
-
-    setLoading(true)
-    try {
-      await register(form.email, form.username, form.password)
-      navigate("/")
-    } catch (err: any) {
-      setError(err.response?.data?.detail || "Error al registrarse")
-    } finally {
-      setLoading(false)
-    }
-  }
+    console.log("Registrando usuario...", formData);
+    // Aquí iría tu apiClient.post('/users/register', ...)
+  };
 
   return (
-    <div className="dark min-h-screen bg-background flex items-center justify-center px-4">
-      <div className="w-full max-w-sm">
-
-        {/* Logo */}
-        <div className="flex flex-col items-center mb-8">
-          <div className="w-12 h-12 rounded-xl bg-muted border border-border flex items-center justify-center mb-4">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-              <path
-                d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="text-foreground"
-              />
-            </svg>
-          </div>
-          <h1 className="text-2xl font-semibold text-foreground tracking-tight">NakamaGate</h1>
-          <p className="text-sm text-muted-foreground mt-1.5">Crea tu cuenta</p>
-        </div>
-
-        {/* Card */}
-        <Card className="border-border bg-card">
-          <CardContent className="pt-6 space-y-4">
-
-            {/* Email */}
-            <div className="space-y-1.5">
-              <Label htmlFor="email">Correo electrónico</Label>
-              <Input
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
-                placeholder="tu@email.com"
-                value={form.email}
-                onChange={handleChange}
-              />
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
+      <Card className="w-full max-w-lg shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] border-4 border-black rounded-2xl bg-white">
+        <CardHeader className="text-center bg-black text-white rounded-t-lg mb-6">
+          <CardTitle className="text-3xl font-black tracking-widest">NUEVO NAKAMA</CardTitle>
+          <CardDescription className="text-slate-300 font-bold">Únete a la mayor red social de anime</CardDescription>
+        </CardHeader>
+        <form onSubmit={handleSubmit}>
+          <CardContent className="space-y-5">
+            {error && <div className="p-3 text-sm bg-red-100 border-2 border-red-500 font-bold text-red-700">{error}</div>}
+            
+            <div className="space-y-2">
+              <Label className="font-bold text-sm">CORREO ELECTRÓNICO</Label>
+              <Input type="email" placeholder="tu@email.com" onChange={(e) => setFormData({...formData, email: e.target.value})} className="border-2 border-black h-12" required />
             </div>
 
-            {/* Usuario */}
-            <div className="space-y-1.5">
-              <Label htmlFor="username">Nombre de usuario</Label>
-              <Input
-                id="username"
-                name="username"
-                type="text"
-                placeholder="tu_usuario"
-                value={form.username}
-                onChange={handleChange}
-              />
-            </div>
-
-            {/* Contraseña */}
-            <div className="space-y-1.5">
-              <Label htmlFor="password">Contraseña</Label>
-              <Input
-                id="password"
-                name="password"
-                type="password"
-                autoComplete="new-password"
-                placeholder="••••••••"
-                value={form.password}
-                onChange={handleChange}
-              />
-            </div>
-
-            {/* Confirmar Contraseña */}
-            <div className="space-y-1.5">
-              <Label htmlFor="passwordConfirm">Confirmar contraseña</Label>
-              <Input
-                id="passwordConfirm"
-                name="passwordConfirm"
-                type="password"
-                autoComplete="new-password"
-                placeholder="••••••••"
-                value={form.passwordConfirm}
-                onChange={handleChange}
-              />
-            </div>
-
-            {/* Error */}
-            {error && (
-              <div className="bg-destructive/10 border border-destructive/30 text-destructive text-sm rounded-lg px-3 py-2">
-                {error}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="font-bold text-sm">CONTRASEÑA</Label>
+                <Input type="password" placeholder="••••••" onChange={(e) => setFormData({...formData, password: e.target.value})} className="border-2 border-black h-12" required />
               </div>
-            )}
+              <div className="space-y-2">
+                <Label className="font-bold text-sm">CONFIRMAR</Label>
+                <Input type="password" placeholder="••••••" onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})} className="border-2 border-black h-12" required />
+              </div>
+            </div>
 
-            {/* Botón */}
-            <Button
-              onClick={handleSubmit}
-              disabled={loading || !form.email || !form.username || !form.password || !form.passwordConfirm}
-              className="w-full"
-            >
-              {loading ? "Registrando..." : "Registrarse"}
-            </Button>
-
+            <div className="space-y-4 py-4 border-t-2 border-dashed border-slate-200">
+              <div className="flex items-center space-x-3">
+                <Checkbox id="terms" onCheckedChange={(val) => setFormData({...formData, acceptPolicies: !!val})} className="border-2 border-black w-6 h-6" />
+                <Label htmlFor="terms" className="text-sm font-bold leading-none cursor-pointer">Acepto las políticas de la comunidad</Label>
+              </div>
+              <div className="flex items-center space-x-3">
+                <Checkbox id="age" onCheckedChange={(val) => setFormData({...formData, isOlderThan18: !!val})} className="border-2 border-black w-6 h-6" />
+                <Label htmlFor="age" className="text-sm font-bold leading-none cursor-pointer">Confirmo que tengo +18 años</Label>
+              </div>
+            </div>
           </CardContent>
-        </Card>
-
-        {/* Link login */}
-        <p className="text-center text-sm text-muted-foreground mt-6">
-          ¿Ya tienes cuenta?{" "}
-          <Link
-            to="/login"
-            className="text-foreground font-medium hover:underline underline-offset-4"
-          >
-            Inicia sesión
-          </Link>
-        </p>
-
-      </div>
+          <CardFooter className="flex flex-col gap-4">
+            <Button className="w-full h-14 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xl border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-1 active:translate-y-1 transition-all">
+              CREAR CUENTA
+            </Button>
+            <Link to="/login" className="font-bold text-sm hover:underline italic">¿Ya eres parte de NakamaGate? Entra aquí</Link>
+          </CardFooter>
+        </form>
+      </Card>
     </div>
-  )
+  );
 }
