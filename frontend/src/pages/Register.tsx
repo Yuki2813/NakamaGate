@@ -6,10 +6,10 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent } from "@/components/ui/card"
 
-export default function Login() {
+export default function Register() {
   const navigate = useNavigate()
-  const { login } = useAuth()
-  const [form, setForm] = useState({ email: "", password: "" })
+  const { register } = useAuth()
+  const [form, setForm] = useState({ email: "", username: "", password: "", passwordConfirm: "" })
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
 
@@ -20,13 +20,25 @@ export default function Login() {
 
   const handleSubmit = async (e: React.MouseEvent) => {
     e.preventDefault()
-    setLoading(true)
     setError("")
+
+    // Validaciones
+    if (form.password !== form.passwordConfirm) {
+      setError("Las contraseñas no coinciden")
+      return
+    }
+
+    if (form.password.length < 6) {
+      setError("La contraseña debe tener al menos 6 caracteres")
+      return
+    }
+
+    setLoading(true)
     try {
-      await login(form.email, form.password)
+      await register(form.email, form.username, form.password)
       navigate("/")
     } catch (err: any) {
-      setError(err.response?.data?.detail || "Credenciales incorrectas")
+      setError(err.response?.data?.detail || "Error al registrarse")
     } finally {
       setLoading(false)
     }
@@ -51,7 +63,7 @@ export default function Login() {
             </svg>
           </div>
           <h1 className="text-2xl font-semibold text-foreground tracking-tight">NakamaGate</h1>
-          <p className="text-sm text-muted-foreground mt-1.5">Bienvenido de vuelta</p>
+          <p className="text-sm text-muted-foreground mt-1.5">Crea tu cuenta</p>
         </div>
 
         {/* Card */}
@@ -72,24 +84,43 @@ export default function Login() {
               />
             </div>
 
+            {/* Usuario */}
+            <div className="space-y-1.5">
+              <Label htmlFor="username">Nombre de usuario</Label>
+              <Input
+                id="username"
+                name="username"
+                type="text"
+                placeholder="tu_usuario"
+                value={form.username}
+                onChange={handleChange}
+              />
+            </div>
+
             {/* Contraseña */}
             <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="password">Contraseña</Label>
-                <a
-                  href="#"
-                  className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  ¿Olvidaste tu contraseña?
-                </a>
-              </div>
+              <Label htmlFor="password">Contraseña</Label>
               <Input
                 id="password"
                 name="password"
                 type="password"
-                autoComplete="current-password"
+                autoComplete="new-password"
                 placeholder="••••••••"
                 value={form.password}
+                onChange={handleChange}
+              />
+            </div>
+
+            {/* Confirmar Contraseña */}
+            <div className="space-y-1.5">
+              <Label htmlFor="passwordConfirm">Confirmar contraseña</Label>
+              <Input
+                id="passwordConfirm"
+                name="passwordConfirm"
+                type="password"
+                autoComplete="new-password"
+                placeholder="••••••••"
+                value={form.passwordConfirm}
                 onChange={handleChange}
               />
             </div>
@@ -104,23 +135,23 @@ export default function Login() {
             {/* Botón */}
             <Button
               onClick={handleSubmit}
-              disabled={loading || !form.email || !form.password}
+              disabled={loading || !form.email || !form.username || !form.password || !form.passwordConfirm}
               className="w-full"
             >
-              {loading ? "Iniciando sesión..." : "Iniciar sesión"}
+              {loading ? "Registrando..." : "Registrarse"}
             </Button>
 
           </CardContent>
         </Card>
 
-        {/* Link registro */}
+        {/* Link login */}
         <p className="text-center text-sm text-muted-foreground mt-6">
-          ¿No tienes cuenta?{" "}
+          ¿Ya tienes cuenta?{" "}
           <Link
-            to="/register"
+            to="/login"
             className="text-foreground font-medium hover:underline underline-offset-4"
           >
-            Regístrate gratis
+            Inicia sesión
           </Link>
         </p>
 
