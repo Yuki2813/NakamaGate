@@ -8,6 +8,7 @@ from backend.models.favorite import Favorite
 from backend.models.userfavorite import UserFavorite
 from backend.models.friendship import Friendship
 from backend.routes import auth_router, content_router, favorite_router, review_router,friend_routes
+
 app = FastAPI(title="NakameGate", version="1.0")
 
 # Asegúrate de que la carpeta existe antes de montarla

@@ -1,4 +1,4 @@
-from sqlmodel import Session, text, select
+from sqlmodel import Session, text, select, SQLModel
 from database import engine
 from models.users import Users, Rol
 from models.favorite import Favorite, Mediatype
@@ -144,7 +144,12 @@ def seed():
         session.commit()
         print("✅ Reviews creadas")
 
-        print("\n🎉 Seed completado correctamente. ¡Base de datos reseteada!")
+        print("\n🎉 Seed completado correctamente. ¡Base de datos reseteada y lista!")
 
 if __name__ == "__main__":
+    # 1. ESTO CREA LAS TABLAS SI NO EXISTEN
+    print("🏗️ Creando la estructura de las tablas en la base de datos...")
+    SQLModel.metadata.create_all(engine)
+    
+    # 2. ESTO EJECUTA TU FUNCIÓN PARA LLENARLAS
     seed()
