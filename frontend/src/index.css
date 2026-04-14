@@ -27,10 +27,16 @@
 }
 
 @layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
   body {
-    @apply bg-background text-foreground;
+  @apply bg-slate-50 text-black transition-colors duration-300;
+}
+
+.dark body {
+  @apply bg-slate-950 text-white;
+}
+
+  /* Esto ayuda a que los inputs de Shadcn se vean bien */
+  .dark input {
+    @apply bg-slate-800 border-slate-700 text-white;
   }
 }
