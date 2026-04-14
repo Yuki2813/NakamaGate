@@ -1,14 +1,15 @@
 import { useEffect, useState } from 'react';
 import { apiClient } from '../api/client';
-import { 
-  Carousel, 
-  CarouselContent, 
-  CarouselItem, 
-  CarouselNext, 
-  CarouselPrevious 
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious
 } from "@/components/ui/carousel";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Link } from 'react-router-dom';
 
 // Adaptamos la interfaz a los datos reales que trae tu JSON
 interface MediaItem {
@@ -32,7 +33,7 @@ export default function Home() {
     apiClient.get('content/home')
       .then(res => {
         const data = res.data;
-        
+
         // Transformamos tu JSON en un array de secciones para poder mapearlo fácilmente
         const formattedSections: HomeSection[] = [
           { section_title: "Top Animes", items: data.top_animes },
@@ -84,11 +85,11 @@ export default function Home() {
               {section.items.map((item) => (
                 <CarouselItem key={item.id} className="pl-4 basis-full sm:basis-1/2 md:basis-1/3 lg:basis-1/4 xl:basis-1/5">
                   <Card className="border-4 border-black rounded-xl shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] overflow-hidden bg-white hover:-translate-y-2 hover:shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] transition-all h-full flex flex-col">
-                    
+
                     <CardContent className="p-0 aspect-[3/4] relative border-b-4 border-black bg-slate-200 flex-shrink-0">
-                      <img 
-                        src={item.image} 
-                        alt={item.title} 
+                      <img
+                        src={item.image}
+                        alt={item.title}
                         className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all duration-300"
                         loading="lazy"
                       />
@@ -99,21 +100,25 @@ export default function Home() {
                         </div>
                       )}
                     </CardContent>
-                    
+
                     <CardFooter className="p-4 flex flex-col justify-between items-start gap-3 flex-grow">
-                      <h3 className="font-black text-lg line-clamp-2 uppercase leading-tight w-full" title={item.title}>
+                      <h3 className="font-black text-lg line-clamp-2 uppercase leading-tight w-full">
                         {item.title}
                       </h3>
-                      <Button className="w-full bg-black text-white font-bold border-2 border-black hover:bg-purple-600 uppercase text-xs transition-colors mt-auto">
-                        Ver Detalles
-                      </Button>
+
+                      {/* ESTE ES EL CAMBIO CLAVE: Envolvemos el botón con un Link que use la ID real */}
+                      <Link to={`/media/${item.id}`} className="w-full">
+                        <Button className="w-full bg-black text-white font-bold border-2 border-black hover:bg-purple-600 uppercase text-xs transition-colors">
+                          Ver Detalles
+                        </Button>
+                      </Link>
                     </CardFooter>
-                    
+
                   </Card>
                 </CarouselItem>
               ))}
             </CarouselContent>
-            
+
             <div className="hidden md:block">
               <CarouselPrevious className="border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] w-12 h-12 -left-6 bg-white hover:bg-black hover:text-white transition-colors" />
               <CarouselNext className="border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] w-12 h-12 -right-6 bg-white hover:bg-black hover:text-white transition-colors" />

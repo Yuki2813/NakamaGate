@@ -72,7 +72,7 @@ class AniListClient:
             query ($search: String, $type: MediaType) {
               Page(perPage: 5) {
                 media(search: $search, type: $type, isAdult: false) {
-                  id type title { romaji } coverImage { medium } format
+                  id type title { romaji } coverImage { medium } format startDate { year }
                 }
               }
             }

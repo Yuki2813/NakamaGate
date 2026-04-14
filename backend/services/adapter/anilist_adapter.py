@@ -24,7 +24,7 @@ class MediaAdapter:
             "description": description,
             "units": units if units else 0,
             "genres": anilist_item.get("genres", []),
-            "year": anilist_item.get("seasonYear") or "N/A",
+            "year": anilist_item.get("startDate", {}).get("year", "N/A"),
             "is_adult": anilist_item.get("isAdult", False)
         }
 
