@@ -149,12 +149,12 @@ async def get_directory_service(user_id: int, page: int, media_type: Mediatype, 
     )
     return directory_data
 
-def check_if_favorite(user_id: int, id_api: int, session: Session) -> bool:
+def check_if_favorite(user_id: int, id_api: int, session: Session):
   
     all_favs = get_user_favorites(id_user=user_id, session=session)
     
-    for favorite in all_favs:
-        if favorite.favorite.id_api == id_api:
-            return True
+    for user_fav, fav in all_favs:
+        if fav.id_api == id_api:
+            return {"is_favorite": True}
             
-    return False
+    return {"is_favorite": False}

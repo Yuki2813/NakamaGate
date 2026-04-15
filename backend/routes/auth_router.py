@@ -125,3 +125,18 @@ async def logout(user_id: int = Depends(get_current_user_id)):
     futuro implementas una "lista negra" (blacklist) de tokens revocados.
     """
     return {"message": "Logout exitoso. Recuerda borrar el token en el frontend."}
+
+@router.get("/users/{target_user_id}", summary="Obtener perfil público de un usuario")
+async def get_public_profile(
+    target_user_id: int, 
+    session: Session = Depends(get_db)
+):
+    # Usamos tu servicio existente para buscar al usuario
+    user = get_user_by_id_service(id_user=target_user_id, session=session)
+    
+    # Devolvemos SOLO los datos públicos (nunca el email ni si es adulto por privacidad)
+    return {
+        "id": user.id,
+        "alias": user.alias,
+        "picture": user.picture
+    }

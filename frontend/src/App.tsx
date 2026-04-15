@@ -4,16 +4,17 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Home from './pages/Home';
 import MediaDetail from './pages/MediaDetail';
-import Navbar from './components/Navbar'; // Tu nueva super-barra
+import Navbar from './components/Navbar';
 import Profile from './pages/Profile';
+import ProfileFriend from './pages/ProfileFriend';
 
-// EL MARCO DE LA TELEVISIÓN
-function AppLayout() {
+// Layout con Navbar
+function LayoutWithNavbar() {
   return (
     <>
-      <Navbar /> {/* Se queda fijo arriba */}
-      <div className="min-h-screen bg-[#f8f9fa]">
-        <Outlet /> {/* Aquí carga el Home o los Detalles dinámicamente */}
+      <Navbar />
+      <div className="min-h-screen bg-[#f8fafc] dark:bg-[#0f172a]">
+        <Outlet />
       </div>
     </>
   );
@@ -28,8 +29,10 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/profile" element={<Profile />} />
-        {/* Rutas Privadas (Pasan por el marco de la televisión) */}
-        <Route element={<AppLayout />}>
+        <Route path="/friend/:id" element={<ProfileFriend />} />
+        
+        {/* Rutas con Navbar */}
+        <Route element={<LayoutWithNavbar />}>
           <Route path="/home" element={<Home />} />
           <Route path="/media/:id" element={<MediaDetail />} />
         </Route>

@@ -7,9 +7,9 @@ import {
   CarouselNext,
   CarouselPrevious
 } from "@/components/ui/carousel";
-import { Card, CardContent, CardFooter } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Link } from 'react-router-dom';
+import { ChevronRight, ChevronLeft } from 'lucide-react';
 
 interface MediaItem {
   id: number;
@@ -34,94 +34,108 @@ export default function Home() {
         const formattedSections: HomeSection[] = [
           { section_title: "Top Animes", items: data.top_animes },
           { section_title: "Top Mangas", items: data.top_mangas },
-          { section_title: `Recomendados: ${data.genre1.name}`, items: data.genre1.items },
-          { section_title: `Recomendados: ${data.genre2.name}`, items: data.genre2.items },
-          { section_title: `Recomendados: ${data.genre3.name}`, items: data.genre3.items },
+          { section_title: `Género: ${data.genre1.name}`, items: data.genre1.items },
+          { section_title: `Género: ${data.genre2.name}`, items: data.genre2.items },
+          { section_title: `Género: ${data.genre3.name}`, items: data.genre3.items },
         ];
         setSections(formattedSections);
         setLoading(false);
       })
-      .catch(err => {
-        console.error("Error cargando home:", err);
-        setLoading(false);
-      });
+      .catch(() => setLoading(false));
   }, []);
 
+  // Estado de carga semántico usando aria-busy
   if (loading) return (
-    <div className="min-h-screen flex items-center justify-center bg-white dark:bg-slate-950 transition-colors">
-      <div className="flex flex-col items-center">
-        <div className="w-16 h-16 border-8 border-black dark:border-white border-t-purple-600 rounded-full animate-spin mb-4"></div>
-        <h2 className="text-3xl font-black uppercase tracking-widest dark:text-white">Cargando...</h2>
+    <main aria-busy="true" className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-[#0f172a]">
+      <div className="w-10 h-10 border-4 border-purple-500 border-t-transparent rounded-full animate-spin" role="status">
+        <span className="sr-only">Cargando catálogo...</span>
       </div>
-    </div>
+    </main>
   );
 
-return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 p-4 md:p-8 lg:p-12 pb-20 font-sans transition-colors duration-500">
+  return (
+    // <main> envuelve todo el contenido principal de la página
+    <main className="min-h-screen bg-[#f8fafc] dark:bg-[#0f172a] pb-20 transition-colors duration-500 text-slate-900 dark:text-slate-100">
       
-      <header className="mb-12 border-b-4 border-black dark:border-white pb-6">
-        <h1 className="text-4xl md:text-6xl font-black italic tracking-tighter uppercase dark:text-white">
-          Panel de <span className="text-purple-600 dark:text-yellow-400">Nakamas</span>
+      {/* <header> para la cabecera introductoria de la página */}
+      <header className="max-w-[1400px] mx-auto px-6 md:px-16 pt-12 pb-8">
+        <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
+          Explora <span className="text-purple-600 dark:text-purple-400">NakamaGate</span>
         </h1>
       </header>
 
-      {sections.map((section, idx) => (
-        <section key={idx} className="mb-24 max-w-[1440px] mx-auto">
-          <div className="flex items-center mb-6 px-4">
-            <div className="h-10 w-3 bg-black dark:bg-white mr-4 shadow-[4px_4px_0px_0px_rgba(147,51,234,1)]"></div>
-            <h2 className="text-3xl font-black uppercase tracking-tight dark:text-white italic">{section.section_title}</h2>
-          </div>
+      {/* Iteramos y creamos un <section> por cada bloque temático */}
+      {sections.map((section, idx) => {
+        const sectionId = `section-${idx}`; // ID único para accesibilidad
+        
+        return (
+          <section key={idx} aria-labelledby={sectionId} className="mb-12 max-w-[1400px] mx-auto group/section">
+            
+            <header className="flex items-center justify-between px-6 md:px-16 mb-4">
+              <h2 id={sectionId} className="text-xl font-semibold tracking-tight opacity-90 text-slate-900 dark:text-slate-100">
+                {section.section_title}
+              </h2>
+              <Link to="#" className="text-sm font-medium text-purple-600 dark:text-purple-400 hover:text-purple-500 transition-colors" aria-label={`Ver todo sobre ${section.section_title}`}>
+                Ver todo
+              </Link>
+            </header>
 
-          <div className="relative px-4 md:px-20"> 
-            <Carousel opts={{ align: "start", loop: true }} className="w-full">
-              
-              {/* BOTONES: Reset total de animación. 
-                  Usamos '!translate-y-[-50%]' para forzar que se queden quietos en el centro vertical 
-              */}
-              <CarouselPrevious className="hidden lg:flex absolute -left-16 top-1/2 !translate-y-[-50%] border-4 border-black dark:border-white w-14 h-14 bg-white dark:bg-slate-800 z-50 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-black hover:text-white transition-none active:shadow-none active:translate-x-[2px] active:translate-y-[-48%]" />
-              <CarouselNext className="hidden lg:flex absolute -right-16 top-1/2 !translate-y-[-50%] border-4 border-black dark:border-white w-14 h-14 bg-white dark:bg-slate-800 z-50 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-black hover:text-white transition-none active:shadow-none active:translate-x-[2px] active:translate-y-[-48%]" />
-
-              <CarouselContent className="-ml-4">
-                {section.items.map((item) => (
-                  <CarouselItem key={item.id} className="pl-4 basis-[85%] sm:basis-1/2 md:basis-1/3 lg:basis-1/4 xl:basis-1/5">
-                    
-                    <Card className="border-4 border-black dark:border-white rounded-none overflow-hidden bg-white dark:bg-slate-900 flex flex-col h-full shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] transition-all duration-200 hover:translate-y-[2px] hover:shadow-none">
+            <div className="relative px-6 md:px-16"> 
+              <Carousel opts={{ align: "start", loop: true }} className="w-full" aria-label={`Carrusel de ${section.section_title}`}>
+                <CarouselContent className="-ml-4">
+                  {section.items.map((item) => (
+                    <CarouselItem key={item.id} className="pl-4 basis-[45%] sm:basis-1/3 md:basis-1/4 lg:basis-1/5 xl:basis-1/6">
                       
-                      {/* IMAGEN: 
-                          Usamos un div intermedio con 'display: flex' y 'p-0' para anular cualquier espacio.
-                          El 'aspect-[2/3]' garantiza que el hueco sea perfecto para un póster.
-                      */}
-                      <div className="p-0 m-0 border-b-4 border-black dark:border-white bg-slate-200 aspect-[2/3] overflow-hidden flex">
-                        <img
-                          src={item.image}
-                          alt={item.title}
-                          className="w-full h-full object-cover object-top m-0 p-0 block" 
-                        />
-                        {item.score > 0 && (
-                          <div className="absolute top-2 right-2 bg-yellow-400 border-2 border-black font-black px-2 py-1 text-[10px] shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] z-10">
-                            ⭐ {item.score}
-                          </div>
-                        )}
-                      </div>
+                      {/* <article> define un contenido independiente, perfecto para cada obra */}
+                      <article className="h-full">
+                        <Card className="border-none bg-transparent shadow-none group/card cursor-pointer h-full">
+                          <Link to={`/media/${item.id}`} className="flex flex-col h-full focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 rounded-xl">
+                            
+                            {/* <figure> envuelve el contenido multimedia (póster) */}
+                            <figure className="relative aspect-[2/3] overflow-hidden rounded-xl bg-slate-200 dark:bg-slate-800 shadow-md transition-all duration-300 group-hover/card:shadow-xl group-hover/card:-translate-y-1 m-0">
+                              <img
+                                src={item.image}
+                                alt={`Póster de ${item.title}`}
+                                className="w-full h-full object-cover" 
+                                loading="lazy"
+                              />
+                              <div className="absolute inset-0 bg-black/20 opacity-0 group-hover/card:opacity-100 transition-opacity" aria-hidden="true" />
+                              
+                              {item.score > 0 && (
+                                <figcaption className="absolute bottom-2 left-2 bg-black/60 backdrop-blur-md text-white text-[10px] font-bold px-2 py-1 rounded-md">
+                                  <span aria-label={`Puntuación: ${item.score} estrellas`}>⭐ {item.score}</span>
+                                </figcaption>
+                              )}
+                            </figure>
 
-                      <CardFooter className="p-4 flex flex-col gap-4 flex-grow dark:bg-slate-900 justify-between">
-                        <h3 className="font-black text-lg line-clamp-2 uppercase dark:text-white leading-tight">
-                          {item.title}
-                        </h3>
-                        <Link to={`/media/${item.id}`} className="w-full">
-                          <Button className="w-full bg-black dark:bg-white text-white dark:text-black font-black border-2 border-black dark:border-white hover:bg-purple-600 dark:hover:bg-yellow-400 uppercase text-[10px] tracking-widest transition-all">
-                            EXPEDIENTE
-                          </Button>
-                        </Link>
-                      </CardFooter>
-                    </Card>
-                  </CarouselItem>
-                ))}
-              </CarouselContent>
-            </Carousel>
-          </div>
-        </section>
-      ))}
-    </div>
+                            <div className="mt-3 flex-grow">
+                              <h3 className="text-sm font-medium leading-tight line-clamp-2 text-slate-900 dark:text-slate-100 opacity-80 group-hover/card:opacity-100 transition-opacity">
+                                {item.title}
+                              </h3>
+                            </div>
+                          </Link>
+                        </Card>
+                      </article>
+
+                    </CarouselItem>
+                  ))}
+                </CarouselContent>
+
+                {/* Botones de navegación con aria-labels */}
+                <CarouselPrevious 
+                  aria-label="Ver elementos anteriores"
+                  className="hidden md:flex absolute -left-12 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full border border-slate-200 dark:border-slate-700 bg-white/90 dark:bg-slate-800/90 text-slate-700 dark:text-white backdrop-blur-md shadow-lg opacity-0 scale-75 group-hover/section:opacity-100 group-hover/section:scale-100 transition-all duration-300 hover:!scale-110 hover:bg-purple-50 hover:text-purple-600 dark:hover:bg-slate-700" 
+                />
+                <CarouselNext 
+                  aria-label="Ver siguientes elementos"
+                  className="hidden md:flex absolute -right-12 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full border border-slate-200 dark:border-slate-700 bg-white/90 dark:bg-slate-800/90 text-slate-700 dark:text-white backdrop-blur-md shadow-lg opacity-0 scale-75 group-hover/section:opacity-100 group-hover/section:scale-100 transition-all duration-300 hover:!scale-110 hover:bg-purple-50 hover:text-purple-600 dark:hover:bg-slate-700" 
+                />
+
+              </Carousel>
+            </div>
+          </section>
+        );
+      })}
+    </main>
   );
 }

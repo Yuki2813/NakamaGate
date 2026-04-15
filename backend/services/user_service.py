@@ -132,13 +132,43 @@ def remove_friend(user_id_a: int, user_id_b: int, session: Session):
         raise HTTPException(status_code=404, detail="Friendship not found")
 
 def get_user_social_data(user_id: int, session: Session):
+    raw_friends = get_friends(user_id=user_id, session=session)
+    raw_pending = get_pending_requests(user_id=user_id, session=session)
 
-    friends=get_friends(user_id=user_id,session=session)
+    formatted_friends = []
+    formatted_pending = []
+    
+    # NUEVO: Creamos un "set" para recordar qué amigos ya hemos añadido
+    processed_friend_ids = set()
 
-    pending=get_pending_requests(user_id=user_id,session=session)
+    for rel in raw_friends:
+        friend_id = rel.receiver_id if rel.requester_id == user_id else rel.requester_id
+        
+        # NUEVO: Solo lo añadimos si NO está en nuestro set de procesados
+        if friend_id not in processed_friend_ids:
+            friend_user = get_user_by_id(id=friend_id, session=session)
+            if friend_user:
+                formatted_friends.append({
+                    "id": friend_user.id,
+                    "alias": friend_user.alias,
+                    "picture": friend_user.picture
+                })
+            # Lo marcamos como procesado para no volver a añadirlo
+            processed_friend_ids.add(friend_id)
 
+    # Las peticiones pendientes se quedan igual
+    for rel in raw_pending:
+        requester_id = rel.requester_id 
+        requester_user = get_user_by_id(id=requester_id, session=session)
+        
+        if requester_user:
+            formatted_pending.append({
+                "id": requester_user.id,
+                "alias": requester_user.alias,
+                "picture": requester_user.picture
+            })
 
-    return {"friends":friends,"pending":pending}
+    return {"friends": formatted_friends, "pending": formatted_pending}
 
 async def get_user_favorites_protected(current_user_id: int, target_user_id: int, session: Session):
     

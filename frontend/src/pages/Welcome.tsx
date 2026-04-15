@@ -1,70 +1,143 @@
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
+import { Zap, Users, PenTool } from 'lucide-react';
 
 export default function Welcome() {
   return (
-    <div className="min-h-screen bg-[#f8f9fa] font-sans antialiased text-black flex flex-col">
+    <div className="min-h-screen bg-[#020617] font-sans antialiased text-slate-100 flex flex-col transition-colors duration-500 overflow-hidden relative">
       
+      {/* Fondo de degradado Morado/Azul (Atenuado) */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
+        <div className="w-[800px] h-[800px] bg-purple-600/10 rounded-full blur-[120px] absolute -top-40 -left-40"></div>
+        <div className="w-[600px] h-[600px] bg-blue-600/10 rounded-full blur-[100px] absolute -bottom-20 -right-20"></div>
+      </div>
+
       {/* NAVEGACIÓN */}
-      <nav className="flex items-center justify-between p-6 border-b-4 border-black bg-white">
-        <div className="text-2xl font-black tracking-tighter">
-          NakamaGate
-        </div>
-        <div>
+      <nav className="relative z-10 flex items-center justify-between px-6 py-6 border-b border-yellow-500/20 bg-slate-900/40 backdrop-blur-xl">
+        <header className="text-3xl font-black tracking-tighter text-white">
+          <span className="text-yellow-500">Nakama</span>Gate
+        </header>
+        <div className="flex gap-4">
           <Link to="/login">
-            <Button variant="outline" className="border-2 border-black font-bold hover:bg-slate-100 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
-              Entrar
+            <Button 
+              variant="outline" 
+              className="border-2 border-yellow-500/40 font-semibold hover:border-yellow-500/60 text-yellow-500 hover:bg-yellow-500/10 transition-all"
+            >
+              Iniciar Sesión
             </Button>
           </Link>
         </div>
       </nav>
 
       {/* SECCIÓN PRINCIPAL (HERO) */}
-      <main className="flex-grow max-w-5xl mx-auto px-6 py-20 text-center flex flex-col items-center justify-center">
-        {/* Etiqueta +18 que querías mantener */}
-        <span className="bg-black text-white px-4 py-1 font-bold text-sm uppercase tracking-widest border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,0.2)] mb-6 transform -rotate-2">
-          Comunidad para todas las edades
+      <main className="relative z-10 flex-grow max-w-6xl mx-auto px-6 py-16 md:py-28 text-center flex flex-col items-center justify-center w-full">
+        
+        {/* Badge decorativo */}
+        <span className="inline-block bg-yellow-500/20 border border-yellow-500/40 text-yellow-300 px-4 py-2 font-bold text-sm uppercase tracking-widest rounded-full mb-8 shadow-lg shadow-yellow-500/20">
+          ✨ Para amantes del anime
         </span>
         
-        <h1 className="text-6xl md:text-8xl font-black tracking-tighter mb-6 leading-tight">
-          Tu rincón para <br />
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-500">
-            vivir el Anime.
+        {/* Encabezado principal */}
+        <h1 className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tighter mb-6 leading-[1.1] text-white">
+          Tu comunidad<br />
+          <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-yellow-300 to-yellow-500">
+            de anime sin límites
           </span>
         </h1>
         
-        <p className="text-xl md:text-2xl text-slate-700 font-medium max-w-2xl mb-10">
-          Explora cientos de series, gestiona tu lista de nakamas y comparte tus reseñas sin filtros en una comunidad madura.
+        {/* Descripción */}
+        <p className="text-lg md:text-xl text-slate-300 font-medium max-w-3xl mb-12 leading-relaxed">
+          Descubre, comparte y conecta. Explora miles de series, crea tu lista personal, lee reseñas sin censura y construye amistades auténticas con otros nakamas de todo el mundo.
         </p>
         
-        <div className="flex gap-4">
+        {/* Llamadas a acción */}
+        <div className="flex flex-col sm:flex-row gap-4 mb-6">
           <Link to="/register">
-            <Button className="h-14 px-8 text-lg font-bold bg-black text-white border-4 border-black hover:bg-white hover:text-black transition-all shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[6px] hover:translate-y-[6px]">
-              ¡Cruzar la Puerta!
+            <Button 
+              size="lg"
+              className="h-14 px-8 text-lg font-bold bg-yellow-500 hover:bg-yellow-400 text-black border-2 border-yellow-500 shadow-[0_0_30px_rgba(234,179,8,0.3)] hover:shadow-[0_0_50px_rgba(234,179,8,0.5)] transition-all hover:scale-105"
+            >
+              Cruzar la Puerta
+            </Button>
+          </Link>
+          <Link to="/login">
+            <Button 
+              size="lg"
+              variant="outline"
+              className="h-14 px-8 text-lg font-bold border-2 border-yellow-500/40 hover:border-yellow-500/60 text-yellow-300 hover:bg-yellow-500/10 transition-all"
+            >
+              Ya tengo cuenta
             </Button>
           </Link>
         </div>
+
       </main>
 
-      {/* SECCIÓN DE CARACTERÍSTICAS (Las 3 funciones reales de tu app) */}
-      <section className="max-w-6xl mx-auto px-6 pb-20 grid md:grid-cols-3 gap-8">
+      {/* SECCIÓN DE CARACTERÍSTICAS */}
+      <section aria-labelledby="features-title" className="relative z-10 max-w-6xl mx-auto px-6 pb-24">
         
-        <div className="bg-white p-8 border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] rounded-xl">
-          <h3 className="text-2xl font-black mb-3">📺 Base de Datos</h3>
-          <p className="text-slate-600 font-medium text-lg">Busca información detallada sobre tus animes favoritos, descubre estrenos y organiza lo que estás viendo.</p>
-        </div>
+        <h2 id="features-title" className="sr-only">Características principales</h2>
 
-        <div className="bg-white p-8 border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] rounded-xl bg-[#f3e8ff]">
-          <h3 className="text-2xl font-black mb-3">✍️ Reseñas Reales</h3>
-          <p className="text-slate-600 font-medium text-lg">Puntúa, critica y lee las opiniones de otros usuarios. Construye tu reputación como crítico de anime.</p>
-        </div>
+        <div className="grid md:grid-cols-3 gap-6 lg:gap-8">
+          
+          {/* Característica 1 */}
+          <article className="group bg-slate-900/50 backdrop-blur-md p-8 md:p-10 border-2 border-yellow-500/20 rounded-2xl shadow-lg hover:shadow-[0_0_40px_rgba(234,179,8,0.15)] hover:border-yellow-500/40 transition-all duration-300 hover:-translate-y-2">
+            <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-yellow-500/10 border border-yellow-500/30 mb-6 group-hover:scale-110 transition-transform">
+              <Zap className="w-8 h-8 text-yellow-400" aria-hidden="true" />
+            </div>
+            <h3 className="text-2xl font-black mb-4 text-white">
+              Base de Datos Completa
+            </h3>
+            <p className="text-slate-400 font-medium text-lg leading-relaxed">
+              Acceso a información detallada sobre miles de animes. Descubre estrenos, géneros y organiza tu lista de seguimiento de forma inteligente.
+            </p>
+          </article>
 
-        <div className="bg-white p-8 border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] rounded-xl">
-          <h3 className="text-2xl font-black mb-3">🤝 Red de Nakamas</h3>
-          <p className="text-slate-600 font-medium text-lg">Añade amigos, mira qué están viendo y crea tu propio círculo de confianza dentro de la plataforma.</p>
-        </div>
+          {/* Característica 2 */}
+          <article className="group bg-slate-900/50 backdrop-blur-md p-8 md:p-10 border-2 border-yellow-500/20 rounded-2xl shadow-lg hover:shadow-[0_0_40px_rgba(234,179,8,0.15)] hover:border-yellow-500/40 transition-all duration-300 hover:-translate-y-2">
+            <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-yellow-500/10 border border-yellow-500/30 mb-6 group-hover:scale-110 transition-transform">
+              <PenTool className="w-8 h-8 text-yellow-400" aria-hidden="true" />
+            </div>
+            <h3 className="text-2xl font-black mb-4 text-white">
+              Reseñas Auténticas
+            </h3>
+            <p className="text-slate-400 font-medium text-lg leading-relaxed">
+              Puntúa, critica y desahógate sin filtros. Lee opiniones reales de otros usuarios y construye tu reputación como crítico en la comunidad.
+            </p>
+          </article>
 
+          {/* Característica 3 */}
+          <article className="group bg-slate-900/50 backdrop-blur-md p-8 md:p-10 border-2 border-yellow-500/20 rounded-2xl shadow-lg hover:shadow-[0_0_40px_rgba(234,179,8,0.15)] hover:border-yellow-500/40 transition-all duration-300 hover:-translate-y-2">
+            <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-yellow-500/10 border border-yellow-500/30 mb-6 group-hover:scale-110 transition-transform">
+              <Users className="w-8 h-8 text-yellow-400" aria-hidden="true" />
+            </div>
+            <h3 className="text-2xl font-black mb-4 text-white">
+              Red de Nakamas
+            </h3>
+            <p className="text-slate-400 font-medium text-lg leading-relaxed">
+              Conecta con otros amantes del anime. Añade amigos, mira qué están viendo y crea tu círculo de confianza personalizado.
+            </p>
+          </article>
+
+        </div>
       </section>
+
+      {/* FOOTER llamada final */}
+      <footer className="relative z-10 border-t border-yellow-500/20 bg-slate-900/40 backdrop-blur-md">
+        <div className="max-w-6xl mx-auto px-6 py-12 text-center">
+          <p className="text-slate-300 font-medium mb-6">
+            ¿Listo para vivir el anime de verdad?
+          </p>
+          <Link to="/register">
+            <Button 
+              size="lg"
+              className="h-12 px-8 font-bold bg-yellow-500 hover:bg-yellow-400 text-black shadow-[0_0_30px_rgba(234,179,8,0.3)] hover:shadow-[0_0_50px_rgba(234,179,8,0.5)] transition-all"
+            >
+              Únete hoy
+            </Button>
+          </Link>
+        </div>
+      </footer>
     </div>
   );
 }

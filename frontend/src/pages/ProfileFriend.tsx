@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { apiClient } from '../api/client';
 import { Button } from "@/components/ui/button";
-import { Heart, Star, ShieldAlert, Settings, Home, Play, CheckCircle2, Clock } from 'lucide-react';
+import { UserPlus, UserMinus, Heart, Star, ShieldAlert, Home, Play, CheckCircle2, Clock } from 'lucide-react';
 
 // --- AJUSTA ESTO A LA URL DE TU BACKEND ---
 const BACKEND_URL = "http://localhost:8000"; 
 
-// --- INTERFACES ESTRICTAS (Basadas en tu JSON final) ---
+// --- INTERFACES ESTRICTAS ---
 interface MediaData {
   id: number;
   type: string;
@@ -38,34 +38,68 @@ interface UserProfile {
   picture: string | null;
 }
 
-export default function Profile() {
+export default function ProfileFriend() {
+  const { id } = useParams<{ id: string }>(); 
+  
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
   const [socialData, setSocialData] = useState<SocialData | null>(null);
   const [userFriends, setUserFriends] = useState<FriendUser[]>([]);
   
   const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState(false);
 
   useEffect(() => {
     const fetchProfileData = async () => {
       try {
-        // 1. Cargar MI Perfil
-        const profileRes = await apiClient.get('/auth/me');
+        if (!id) {
+          setLoading(false);
+          return;
+        }
+
+        // 1. Cargar Perfil
+        console.log(`Cargando perfil de usuario ${id}`);
+        const profileRes = await apiClient.get(`/auth/users/${id}`);
         setProfile(profileRes.data);
-        console.log("Mi perfil cargado:", profileRes.data);
+        console.log("Perfil cargado:", profileRes.data);
 
-        // 2. Cargar MIS Favoritos
-        const favsRes = await apiClient.get('/favorites/');
+        // 2. Cargar Favoritos
+        const favsRes = await apiClient.get(`/friends/${id}/favorites`);
         setFavorites(favsRes.data);
-        console.log("Mis favoritos cargados:", favsRes.data);
+        console.log("Favoritos cargados:", favsRes.data);
 
-        // 3. Cargar MIS Datos Sociales
-        const socialRes = await apiClient.get('/friends/social-data');
-        setSocialData(socialRes.data);
-        console.log("Mis amigos cargados:", socialRes.data?.friends);
+        // 3. Cargar Datos Sociales del usuario autenticado (para ver si es amigo)
+        try {
+          const socialRes = await apiClient.get('/friends/social-data');
+          setSocialData(socialRes.data);
+        } catch (socialErr) {
+          console.error("Error cargando datos sociales:", socialErr);
+        }
 
-        // 4. Cargar MIS amigos
-        setUserFriends(socialRes.data?.friends || []);
+        // 4. Cargar amigos de este usuario
+        try {
+          console.log(`Cargando amigos de usuario ${id}`);
+          const friendsRes = await apiClient.get(`/friends/${id}`);
+          console.log("Respuesta de amigos:", friendsRes.data);
+          const friendsList = Array.isArray(friendsRes.data) 
+            ? friendsRes.data 
+            : (friendsRes.data?.friends || []);
+          console.log("Lista de amigos procesada:", friendsList);
+          setUserFriends(friendsList);
+        } catch (err) {
+          console.error("Error cargando amigos del usuario:", err);
+          // Intenta alternativa
+          try {
+            console.log(`Intentando endpoint alternativo: /friends/${id}/friends`);
+            const altRes = await apiClient.get(`/friends/${id}/friends`);
+            console.log("Respuesta alternativa:", altRes.data);
+            const friendsList = Array.isArray(altRes.data) ? altRes.data : (altRes.data?.friends || []);
+            setUserFriends(friendsList);
+          } catch (altErr) {
+            console.error("Error en endpoint alternativo:", altErr);
+            setUserFriends([]);
+          }
+        }
 
         setLoading(false);
       } catch (err) {
@@ -75,7 +109,7 @@ export default function Profile() {
     };
 
     fetchProfileData();
-  }, []);
+  }, [id]);
 
   // --- HELPER PARA ARREGLAR LAS IMÁGENES DEL BACKEND ---
   const getImageUrl = (path: string | null | undefined) => {
@@ -85,21 +119,27 @@ export default function Profile() {
 
   const handleSendRequest = async () => {
     if (!profile) return;
+    setActionLoading(true);
     try {
       await apiClient.post(`/friends/request/${profile.id}`);
       alert("Petición de amistad enviada.");
     } catch (error) {
       console.error("Error al enviar petición:", error);
+    } finally {
+      setActionLoading(false);
     }
   };
 
   const handleRemoveFriend = async () => {
     if (!profile) return;
+    setActionLoading(true);
     try {
       await apiClient.delete(`/friends/remove/${profile.id}`);
       alert("Amigo eliminado de tu red.");
     } catch (error) {
       console.error("Error al eliminar amigo:", error);
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -112,9 +152,12 @@ export default function Profile() {
   if (!profile) return (
     <main className="min-h-screen flex flex-col items-center justify-center bg-[#020617] text-white">
       <ShieldAlert className="w-16 h-16 text-red-500 mb-4" />
-      <h1 className="text-2xl font-bold text-yellow-500">Error al cargar tu perfil</h1>
+      <h1 className="text-2xl font-bold text-yellow-500">Expediente no encontrado</h1>
     </main>
   );
+
+  // Verificamos si el usuario actual ya está en nuestra lista de amigos
+  const isFriend = socialData?.friends?.some(f => f.id === profile.id);
 
   return (
     <main className="min-h-screen bg-[#020617] text-slate-200 font-sans selection:bg-yellow-500/30 pb-20">
@@ -122,7 +165,7 @@ export default function Profile() {
       {/* ================= NAVEGACIÓN SUPERIOR ================= */}
       <nav className="sticky top-0 z-50 border-b border-yellow-500/20 bg-slate-900/80 backdrop-blur-xl">
         <div className="max-w-[1200px] mx-auto px-6 md:px-16 py-4 flex items-center justify-between">
-          <Link to="/home" className="flex items-center gap-2 text-white hover:text-yellow-400 transition-colors">
+          <Link to="/" className="flex items-center gap-2 text-white hover:text-yellow-400 transition-colors">
             <Home className="w-5 h-5" />
             <span className="font-semibold text-sm">Volver a Home</span>
           </Link>
@@ -136,7 +179,7 @@ export default function Profile() {
       {/* ================= CABECERA DEL PERFIL ================= */}
       <header className="relative w-full max-w-[1200px] mx-auto px-6 md:px-16 pt-12 pb-10">
         <div className="flex flex-col md:flex-row items-center md:items-end gap-6 w-full">
-          <div className="relative group shrink-0">
+          <div className="shrink-0">
             <div className="w-40 h-40 md:w-48 md:h-48 rounded-2xl border-4 border-[#020617] bg-slate-800 overflow-hidden shadow-[0_0_40px_-5px_rgba(234,179,8,0.4)]">
               {getImageUrl(profile.picture) ? (
                 <img src={getImageUrl(profile.picture)!} alt={profile.alias} className="w-full h-full object-cover" />
@@ -146,9 +189,6 @@ export default function Profile() {
                 </div>
               )}
             </div>
-            <button className="absolute bottom-2 right-2 md:bottom-4 md:right-4 w-12 h-12 bg-yellow-500 text-black rounded-full flex items-center justify-center hover:bg-yellow-400 border-4 border-[#020617] transition-colors shadow-lg" title="Editar Perfil">
-              <Settings className="w-5 h-5" />
-            </button>
           </div>
 
           <div className="flex-1 text-center md:text-left flex flex-col md:flex-row md:items-end justify-between w-full gap-6">
@@ -157,8 +197,20 @@ export default function Profile() {
                 {profile.alias}
               </h1>
               <p className="text-yellow-400 font-semibold mt-2 flex items-center justify-center md:justify-start gap-2">
-                <Star className="w-5 h-5 fill-yellow-400" /> Mi Perfil Nakama
+                <Star className="w-5 h-5 fill-yellow-400" /> Expediente Público
               </p>
+            </div>
+
+            <div className="flex gap-3">
+              {isFriend ? (
+                <Button onClick={handleRemoveFriend} disabled={actionLoading} variant="outline" className="h-12 rounded-xl border-red-500/50 bg-red-500/10 hover:bg-red-500 hover:text-white text-red-500 transition-all font-semibold">
+                  <UserMinus className="w-5 h-5 mr-2" /> Eliminar
+                </Button>
+              ) : (
+                <Button onClick={handleSendRequest} disabled={actionLoading} className="h-12 rounded-xl bg-yellow-600 hover:bg-yellow-500 text-black font-bold shadow-lg shadow-yellow-900/20 transition-all">
+                  <UserPlus className="w-5 h-5 mr-2" /> Añadir Amigo
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -185,7 +237,7 @@ export default function Profile() {
 
           <section className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl">
             <h2 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-6">
-              Tu Red de Nakamas
+              Nakamas de {profile.alias}
             </h2>
             
             {userFriends && userFriends.length > 0 ? (
@@ -210,7 +262,9 @@ export default function Profile() {
                 ))}
               </ul>
             ) : (
-              <p className="text-sm text-slate-500 italic text-center py-4">Aún no tienes amigos en tu red.</p>
+              <p className="text-sm text-slate-500 italic text-center py-4">
+                {profile.alias} aún no tiene amigos.
+              </p>
             )}
           </section>
         </aside>
@@ -220,13 +274,13 @@ export default function Profile() {
           <section aria-labelledby="favorites-title">
             <header className="flex items-center gap-3 mb-6">
               <Heart className="w-6 h-6 text-yellow-500 fill-yellow-500" />
-              <h2 id="favorites-title" className="text-2xl font-bold text-white tracking-tight">Tu Santuario (Favoritos)</h2>
+              <h2 id="favorites-title" className="text-2xl font-bold text-white tracking-tight">Santuario de {profile.alias}</h2>
             </header>
 
             {favorites.length > 0 ? (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 md:gap-6">
                 {favorites.map((fav) => {
-                  const media = fav.media; // Extraemos la data del anime/manga
+                  const media = fav.media;
                   if (!media) return null;
 
                   // Función para obtener el icono y color según el estado
@@ -282,7 +336,7 @@ export default function Profile() {
               <div className="bg-slate-900/50 border border-slate-800 border-dashed rounded-3xl p-12 text-center">
                 <Heart className="w-12 h-12 text-slate-700 mx-auto mb-4" />
                 <h3 className="text-lg font-bold text-slate-300 mb-2">Santuario vacío</h3>
-                <p className="text-slate-500 text-sm">Aún no has añadido obras a tus favoritos.</p>
+                <p className="text-slate-500 text-sm">{profile.alias} aún no ha añadido obras a sus favoritos.</p>
               </div>
             )}
           </section>

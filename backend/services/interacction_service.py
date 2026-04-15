@@ -200,8 +200,12 @@ def get_reviews_by_media_service(id_api:int,media_type:MediaType,session:Session
     final_reviews = []
     for review, user in results:
         review_data = review.model_dump()
-        review_data["user_alias"] = user.alias
-        review_data["user_picture"] = user.picture
+        review_data["user"] = {
+            "id": user.id,
+            "alias": user.alias,
+            "picture": user.picture
+        }
+        review_data.pop("id_user", None)  # Removemos el id_user redundante
         
         final_reviews.append(review_data)
     
