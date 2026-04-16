@@ -142,7 +142,7 @@ async def get_directory_service(user_id: int, page: int, media_type: Mediatype, 
 
     directory_data = await anilist_client.get_directory_page(
         page=page, 
-        per_page=20, 
+        per_page=24, 
         media_type=media_type, 
         sort="POPULARITY_DESC",
         genre=genre 

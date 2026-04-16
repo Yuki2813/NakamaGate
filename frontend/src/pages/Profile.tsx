@@ -3,11 +3,9 @@ import { Link } from 'react-router-dom';
 import { apiClient } from '../api/client';
 import { Button } from "@/components/ui/button";
 import { Heart, Star, ShieldAlert, Settings, Home, Play, CheckCircle2, Clock } from 'lucide-react';
+import { getImageUrl } from '../utils/helpers';
+import Loader from '../components/Loader';
 
-// --- AJUSTA ESTO A LA URL DE TU BACKEND ---
-const BACKEND_URL = "http://localhost:8000"; 
-
-// --- INTERFACES ESTRICTAS (Basadas en tu JSON final) ---
 interface MediaData {
   id: number;
   type: string;
@@ -77,11 +75,7 @@ export default function Profile() {
     fetchProfileData();
   }, []);
 
-  // --- HELPER PARA ARREGLAR LAS IMÁGENES DEL BACKEND ---
-  const getImageUrl = (path: string | null | undefined) => {
-    if (!path || path === "null" || path.trim() === "") return null;
-    return path.startsWith('http') ? path : `${BACKEND_URL}${path}`;
-  };
+
 
   const handleSendRequest = async () => {
     if (!profile) return;
@@ -103,11 +97,7 @@ export default function Profile() {
     }
   };
 
-  if (loading) return (
-    <main className="min-h-screen flex items-center justify-center bg-[#020617]">
-      <div className="w-12 h-12 border-4 border-yellow-500 border-t-transparent rounded-full animate-spin"></div>
-    </main>
-  );
+if (loading) return <Loader text="Accediendo al expediente..." />;
 
   if (!profile) return (
     <main className="min-h-screen flex flex-col items-center justify-center bg-[#020617] text-white">
