@@ -102,3 +102,13 @@ def check_id_exist(id:int,session:Session):
         return True
     else:
         return False
+    
+
+def search_users_repo(alias: str, current_user_id: int, session: Session):
+
+    statement = select(Users).where(
+        Users.alias.ilike(f"%{alias}%"),
+        Users.id != current_user_id
+    ).limit(15)
+    
+    return session.exec(statement).all()

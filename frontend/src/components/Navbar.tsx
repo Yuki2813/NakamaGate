@@ -1,11 +1,18 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, User, LogOut, Sun, Moon, Compass } from 'lucide-react'; // <-- Compass añadido
+import { 
+  Search, 
+  User, 
+  LogOut, 
+  Sun, 
+  Moon, 
+  Compass, 
+  Users 
+} from 'lucide-react'; 
 import { apiClient } from '../api/client';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { getImageUrl } from '../utils/helpers';
-
 
 interface UserData {
   alias: string;
@@ -23,6 +30,7 @@ export default function Navbar() {
 
   const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains('dark'));
 
+  // 1. CARGA DE TEMA Y PERFIL
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme');
     if (savedTheme === 'dark') {
@@ -48,6 +56,7 @@ export default function Navbar() {
     }
   };
 
+  // 2. LÓGICA DE BÚSQUEDA (DEBOUNCE)
   useEffect(() => {
     if (query.trim().length < 3) {
       setResults([]);
@@ -77,7 +86,7 @@ export default function Navbar() {
   return (
     <nav className="sticky top-0 z-50 w-full bg-[#020617]/80 backdrop-blur-xl border-b border-yellow-500/20 px-4 md:px-6 py-3 flex items-center justify-between transition-colors">
       
-      {/* LOGO */}
+      {/* --- LOGO --- */}
       <Link to="/home" className="flex items-center gap-3 hover:scale-105 transition-transform shrink-0 group">
         <div className="w-9 h-9 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-xl rotate-12 flex items-center justify-center shadow-[0_0_15px_rgba(234,179,8,0.4)] group-hover:rotate-0 transition-all duration-300">
           <span className="text-[#020617] font-black text-xl -rotate-12 group-hover:rotate-0 transition-all duration-300">N</span>
@@ -87,8 +96,8 @@ export default function Navbar() {
         </span>
       </Link>
 
-      {/* ÁREA CENTRAL: BUSCADOR Y DIRECTORIO */}
-      <div className="flex-1 flex items-center justify-center max-w-2xl mx-4 gap-4">
+      {/* --- ÁREA CENTRAL: BUSCADOR Y NAVEGACIÓN --- */}
+      <div className="flex-1 flex items-center justify-center max-w-2xl mx-4 gap-2">
         
         {/* BUSCADOR */}
         <div className="relative w-full flex flex-col">
@@ -123,7 +132,7 @@ export default function Navbar() {
             </div>
           </div>
 
-          {/* Resultados de Búsqueda */}
+          {/* Resultados Desplegables */}
           {showDropdown && (
             <div className="absolute top-14 left-0 w-full bg-slate-900 border border-slate-700 rounded-xl shadow-[0_20px_40px_-15px_rgba(0,0,0,0.7)] flex flex-col z-50 max-h-80 overflow-y-auto custom-scrollbar overflow-hidden">
               {results.length > 0 ? (
@@ -137,7 +146,7 @@ export default function Navbar() {
                     <div className="w-10 h-14 rounded-md overflow-hidden shrink-0 bg-slate-800">
                       <img src={item.image_thumb || item.image} alt={item.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                     </div>
-                    <div className="flex flex-col">
+                    <div className="flex flex-col text-left">
                       <span className="font-bold text-sm text-slate-200 group-hover:text-yellow-400 transition-colors line-clamp-1">{item.title}</span>
                       <div className="flex items-center gap-2 mt-0.5">
                         <span className="font-medium text-xs text-slate-500 uppercase">{item.type || mediaType}</span>
@@ -156,24 +165,40 @@ export default function Navbar() {
           )}
         </div>
 
-        {/* BOTÓN DIRECTORIO (Solo visible en pantallas medianas o más grandes) */}
-        <Link to="/directory" className="hidden lg:block shrink-0">
-          <Button variant="ghost" className="h-11 px-4 rounded-xl text-slate-300 hover:text-yellow-400 hover:bg-yellow-500/10 font-bold transition-all flex items-center gap-2">
-            <Compass className="w-5 h-5" />
-            Directorio
-          </Button>
-        </Link>
+        {/* BOTONES DE NAVEGACIÓN (Desktop) */}
+        <div className="hidden lg:flex items-center gap-1 shrink-0">
+          <Link to="/directory">
+            <Button variant="ghost" className="h-11 px-4 rounded-xl text-slate-300 hover:text-yellow-400 hover:bg-yellow-500/10 font-bold transition-all flex items-center gap-2">
+              <Compass className="w-5 h-5" />
+              Directorio
+            </Button>
+          </Link>
+          
+          <Link to="/community">
+            <Button variant="ghost" className="h-11 px-4 rounded-xl text-slate-300 hover:text-yellow-400 hover:bg-yellow-500/10 font-bold transition-all flex items-center gap-2">
+              <Users className="w-5 h-5" />
+              Gremio
+            </Button>
+          </Link>
+        </div>
       </div>
 
-      {/* BOTONES DE ACCIÓN (DERECHA) */}
+      {/* --- BOTONES DE ACCIÓN (DERECHA) --- */}
       <div className="flex items-center gap-2 md:gap-3 shrink-0">
         
-        {/* Botón Directorio en móvil (Solo el icono) */}
-        <Link to="/directory" className="lg:hidden">
-          <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl text-slate-300 hover:text-yellow-400 hover:bg-yellow-500/10">
-            <Compass className="w-5 h-5" />
-          </Button>
-        </Link>
+        {/* Navegación móvil (Iconos) */}
+        <div className="flex lg:hidden items-center gap-1">
+          <Link to="/directory">
+            <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl text-slate-300 hover:text-yellow-400 hover:bg-yellow-500/10">
+              <Compass className="w-5 h-5" />
+            </Button>
+          </Link>
+          <Link to="/community">
+            <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl text-slate-300 hover:text-yellow-400 hover:bg-yellow-500/10">
+              <Users className="w-5 h-5" />
+            </Button>
+          </Link>
+        </div>
 
         {/* Tema */}
         <Button 

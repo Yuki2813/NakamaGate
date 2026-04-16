@@ -6,7 +6,7 @@ from pydantic import BaseModel, EmailStr, Field
 from backend.database import get_db
 from backend.security import get_current_user_id
 from backend.services.auth_service import get_user_by_id_service, register_user, login_user
-from backend.services.user_service import update_alias, update_avatar
+from backend.services.user_service import search_users_service, update_alias, update_avatar
 
 router = APIRouter(
     prefix="/auth",
@@ -116,14 +116,7 @@ async def change_avatar(
 # ==========================================
 @router.post("/logout", summary="Cerrar sesión")
 async def logout(user_id: int = Depends(get_current_user_id)):
-    """
-    IMPORTANTE SOBRE JWT:
-    Los tokens JWT son "Stateless" (sin estado). El backend no guarda los tokens activos.
-    Para hacer "logout" real, es el FRONTEND quien debe borrar el token de su LocalStorage.
-    
-    Aún así, se suele dejar este endpoint para registrar la actividad, o si en el 
-    futuro implementas una "lista negra" (blacklist) de tokens revocados.
-    """
+
     return {"message": "Logout exitoso. Recuerda borrar el token en el frontend."}
 
 @router.get("/users/{target_user_id}", summary="Obtener perfil público de un usuario")
@@ -140,3 +133,15 @@ async def get_public_profile(
         "alias": user.alias,
         "picture": user.picture
     }
+
+@router.get("/search", summary="Buscar cazadores por alias")
+async def search_users_endpoint(
+    alias: str, 
+    current_user: int = Depends(get_current_user_id), 
+    session: Session = Depends(get_db)
+):
+    return search_users_service(
+        alias=alias, 
+        current_user_id=current_user, 
+        session=session
+    )

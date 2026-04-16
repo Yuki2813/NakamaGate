@@ -5,7 +5,7 @@ from fastapi import UploadFile, HTTPException, status
 from sqlmodel import Session
 from backend.models.friendship import FriendshipStatus
 from backend.repositories.friendship_repository import accept_friend_request, get_friends, get_friendship_status, get_pending_requests, remove_friendship, send_friend_request
-from backend.repositories.user_repository import check_alias_exist, check_id_exist, delete_user, get_user_by_id, update_user_alias, update_user_avatar
+from backend.repositories.user_repository import check_alias_exist, check_id_exist, delete_user, get_user_by_id, search_users_repo, update_user_alias, update_user_avatar
 from backend.services.auth_service import create_access_token
 from backend.services.interacction_service import get_favorite_list
 
@@ -188,3 +188,14 @@ async def get_user_favorites_protected(current_user_id: int, target_user_id: int
 
 
     return await get_favorite_list(user_id=target_user_id, session=session)
+
+
+def search_users_service(alias: str, current_user_id: int, session: Session):
+
+    users = search_users_repo(alias=alias, current_user_id=current_user_id, session=session)
+    
+    resultado = []
+    for user in users:
+        item = {"id": user.id, "alias": user.alias, "picture": user.picture}
+        resultado.append(item)
+    return resultado

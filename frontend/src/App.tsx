@@ -8,6 +8,7 @@ import Navbar from './components/Navbar';
 import Profile from './pages/Profile';
 import ProfileFriend from './pages/ProfileFriend';
 import Directory from './pages/Directory';
+import Community from './pages/Community';
 
 // Layout con Navbar
 function LayoutWithNavbar() {
@@ -34,6 +35,7 @@ function App() {
         
         {/* Rutas con Navbar */}
         <Route element={<LayoutWithNavbar />}>
+          <Route path="/community" element={<Community />} />
           <Route path="/directory" element={<Directory />} />.
           <Route path="/home" element={<Home />} />
           <Route path="/media/:id" element={<MediaDetail />} />
