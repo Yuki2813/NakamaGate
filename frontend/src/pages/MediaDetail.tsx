@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { apiClient } from '../api/client';
 import { Button } from "@/components/ui/button";
-import { Heart, Home, Star, Trash2, Edit2, Send } from 'lucide-react';
+import { Heart, Home, Star, Trash2, Edit2, Send, AlertTriangle } from 'lucide-react';
 
 const BACKEND_URL = "http://localhost:8000";
 
@@ -52,6 +52,9 @@ export default function MediaDetail() {
   const [loading, setLoading] = useState(true);
   const [isFavorite, setIsFavorite] = useState(false);
   
+  // --- ESTADO PARA ERRORES DE ACCESO (EJ: +18) ---
+  const [accessError, setAccessError] = useState<string | null>(null);
+  
   const [reviewScore, setReviewScore] = useState(3);
   const [reviewContent, setReviewContent] = useState('');
   const [userReview, setUserReview] = useState<Review | null>(null);
@@ -71,7 +74,6 @@ export default function MediaDetail() {
           const reviewsRes = await apiClient.get(`/reviews/media/${id}?media_type=${mediaType}`);
           const reviewsData = Array.isArray(reviewsRes.data) ? reviewsRes.data : [];
           setReviews(reviewsData);
-          console.log("Reseñas cargadas:", reviewsData);
         } catch (reviewErr) {
           console.error("Error cargando reseñas:", reviewErr);
         }
@@ -85,8 +87,14 @@ export default function MediaDetail() {
         }
 
         setLoading(false);
-      } catch (err) {
+      } catch (err: any) {
         console.error("Error cargando detalles:", err);
+        
+        // CAPTURAR EL ERROR 403 (ACCESO DENEGADO)
+        if (err.response?.status === 403) {
+          setAccessError(err.response?.data?.detail || "El Gremio ha restringido este acceso (+18).");
+        }
+        
         setLoading(false);
       }
     };
@@ -188,6 +196,23 @@ export default function MediaDetail() {
     );
   }
 
+  // PANTALLA DE ERROR 403 (ACCESO DENEGADO)
+  if (accessError) {
+    return (
+      <main className="min-h-screen flex flex-col items-center justify-center bg-[#020617] text-white px-4">
+        <div className="bg-red-900/20 border border-red-500/30 p-8 rounded-3xl flex flex-col items-center text-center max-w-md animate-in fade-in zoom-in-95">
+          <AlertTriangle className="w-20 h-20 text-red-500 mb-6" />
+          <h2 className="text-3xl font-black text-white mb-4 uppercase tracking-wider">Acceso Restringido</h2>
+          <p className="text-slate-400 mb-8 font-medium">{accessError}</p>
+          <Button onClick={() => navigate('/home')} className="bg-slate-800 hover:bg-slate-700 text-white font-bold h-12 px-8 rounded-xl transition-colors border border-slate-700">
+            Volver a la base
+          </Button>
+        </div>
+      </main>
+    );
+  }
+
+  // PANTALLA DE ERROR 404 (OBRA NO ENCONTRADA)
   if (!media) {
     return (
       <main className="min-h-screen flex flex-col items-center justify-center bg-[#020617] text-white gap-6">

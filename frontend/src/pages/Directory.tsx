@@ -1,21 +1,15 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { 
-  Filter, 
-  ChevronLeft, 
-  ChevronRight, 
-  Star, 
-  AlertTriangle, 
-  Search, 
-  MoreHorizontal,
-  Hash
+  Filter, ChevronLeft, ChevronRight, Star, AlertTriangle, 
+  Search, Hash, Check 
 } from 'lucide-react';
 import { apiClient } from '../api/client';
 import { getImageUrl } from '../utils/helpers';
 import Loader from '../components/Loader';
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 
-// --- INTERFACES ---
 interface PageInfo {
   total: number;
   currentPage: number;
@@ -44,8 +38,9 @@ export default function Directory() {
   const [isAdult, setIsAdult] = useState(false);
   const [page, setPage] = useState(1);
   const [mediaType, setMediaType] = useState<'ANIME' | 'MANGA'>('ANIME');
-  const [genre, setGenre] = useState('');
   
+  const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
+  const [showGenreMenu, setShowGenreMenu] = useState(false);
   const [jumpPage, setJumpPage] = useState("");
 
   useEffect(() => {
@@ -55,25 +50,27 @@ export default function Directory() {
   }, []);
 
   useEffect(() => {
-    const fetchDirectory = async () => {
+    const delayDebounceFn = setTimeout(async () => {
       setLoading(true);
       setErrorMsg(null);
       try {
         let url = `/content/directory?media_type=${mediaType.toLowerCase()}&page=${page}`;
-        if (genre) url += `&genre=${genre}`;
+        if (selectedGenres.length > 0) {
+          url += `&genre=${selectedGenres.join(',')}`;
+        }
 
         const response = await apiClient.get(url);
         const fetchedItems = response.data.items || [];
 
-        // Lógica de rebote: Si la página está vacía y no es la 1, vuelve al inicio
+        // LÓGICA DE REBOTE MEJORADA
+        // Si pedimos una página que no existe (ej: saltamos a la 50 y está vacía)
         if (fetchedItems.length === 0 && page > 1) {
-          setPage(1);
+          setPage(page - 1); // Rebotamos a la página anterior en vez de a la 1
           return;
         }
 
         setItems(fetchedItems);
         setPageInfo(response.data.page_info || null);
-        
         window.scrollTo({ top: 0, behavior: 'smooth' });
       } catch (error: any) {
         if (error.response?.status === 403) {
@@ -85,9 +82,19 @@ export default function Directory() {
       } finally {
         setLoading(false);
       }
-    };
-    fetchDirectory();
-  }, [page, mediaType, genre]);
+    }, 400);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [page, mediaType, selectedGenres]);
+
+  const toggleGenre = (genre: string) => {
+    setSelectedGenres(prev => {
+      if (prev.includes(genre)) return prev.filter(g => g !== genre);
+      if (prev.length >= 4) return prev;
+      return [...prev, genre];
+    });
+    setPage(1);
+  };
 
   const handleJumpPage = (e: React.FormEvent) => {
     e.preventDefault();
@@ -98,30 +105,26 @@ export default function Directory() {
     }
   };
 
+  // --- NUEVA PAGINACIÓN INTELIGENTE ---
   const getPaginationRange = () => {
-    if (!pageInfo) return [];
-    const current = pageInfo.currentPage;
-    const last = pageInfo.lastPage;
-    const delta = 2;
+    const current = page;
     const range = [];
-    const rangeWithDots = [];
-    let l;
-
-    range.push(1);
-    for (let i = current - delta; i <= current + delta; i++) {
-      if (i < last && i > 1) range.push(i);
+    
+    // Mostrar 2 páginas anteriores (si existen)
+    if (current > 2) range.push(current - 2);
+    if (current > 1) range.push(current - 1);
+    
+    // Página actual
+    range.push(current);
+    
+    // Mostrar páginas siguientes SOLO si la actual está completamente llena (24 items)
+    if (items.length === 24) {
+      range.push(current + 1);
+      // Solo mostramos la +2 si sabemos que AniList no ha cortado la lista
+      if (pageInfo?.hasNextPage) range.push(current + 2);
     }
-    if (last > 1) range.push(last);
-
-    for (let i of range) {
-      if (l) {
-        if (i - l === 2) rangeWithDots.push(l + 1);
-        else if (i - l !== 1) rangeWithDots.push('...');
-      }
-      rangeWithDots.push(i);
-      l = i;
-    }
-    return rangeWithDots;
+    
+    return range;
   };
 
   if (loading && page === 1 && items.length === 0) return <Loader text="Sincronizando archivos..." />;
@@ -134,46 +137,84 @@ export default function Directory() {
       <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-blue-500/5 rounded-full blur-[120px] pointer-events-none"></div>
 
       <header className="max-w-[1400px] mx-auto px-6 md:px-16 pt-12 pb-8 relative z-10">
-        <h1 className="text-4xl md:text-6xl font-black tracking-tighter text-white mb-2">
+        <h1 className="text-4xl md:text-6xl font-black tracking-tighter text-white mb-2 italic">
           Directorio <span className="text-yellow-500">Nakama</span>
         </h1>
         <div className="h-1 w-20 bg-yellow-500 rounded-full mb-4"></div>
       </header>
 
-      {/* BARRA DE FILTROS SUPERIOR (Ahora perfectamente alineada en escritorio) */}
-      <section className="max-w-[1400px] mx-auto px-6 md:px-16 mb-12 relative z-10">
-        {/* Cambiado lg:row a lg:flex-row para que queden en línea */}
+      {/* IMPORTANTE: z-50 aquí para que el menú de géneros tape a las cards */}
+      <section className="max-w-[1400px] mx-auto px-6 md:px-16 mb-12 relative z-50">
         <div className="bg-slate-900/40 backdrop-blur-2xl border border-yellow-500/10 p-5 rounded-3xl flex flex-col lg:flex-row gap-6 items-center justify-between shadow-2xl">
           
-          <div className="flex flex-wrap gap-4 items-center w-full lg:w-auto">
-            <div className="flex bg-black/40 p-1.5 rounded-2xl border border-slate-800">
+          <div className="flex flex-col sm:flex-row flex-wrap gap-4 items-center w-full lg:w-auto relative">
+            <div className="flex bg-black/40 p-1.5 rounded-2xl border border-slate-800 w-full sm:w-auto">
               <button 
-                onClick={() => { setMediaType('ANIME'); setPage(1); setGenre(''); }}
-                className={`px-6 py-2.5 rounded-xl font-black text-xs uppercase transition-all duration-300 ${mediaType === 'ANIME' ? 'bg-yellow-500 text-black shadow-[0_0_20px_rgba(234,179,8,0.3)]' : 'text-slate-500 hover:text-white'}`}
+                onClick={() => { setMediaType('ANIME'); setPage(1); setSelectedGenres([]); }}
+                className={`flex-1 sm:flex-none px-6 py-2.5 rounded-xl font-black text-xs uppercase transition-all duration-300 ${mediaType === 'ANIME' ? 'bg-yellow-500 text-black shadow-[0_0_20px_rgba(234,179,8,0.3)]' : 'text-slate-500 hover:text-white'}`}
               >
                 Anime
               </button>
               <button 
-                onClick={() => { setMediaType('MANGA'); setPage(1); setGenre(''); }}
-                className={`px-6 py-2.5 rounded-xl font-black text-xs uppercase transition-all duration-300 ${mediaType === 'MANGA' ? 'bg-yellow-500 text-black shadow-[0_0_20px_rgba(234,179,8,0.3)]' : 'text-slate-500 hover:text-white'}`}
+                onClick={() => { setMediaType('MANGA'); setPage(1); setSelectedGenres([]); }}
+                className={`flex-1 sm:flex-none px-6 py-2.5 rounded-xl font-black text-xs uppercase transition-all duration-300 ${mediaType === 'MANGA' ? 'bg-yellow-500 text-black shadow-[0_0_20px_rgba(234,179,8,0.3)]' : 'text-slate-500 hover:text-white'}`}
               >
                 Manga
               </button>
             </div>
 
-            <div className="relative group">
-              <Filter className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-yellow-500 group-hover:scale-110 transition-transform" />
-              <select 
-                value={genre} 
-                onChange={(e) => { setGenre(e.target.value); setPage(1); }}
-                className="appearance-none bg-black/40 border border-slate-800 text-slate-300 rounded-2xl pl-12 pr-12 py-3.5 outline-none font-bold text-sm focus:border-yellow-500/50 focus:ring-1 focus:ring-yellow-500/20 transition-all cursor-pointer min-w-[200px]"
+            <div className="relative w-full sm:w-auto">
+              <Button 
+                variant="outline"
+                onClick={() => setShowGenreMenu(!showGenreMenu)}
+                className="w-full sm:w-auto bg-black/40 border-slate-800 hover:bg-slate-800 hover:text-white hover:border-yellow-500/50 text-slate-300 rounded-2xl h-[44px] px-6 font-bold flex items-center justify-between gap-3 transition-all"
               >
-                <option value="">Todos los géneros</option>
-                {availableGenres.map(g => <option key={g} value={g}>{g}</option>)}
-              </select>
-              <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
-                <ChevronRight className="w-4 h-4 rotate-90" />
-              </div>
+                <div className="flex items-center gap-2">
+                  <Filter className="w-4 h-4 text-yellow-500" />
+                  <span>Filtros</span>
+                </div>
+                {selectedGenres.length > 0 && (
+                  <Badge className="bg-yellow-500 text-black px-1.5 py-0 font-black">
+                    {selectedGenres.length}/4
+                  </Badge>
+                )}
+              </Button>
+
+              {showGenreMenu && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setShowGenreMenu(false)}></div>
+                  <div className="absolute top-full left-0 mt-3 w-full sm:w-[340px] bg-slate-900/95 backdrop-blur-xl border border-slate-700 rounded-2xl shadow-[0_20px_40px_-15px_rgba(0,0,0,0.7)] p-4 z-50 animate-in fade-in zoom-in-95 duration-200">
+                    <div className="flex justify-between items-center mb-3 pb-2 border-b border-slate-800">
+                      <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Selecciona hasta 4</span>
+                      {selectedGenres.length > 0 && (
+                        <button onClick={() => setSelectedGenres([])} className="text-[10px] text-red-400 hover:text-red-300 font-bold uppercase">Limpiar</button>
+                      )}
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-2 max-h-[300px] overflow-y-auto custom-scrollbar pr-1">
+                      {availableGenres.map(g => {
+                        const isSelected = selectedGenres.includes(g);
+                        const isDisabled = !isSelected && selectedGenres.length >= 4;
+                        return (
+                          <button
+                            key={g}
+                            onClick={() => toggleGenre(g)}
+                            disabled={isDisabled}
+                            className={`flex items-center text-left gap-2 p-2.5 rounded-xl text-xs font-bold transition-all ${
+                              isSelected ? 'bg-yellow-500/10 text-yellow-500 border border-yellow-500/30' : isDisabled ? 'opacity-30 cursor-not-allowed text-slate-500 border border-transparent' : 'hover:bg-slate-800 text-slate-300 border border-transparent hover:border-slate-700'
+                            }`}
+                          >
+                            <div className={`w-4 h-4 rounded-md flex items-center justify-center shrink-0 transition-colors ${isSelected ? 'bg-yellow-500 text-black' : 'bg-black/40 border border-slate-600'}`}>
+                              {isSelected && <Check className="w-3 h-3" />}
+                            </div>
+                            <span className="truncate">{g}</span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
@@ -186,7 +227,7 @@ export default function Directory() {
               placeholder="Ir a pág..." 
               value={jumpPage} 
               onChange={(e) => setJumpPage(e.target.value)}
-              className="bg-transparent text-white text-sm font-black outline-none w-24 placeholder:text-slate-600 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              className="bg-transparent text-white text-sm font-black outline-none w-full lg:w-24 placeholder:text-slate-600 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
             />
             <Button type="submit" className="bg-transparent hover:bg-white/10 text-yellow-500 font-bold text-xs h-9">
               Ir
@@ -218,97 +259,62 @@ export default function Directory() {
             {items.map((item) => (
               <Link key={item.id} to={`/media/${item.id}`} className="group flex flex-col h-full">
                 <figure className="relative aspect-[2/3] overflow-hidden rounded-2xl bg-slate-900 border border-slate-800 transition-all duration-500 group-hover:border-yellow-500/40 group-hover:shadow-[0_0_30px_rgba(234,179,8,0.2)] group-hover:-translate-y-2">
-                  <img 
-                    src={getImageUrl(item.image) || ''} 
-                    alt={item.title} 
-                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
-                    loading="lazy" 
-                  />
+                  <img src={getImageUrl(item.image) || ''} alt={item.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" loading="lazy" />
                   <div className="absolute inset-0 bg-gradient-to-t from-[#020617] via-transparent to-transparent opacity-80 group-hover:opacity-40 transition-opacity"></div>
-                  
                   <div className="absolute bottom-3 left-3 flex items-center gap-1.5 bg-black/60 backdrop-blur-md px-2.5 py-1.5 rounded-xl border border-white/10 shadow-lg">
                     <Star className="w-3.5 h-3.5 text-yellow-500 fill-yellow-500" />
                     <span className="text-xs font-black text-white">{item.score || '??'}</span>
                   </div>
                 </figure>
                 <div className="mt-4 flex-grow min-h-[44px]">
-                  <h3 className="text-sm font-bold text-slate-300 group-hover:text-yellow-400 transition-colors line-clamp-2 leading-tight">
-                    {item.title}
-                  </h3>
+                  <h3 className="text-sm font-bold text-slate-300 group-hover:text-yellow-400 transition-colors line-clamp-2 leading-tight">{item.title}</h3>
                 </div>
               </Link>
             ))}
           </div>
 
-          {/* CONTROLES DE PAGINACIÓN INFERIORES */}
-          {pageInfo && pageInfo.lastPage > 1 && (
-            <div className="mt-20 flex flex-col xl:flex-row items-center justify-center gap-8">
-              
-              {/* Botones de números */}
-              <div className="flex flex-wrap items-center justify-center gap-2 md:gap-3">
-                <Button 
-                  disabled={page <= 1} 
-                  onClick={() => setPage(p => p - 1)}
-                  className="bg-slate-900/50 border border-slate-800 hover:border-yellow-500 text-white rounded-2xl w-10 h-10 md:w-12 md:h-12 p-0 transition-all"
-                >
-                  <ChevronLeft className="w-5 h-5 md:w-6 md:h-6" />
-                </Button>
+          <div className="mt-20 flex flex-col xl:flex-row items-center justify-center gap-8">
+            <div className="flex flex-wrap items-center justify-center gap-2 md:gap-3">
+              <Button 
+                disabled={page <= 1} 
+                onClick={() => setPage(p => p - 1)}
+                className="bg-slate-900/50 border border-slate-800 hover:border-yellow-500 text-white rounded-2xl w-10 h-10 md:w-12 md:h-12 p-0 transition-all"
+              >
+                <ChevronLeft className="w-5 h-5 md:w-6 md:h-6" />
+              </Button>
 
-                <div className="flex flex-wrap items-center gap-1 md:gap-2">
-                  {getPaginationRange().map((p, idx) => (
-                    p === '...' ? (
-                      <div key={`dots-${idx}`} className="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center text-slate-600">
-                        <MoreHorizontal className="w-4 h-4 md:w-5 md:h-5" />
-                      </div>
-                    ) : (
-                      <button
-                        key={`page-${p}`}
-                        onClick={() => setPage(p as number)}
-                        className={`w-10 h-10 md:w-12 md:h-12 rounded-2xl font-black text-xs md:text-sm transition-all border-2 ${
-                          page === p 
-                          ? 'bg-yellow-500 border-yellow-500 text-black shadow-[0_0_20px_rgba(234,179,8,0.4)] md:scale-110' 
-                          : 'bg-slate-900/50 border-slate-800 text-slate-400 hover:border-yellow-500/40 hover:text-white'
-                        }`}
-                      >
-                        {p}
-                      </button>
-                    )
-                  ))}
-                </div>
-
-                <Button 
-                  disabled={!pageInfo.hasNextPage} 
-                  onClick={() => setPage(p => p + 1)}
-                  className="bg-slate-900/50 border border-slate-800 hover:border-yellow-500 text-white rounded-2xl w-10 h-10 md:w-12 md:h-12 p-0 transition-all"
-                >
-                  <ChevronRight className="w-5 h-5 md:w-6 md:h-6" />
-                </Button>
+              <div className="flex flex-wrap items-center gap-1 md:gap-2">
+                {getPaginationRange().map((p) => (
+                  <button
+                    key={`page-${p}`}
+                    onClick={() => setPage(p as number)}
+                    className={`w-10 h-10 md:w-12 md:h-12 rounded-2xl font-black text-xs md:text-sm transition-all border-2 ${
+                      page === p 
+                      ? 'bg-yellow-500 border-yellow-500 text-black shadow-[0_0_20px_rgba(234,179,8,0.4)] md:scale-110' 
+                      : 'bg-slate-900/50 border-slate-800 text-slate-400 hover:border-yellow-500/40 hover:text-white'
+                    }`}
+                  >
+                    {p}
+                  </button>
+                ))}
               </div>
 
-              {/* Buscador de páginas replicado al final para mayor comodidad */}
-              <form onSubmit={handleJumpPage} className="flex items-center gap-2 bg-slate-900/50 p-1.5 rounded-2xl border border-slate-800 focus-within:border-yellow-500/50 transition-all">
-                <Search className="w-4 h-4 text-slate-500 ml-3" />
-                <input 
-                  type="number" 
-                  placeholder="Saltar a..." 
-                  value={jumpPage} 
-                  onChange={(e) => setJumpPage(e.target.value)}
-                  className="w-20 bg-transparent text-white text-sm font-bold outline-none placeholder:text-slate-600 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                />
-                <Button type="submit" className="bg-slate-800 hover:bg-yellow-500 hover:text-black text-slate-300 font-bold text-xs h-9 rounded-xl transition-colors">
-                  Ir
-                </Button>
-              </form>
-
+              <Button 
+                disabled={items.length < 24} // Si no tenemos 24, IMPOSIBLE que haya página siguiente
+                onClick={() => setPage(p => p + 1)}
+                className="bg-slate-900/50 border border-slate-800 hover:border-yellow-500 text-white rounded-2xl w-10 h-10 md:w-12 md:h-12 p-0 transition-all disabled:opacity-30"
+              >
+                <ChevronRight className="w-5 h-5 md:w-6 md:h-6" />
+              </Button>
             </div>
-          )}
+          </div>
 
-          {/* Texto de estado de página AniList Safe */}
+          {/* MENSAJE DE ESTADO INFERIOR ACTUALIZADO */}
           <div className="mt-10 text-center">
             <p className="text-[10px] font-black text-slate-600 uppercase tracking-[0.2em]">
-              {pageInfo && page > pageInfo.lastPage 
-                ? `Explorando el Vacío (Página ${page})` 
-                : `Archivo Nakama • Página ${page} de ${pageInfo?.lastPage || '??'}`
+              {items.length < 24 
+                ? `Archivo Nakama • Fin de los Registros (Página ${page})` 
+                : `Archivo Nakama • Explorando Página ${page}`
               }
             </p>
           </div>

@@ -44,17 +44,33 @@ export default function Register() {
     setLoading(true);
 
     try {
-      // Enviamos is_adult al backend (será true si marcó la casilla, false si la dejó vacía)
+      // Enviamos is_adult al backend
       await apiClient.post('/auth/register', { 
         alias, 
         email, 
         password, 
-        is_adult: isAdult,
-        terms_accepted: acceptTerms
+        is_adult: isAdult
       });
       navigate('/login');
-    } catch (err) {
-      setError('Hubo un error al crear la cuenta. Verifica los datos.');
+    } catch (err: any) {
+      // --- MAGIA PARA CAPTURAR ERRORES DEL BACKEND ---
+      if (err.response && err.response.data && err.response.data.detail) {
+        const serverError = err.response.data.detail;
+        
+        // FastAPI a veces devuelve un string simple en el detail (Tus HTTPException)
+        if (typeof serverError === 'string') {
+          setError(serverError);
+        } 
+        // Si hay un error de validación de Pydantic (ej: email mal formado), devuelve un Array
+        else if (Array.isArray(serverError) && serverError.length > 0) {
+          setError(serverError[0].msg); // Mostramos el primer error de validación
+        } else {
+          setError('El servidor rechazó el registro.');
+        }
+      } else {
+        // Fallback por si el servidor está caído o hay error de red
+        setError('Error de conexión. Verifica que el servidor esté activo.');
+      }
       setLoading(false);
     }
   };
@@ -79,7 +95,7 @@ export default function Register() {
           </header>
 
           {error && (
-            <div role="alert" className="bg-red-900/20 text-red-400 p-3 rounded-xl text-sm font-medium mb-6 text-center border border-red-900/50">
+            <div role="alert" className="bg-red-900/20 text-red-400 p-3 rounded-xl text-sm font-medium mb-6 text-center border border-red-900/50 animate-in fade-in zoom-in-95 duration-200">
               {error}
             </div>
           )}
@@ -172,7 +188,7 @@ export default function Register() {
             {/* CHECKBOXES */}
             <div className="py-2 space-y-3">
               
-              {/* Checkbox Mayor de Edad (OPCIONAL: NO tiene atributo "required") */}
+              {/* Checkbox Mayor de Edad */}
               <label className="flex items-start gap-3 cursor-pointer group">
                 <div className="relative flex items-center justify-center mt-0.5">
                   <input 
@@ -188,7 +204,7 @@ export default function Register() {
                 </span>
               </label>
 
-              {/* Checkbox Términos (OBLIGATORIO: SÍ tiene atributo "required") */}
+              {/* Checkbox Términos */}
               <label className="flex items-start gap-3 cursor-pointer group">
                 <div className="relative flex items-center justify-center mt-0.5">
                   <input 

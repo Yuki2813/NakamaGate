@@ -7,7 +7,8 @@ import {
   Sun, 
   Moon, 
   Compass, 
-  Users 
+  Users,
+  AlertTriangle // <-- Nuevo icono importado para el error
 } from 'lucide-react'; 
 import { apiClient } from '../api/client';
 import { Input } from "@/components/ui/input";
@@ -27,6 +28,9 @@ export default function Navbar() {
   const [isSearching, setIsSearching] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const [userData, setUserData] = useState<UserData | null>(null);
+
+  // --- NUEVO ESTADO PARA EL ERROR DE BÚSQUEDA ---
+  const [searchError, setSearchError] = useState<string | null>(null);
 
   const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains('dark'));
 
@@ -56,25 +60,36 @@ export default function Navbar() {
     }
   };
 
-  // 2. LÓGICA DE BÚSQUEDA (DEBOUNCE)
+  // 2. LÓGICA DE BÚSQUEDA MEJORADA
   useEffect(() => {
     if (query.trim().length < 3) {
       setResults([]);
       setShowDropdown(false);
+      setSearchError(null); // Limpiamos el error si borran la búsqueda
       return;
     }
+
     const delayDebounceFn = setTimeout(async () => {
       setIsSearching(true);
       setShowDropdown(true);
+      setSearchError(null); // Reseteamos errores antes de buscar nueva info
+      
       try {
         const res = await apiClient.get(`/content/search?search_text=${query}&media_type=${mediaType.toLowerCase()}`);
         setResults(res.data.items || res.data);
-      } catch (error) {
-        console.error("Error buscando:", error);
+      } catch (error: any) {
+        // --- MAGIA PARA CAPTURAR EL ERROR DEL BACKEND ---
+        if (error.response?.data?.detail) {
+          setSearchError(error.response.data.detail); // Ejemplo: "Acceso restringido (+18)"
+        } else {
+          setSearchError("Error al conectar con la base de datos.");
+        }
+        setResults([]); // Vaciamos los resultados por si acaso
       } finally {
         setIsSearching(false);
       }
     }, 300);
+
     return () => clearTimeout(delayDebounceFn);
   }, [query, mediaType]);
 
@@ -135,7 +150,16 @@ export default function Navbar() {
           {/* Resultados Desplegables */}
           {showDropdown && (
             <div className="absolute top-14 left-0 w-full bg-slate-900 border border-slate-700 rounded-xl shadow-[0_20px_40px_-15px_rgba(0,0,0,0.7)] flex flex-col z-50 max-h-80 overflow-y-auto custom-scrollbar overflow-hidden">
-              {results.length > 0 ? (
+              
+              {/* LÓGICA DE RENDERIZADO MEJORADA */}
+              {searchError ? (
+                // 1. Si hay un error del servidor (Ej: Restricción de edad)
+                <div className="p-8 text-center text-red-400 text-sm font-bold flex flex-col items-center gap-3 bg-red-950/20">
+                  <AlertTriangle className="w-8 h-8 text-red-500" />
+                  <span>{searchError}</span>
+                </div>
+              ) : results.length > 0 ? (
+                // 2. Si hay resultados válidos
                 results.map((item: any) => (
                   <div 
                     key={item.id} 
@@ -157,10 +181,12 @@ export default function Navbar() {
                   </div>
                 ))
               ) : (
+                // 3. Si está buscando o si de verdad no hay resultados
                 <div className="p-6 text-center text-slate-400 text-sm">
                   {isSearching ? 'Buscando en el catálogo...' : 'No se encontraron resultados.'}
                 </div>
               )}
+
             </div>
           )}
         </div>

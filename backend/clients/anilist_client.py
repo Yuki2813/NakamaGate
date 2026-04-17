@@ -159,14 +159,14 @@ class AniListClient:
 
     async def get_directory_page(self, page: int, per_page: int, media_type: str, sort: str = "POPULARITY_DESC", genre: str = None):
         query = gql("""
-            # 1. Declaramos $genre como String en GraphQL
-            query ($page: Int, $perPage: Int, $type: MediaType, $sort: [MediaSort],  $genre: String) {
+            # 1. IMPORTANTE: Cambiamos $genre a $genreIn: [String]
+            query ($page: Int, $perPage: Int, $type: MediaType, $sort: [MediaSort], $genreIn: [String]) {
               Page(page: $page, perPage: $perPage) {
                 pageInfo {
                   total currentPage lastPage hasNextPage
                 }
-                # 2. Le pasamos el genre al buscador de media
-                media(type: $type, sort: $sort, isAdult: false, genre: $genre) {
+                # 2. IMPORTANTE: Cambiamos genre: a genre_in:
+                media(type: $type, sort: $sort, isAdult: false, genre_in: $genreIn) {
                   id type title { romaji } coverImage { large } averageScore format seasonYear status genres
                 }
               }
@@ -181,7 +181,16 @@ class AniListClient:
         }
         
         if genre:
-            variables["genre"] = genre
+            # Creamos una lista vacía
+            lista_generos = []
+            
+            # Hacemos un for tradicional separando por comas
+            for g in genre.split(","):
+                # Limpiamos los espacios en blanco y lo añadimos a la lista
+                lista_generos.append(g.strip())
+                
+            # Asignamos la lista a la variable que espera GraphQL
+            variables["genreIn"] = lista_generos
             
         async with self.client as session:
             result = await session.execute(query, variable_values=variables)
