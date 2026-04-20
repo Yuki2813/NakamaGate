@@ -9,7 +9,7 @@ from backend.repositories.user_repository import check_alias_exist, check_id_exi
 from backend.services.auth_service import create_access_token
 from backend.services.interacction_service import get_favorite_list
 
-UPLOAD_DIR = "./backend/static/profile_pics"
+UPLOAD_DIR = "./static/profile_pics"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 # ==========================================
 # GESTIÓN DE PERFIL

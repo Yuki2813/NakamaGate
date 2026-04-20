@@ -28,15 +28,24 @@ def new_favorite(iduser:int,id_fav:int,mediatype:Mediatype,session:Session):
         session.commit()
         
         return True
-def update_status_favorite(iduser:int,idfavorite:int,status:status_favorite,session:Session):
-    link = session.get(UserFavorite, {"user_id": iduser, "favorite_id": idfavorite})
+def update_status_favorite(iduser: int, idapi: int, status: status_favorite, session: Session):
+    # 1. Buscamos en la tabla Favorite usando el ID de AniList (idapi)
+    statement = select(Favorite).where(Favorite.id_api == idapi)
+    favorites = session.exec(statement).all()
     
-    if link:
-        link.status = status
-        session.add(link)
-        session.commit()
-        session.refresh(link)
-        return True
+    # 2. Navegamos por la tabla intermedia para encontrar el enlace de este usuario
+    for fav in favorites:
+        link = session.get(UserFavorite, {"user_id": iduser, "favorite_id": fav.id})
+        
+        # 3. Si encontramos la relación intermedia, la actualizamos
+        if link:
+            link.status = status
+            session.add(link)
+            session.commit()
+            session.refresh(link)
+            return True
+            
+    # Si no hay match, devolvemos None (provocará el 404)
     return None
 
 def delete_user_favorite(id_user:int,media:Mediatype,idapi:int,session:Session):

@@ -6,7 +6,7 @@ from backend.database import get_db
 from backend.models.favorite import Mediatype
 from backend.security import get_current_user_id
 from backend.services.content_service import check_if_favorite
-from backend.services.interacction_service import add_media_to_list, get_favorite_list, remove_media_from_list
+from backend.services.interacction_service import add_media_to_list, get_favorite_list, remove_media_from_list, update_media_status
 
 router = APIRouter(
     prefix="/favorites",
@@ -19,7 +19,8 @@ router = APIRouter(prefix="/favorites", tags=["Favorites"])
 class FavoriteAdd(BaseModel):
     media_id: int = Field(..., example=1, description="ID del anime o manga de AniList")
     media_type: Mediatype = Field(..., example="ANIME", description="Tipo de contenido")
-
+class StatusUpdate(BaseModel):
+    status: str = Field(..., example="watching", description="Nuevo estado: watching, completed, on_hold, o pending")
 # ==========================================
 # 1. AÑADIR A FAVORITOS
 # ==========================================
@@ -70,3 +71,22 @@ async def check_favorite(
 ):
     check=check_if_favorite(id_api=media_id,user_id=user_id,session=session)
     return check
+
+# ==========================================
+# 5. ACTUALIZAR ESTADO DEL FAVORITO
+# ==========================================
+@router.put("/{media_id}/status", summary="Cambiar el estado de un favorito (Viendo, Completado...)")
+async def update_favorite_status_endpoint(
+    media_id: int,
+    status_data: StatusUpdate,
+    user_id: int = Depends(get_current_user_id),
+    session: Session = Depends(get_db)
+):
+    # Llamamos a tu servicio existente
+    result = update_media_status(
+        user_id=user_id, 
+        favorite_id=media_id, 
+        new_status=status_data.status, 
+        session=session
+    )
+    return result

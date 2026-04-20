@@ -140,6 +140,7 @@ class AniListClient:
                 title { romaji } 
                 coverImage { large } 
                 averageScore
+                genres
                 }
             }
             }

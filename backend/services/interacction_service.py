@@ -50,7 +50,7 @@ async def add_media_to_list(user_id: int, id_api: int, media_type: MediaType, se
     
 
 def update_media_status(user_id: int, favorite_id: int, new_status: str, session: Session):
-    if(update_status_favorite(iduser=user_id,idfavorite=favorite_id,status=new_status,session=session)):
+    if(update_status_favorite(iduser=user_id,idapi=favorite_id,status=new_status,session=session)):
         return{"message":"The status was updated successfully"}
     else:
         raise HTTPException(status_code=404,detail="The anime/manga could not be found ")
@@ -110,6 +110,8 @@ async def get_favorite_list(user_id: int, session: Session):
         
         if datos_anilist is not None:
             resultado = {
+                # LA CLAVE ESTÁ AQUÍ: Enviamos el ID interno de la BD
+                "id": fav_data.id, 
                 "status": user_fav.status, 
                 "media": datos_anilist     
             }
