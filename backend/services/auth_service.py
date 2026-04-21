@@ -1,4 +1,7 @@
+import secrets
+
 from fastapi import HTTPException
+import requests
 
 from sqlmodel import Session
 from passlib.context import CryptContext
@@ -87,3 +90,61 @@ def get_user_by_id_service(id_user:int,session:Session):
         raise HTTPException(status_code=404,detail="User not found")
     else:
         return user
+    
+def get_user_by_email_service(email: str, session: Session):
+    user = get_user_by_email(email=email, session=session)
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    else:
+        return user
+
+
+def process_google_login(google_token: str, session: Session):
+    # 1. Validar el token con Google
+    google_url = f"https://www.googleapis.com/oauth2/v3/userinfo?access_token={google_token}"
+    response = requests.get(google_url)
+
+    if response.status_code != 200:
+        raise HTTPException(
+            status_code=401,
+            detail="Token de Google inválido o expirado"
+        )
+
+    user_info = response.json()
+    email = user_info.get("email")
+    name = user_info.get("name")
+
+    if not email:
+        raise HTTPException(status_code=400, detail="Google no proporcionó un email válido")
+
+    # 2. TRAMPA 1 CORREGIDA: Usamos el repo directo. Si no existe, devuelve None (no da error).
+    user = get_user_by_email(email=email, session=session)
+
+    # 3. Registro Automático
+    if not user:
+        # Generamos clave segura y la encriptamos
+        random_password = secrets.token_urlsafe(32)
+        hashed_pw = get_password_hash(random_password)
+        
+        # TRAMPA 2 CORREGIDA: Usamos 'createUser' directo del repo y lo asignamos a 'user'
+        user = createUser(
+            email=email,
+            alias=name,
+            password=hashed_pw,
+            is_adult=False,  # <--- NUESTRO MODO SEGURO (Filtro activado por defecto)
+            session=session
+        )
+
+    # 4. TRAMPA 3 CORREGIDA: Generamos el Token IDÉNTICO al de tu login normal
+    token_data = {
+        "sub": user.email,         
+        "user_id": user.id,        
+        "alias": user.alias,       
+        "is_adult": user.isAdult,
+        "rol": user.rol  
+    }
+
+    access_token = create_access_token(data=token_data)
+
+    return {"access_token": access_token, "token_type": "bearer"}

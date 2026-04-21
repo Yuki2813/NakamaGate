@@ -3,16 +3,12 @@ import ssl
 from sqlmodel import create_engine, Session
 from dotenv import load_dotenv
 import os
-load_dotenv()
-DATABASE_URL = os.getenv("DATABASE_URL")
 
-# Ruta absoluta al ca.pem relativa a este archivo
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+env_path = os.path.join(BASE_DIR, ".env")
+load_dotenv(dotenv_path=env_path)
+DATABASE_URL = os.getenv("DATABASE_URL")
 CA_CERT = os.path.join(BASE_DIR, "ca.pem")
-
-# Verifica que lo encuentra
-print(f"Buscando CA en: {CA_CERT}")
-print(f"Existe: {os.path.exists(CA_CERT)}")
 
 engine = create_engine(
     DATABASE_URL,

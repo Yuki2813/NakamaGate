@@ -1,3 +1,4 @@
+from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 import os
@@ -8,14 +9,16 @@ from backend.models.favorite import Favorite
 from backend.models.userfavorite import UserFavorite
 from backend.models.friendship import Friendship
 from backend.routes import auth_router, content_router, favorite_router, review_router,friend_routes
+import cloudinary
+
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+env_path = os.path.join(BASE_DIR, ".env")
+load_dotenv(dotenv_path=env_path)
 
 app = FastAPI(title="NakameGate", version="1.0")
 
-# Asegúrate de que la carpeta existe antes de montarla
-os.makedirs("static/profile_pics", exist_ok=True)
 
-# Esto permite a FastAPI mostrar los archivos de la carpeta "static" en la URL "/static"
-app.mount("/static", StaticFiles(directory="static"), name="static")
 
 app.include_router(auth_router.router)
 app.include_router(content_router.router)
@@ -36,4 +39,10 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+)
+
+cloudinary.config(
+    cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
+    api_key=os.getenv("CLOUDINARY_API_KEY"),
+    api_secret=os.getenv("CLOUDINARY_API_SECRET")
 )

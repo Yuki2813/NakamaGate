@@ -1,11 +1,11 @@
 import os
-import shutil
-import uuid
+import cloudinary
+import cloudinary.uploader
 from fastapi import UploadFile, HTTPException, status
 from sqlmodel import Session
 from backend.models.friendship import FriendshipStatus
 from backend.repositories.friendship_repository import accept_friend_request, get_friends, get_friendship_status, get_pending_requests, remove_friendship, send_friend_request
-from backend.repositories.user_repository import check_alias_exist, check_id_exist, delete_user, get_user_by_id, search_users_repo, update_user_alias, update_user_avatar
+from backend.repositories.user_repository import  check_id_exist, delete_user, get_user_by_id, search_users_repo, update_user_alias, update_user_avatar
 from backend.services.auth_service import create_access_token
 from backend.services.interacction_service import get_favorite_list
 
@@ -63,32 +63,37 @@ def update_alias(user_id: int, new_alias: str, session: Session):
     
 
 def update_avatar(user_id: int, file: UploadFile, session: Session):
+    # 1. Validar que sea una imagen
     if not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="El archivo debe ser una imagen.")
 
-    extension = file.filename.split(".")[-1] 
+    try:
+        # 2. Subir directamente a Cloudinary desde la memoria (sin guardar en local)
+        upload_result = cloudinary.uploader.upload(
+            file.file,
+            folder="nakamagate/avatars",  # Organiza las fotos en una carpeta en Cloudinary
+            public_id=f"user_{user_id}",  # Nombre fijo: ej. "user_15"
+            overwrite=True,               # Si sube otra foto, pisa la anterior (ahorra espacio)
+            resource_type="image"
+        )
+        
+        # 3. Obtener la URL segura de Cloudinary (https://...)
+        ruta_web = upload_result.get("secure_url")
 
-    nuevo_nombre = f"user_{user_id}_{uuid.uuid4().hex}.{extension}"
-    
-    ruta_fisica = os.path.join(UPLOAD_DIR, nuevo_nombre)
+    except Exception as e:
+        raise HTTPException(status_code=300, detail=f"Error al subir imagen a Cloudinary: {str(e)}")
 
-    os.makedirs(UPLOAD_DIR, exist_ok=True)
-
-    with open(ruta_fisica, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-
-
-    ruta_web = f"/{UPLOAD_DIR}/{nuevo_nombre}" # Quedará como /static/images/user...jpg
-
-
+    # 4. Actualizar la base de datos (tu tabla User)
     exito = update_user_avatar(user_id=user_id, ruta=ruta_web, session=session)
     
     if not exito:
-
-        os.remove(ruta_fisica)
+        # (Opcional) Si la BD falla y no encuentra al usuario, 
+        # podrías borrar la foto recién subida a Cloudinary para no dejar basura:
+        cloudinary.uploader.destroy(upload_result.get("public_id"))
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
 
-    return {"message":"Your avatar save correctly"}
+    # 5. Devolvemos la URL nueva para que el frontend pueda actualizar la imagen al instante
+    return {"message": "Your avatar saved correctly", "picture": ruta_web}
 
 def delete_account(user_id: int, session: Session):
     check=delete_user(id=user_id,session=session)

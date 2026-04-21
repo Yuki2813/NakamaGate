@@ -1,11 +1,12 @@
 from typing import Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+import requests
 from sqlmodel import Session
 from pydantic import BaseModel, EmailStr, Field
 from backend.database import get_db
 from backend.security import get_current_user_id
-from backend.services.auth_service import get_user_by_id_service, register_user, login_user
+from backend.services.auth_service import get_user_by_email_service, get_user_by_id_service, process_google_login, register_user, login_user
 from backend.services.user_service import search_users_service, update_alias, update_avatar
 
 router = APIRouter(
@@ -145,3 +146,10 @@ async def search_users_endpoint(
         current_user_id=current_user, 
         session=session
     )
+
+class GoogleTokenRequest(BaseModel):
+    token: str
+
+@router.post("/google")
+async def google_auth(data: GoogleTokenRequest, session: Session = Depends(get_db)):
+    return process_google_login(google_token=data.token, session=session)

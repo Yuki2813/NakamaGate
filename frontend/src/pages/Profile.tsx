@@ -7,7 +7,6 @@ import {
   Heart, Star, ShieldAlert, Settings, Home, 
   Edit2, Camera, Check, X, ChevronDown, Trash2, Award, BarChart3
 } from 'lucide-react';
-import { getImageUrl } from '../utils/helpers';
 import Loader from '../components/Loader';
 import AvatarEditor from 'react-avatar-editor';
 
@@ -188,7 +187,8 @@ export default function Profile() {
         <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
           <div className="w-40 h-40 md:w-44 md:h-44 rounded-full border-4 border-slate-800 overflow-hidden bg-slate-900 shadow-2xl relative shadow-yellow-500/10">
             {profile.picture ? (
-              <img src={getImageUrl(profile.picture)!} alt="Avatar" className="w-full h-full object-cover" />
+              
+              <img src={profile.picture} alt="Avatar" className="w-full h-full object-cover" />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-5xl font-black text-yellow-500 bg-slate-900 uppercase">{profile.alias.substring(0, 2)}</div>
             )}
