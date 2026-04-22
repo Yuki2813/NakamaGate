@@ -5,7 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { 
   Heart, Star, ShieldAlert, Settings, Home, 
-  Edit2, Camera, Check, X, ChevronDown, Trash2, Award, BarChart3
+  Edit2, Camera, Check, X, ChevronDown, Trash2, Award, BarChart3,
+  Flame, Trophy, PlayCircle, Swords, Brain, Clock, Sparkles, Lock,
+  Compass, Search
 } from 'lucide-react';
 import Loader from '../components/Loader';
 import AvatarEditor from 'react-avatar-editor';
@@ -35,6 +37,9 @@ export default function Profile() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // NUEVO ESTADO: Buscador local
+  const [searchTerm, setSearchTerm] = useState("");
 
   const [isEditingAlias, setIsEditingAlias] = useState(false);
   const [newAlias, setNewAlias] = useState("");
@@ -45,6 +50,9 @@ export default function Profile() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [scale, setScale] = useState(1.2);
   const [savingAvatar, setSavingAvatar] = useState(false);
+
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [mediaToDelete, setMediaToDelete] = useState<number | null>(null);
 
   const fetchProfileData = async () => {
     try {
@@ -65,6 +73,14 @@ export default function Profile() {
     fetchProfileData();
   }, []);
 
+  // --- LÓGICA DE BÚSQUEDA ---
+  const filteredFavorites = useMemo(() => {
+    if (!searchTerm.trim()) return favorites;
+    return favorites.filter(fav => 
+      fav.media.title.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [favorites, searchTerm]);
+
   // --- LÓGICA DE ESTADÍSTICAS DE GÉNEROS ---
   const genreStats = useMemo(() => {
     const counts: { [key: string]: number } = {};
@@ -80,11 +96,30 @@ export default function Profile() {
 
   // --- LÓGICA DE LOGROS ---
   const badges = useMemo(() => {
+    const completedCount = favorites.filter(f => f.status === 'completed').length;
+    const watchingCount = favorites.filter(f => f.status === 'watching').length;
+    const pendingCount = favorites.filter(f => f.status === 'pending').length;
+
+    const hasAction = favorites.some(f => f.media.genres?.includes('Action'));
+    const hasRomance = favorites.some(f => f.media.genres?.includes('Romance'));
+    const hasMystery = favorites.some(f => f.media.genres?.includes('Mystery') || f.media.genres?.includes('Psychological'));
+
+    const uniqueGenres = new Set();
+    favorites.forEach(f => f.media.genres?.forEach(g => uniqueGenres.add(g)));
+
     return [
       { id: 1, name: 'Iniciado', desc: 'Primera obra añadida', icon: <Star className="w-4 h-4"/>, active: favorites.length > 0 },
       { id: 2, name: 'Coleccionista', desc: 'Más de 10 favoritos', icon: <Heart className="w-4 h-4"/>, active: favorites.length >= 10 },
-      { id: 3, name: 'Finalizador', desc: 'Una obra completada', icon: <Check className="w-4 h-4"/>, active: favorites.some(f => f.status === 'completed') },
-      { id: 4, name: 'Crítico', desc: 'Escribe tu primera reseña', icon: <Award className="w-4 h-4"/>, active: false },
+      { id: 3, name: 'Otaku Mayor', desc: 'Más de 50 favoritos', icon: <Flame className="w-4 h-4"/>, active: favorites.length >= 50 },
+      { id: 4, name: 'Finalizador', desc: 'Una obra completada', icon: <Check className="w-4 h-4"/>, active: completedCount >= 1 },
+      { id: 5, name: 'Pilar', desc: '5 obras completadas', icon: <Trophy className="w-4 h-4"/>, active: completedCount >= 5 },
+      { id: 6, name: 'Al Día', desc: 'Viendo 3 obras a la vez', icon: <PlayCircle className="w-4 h-4"/>, active: watchingCount >= 3 },
+      { id: 7, name: 'Guerrero', desc: 'Fan de la Acción', icon: <Swords className="w-4 h-4"/>, active: hasAction },
+      { id: 8, name: 'Enamorado', desc: 'Fan del Romance', icon: <Heart className="w-4 h-4 fill-current"/>, active: hasRomance },
+      { id: 9, name: 'Mente Maestra', desc: 'Fan del Misterio/Psicológico', icon: <Brain className="w-4 h-4"/>, active: hasMystery },
+      { id: 10, name: 'Crítico', desc: 'Escribe tu primera reseña', icon: <Award className="w-4 h-4"/>, active: false },
+      { id: 11, name: 'Procrastinador', desc: 'Tienes 10 obras en "Pendientes"', icon: <Clock className="w-4 h-4"/>, active: pendingCount >= 10, isSecret: true, hint: 'Pista: Dejas mucho para mañana...' },
+      { id: 12, name: 'Ecléctico', desc: 'Has explorado 5 géneros distintos', icon: <Sparkles className="w-4 h-4"/>, active: uniqueGenres.size >= 5, isSecret: true, hint: 'Pista: En la variedad está el gusto.' },
     ];
   }, [favorites]);
 
@@ -115,12 +150,18 @@ export default function Profile() {
     }
   };
 
-  const handleDeleteFavorite = async (mediaId: number) => {
-    if (!window.confirm("¿Eliminar de tu biblioteca?")) return;
+  const triggerDeleteModal = (mediaId: number) => {
+    setMediaToDelete(mediaId);
+    setDeleteModalOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!mediaToDelete) return;
     try {
-      // Nota: Asegúrate de que tu backend use 'media_type' como query param si es necesario
-      await apiClient.delete(`/favorites/${mediaId}?media_type=anime`);
-      setFavorites(prev => prev.filter(fav => fav.media.id !== mediaId));
+      await apiClient.delete(`/favorites/${mediaToDelete}?media_type=anime`);
+      setFavorites(prev => prev.filter(fav => fav.media.id !== mediaToDelete));
+      setDeleteModalOpen(false);
+      setMediaToDelete(null);
     } catch (error) {
       console.error("Error eliminando:", error);
     }
@@ -151,8 +192,15 @@ export default function Profile() {
   if (!profile) return <div className="text-white p-10 text-center">Perfil no encontrado.</div>;
 
   return (
-    <main className="min-h-screen bg-[#020617] text-slate-200 pb-20 relative font-sans">
+    <main className="min-h-screen bg-[#020617] text-slate-200 pb-20 relative font-sans overflow-hidden">
       
+      {/* FONDOS MEZCLADOS: CUADRÍCULA + DESTELLOS DE AURA */}
+      <div className="fixed inset-0 pointer-events-none z-0">
+        <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '32px 32px' }}></div>
+        <div className="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] rounded-full bg-yellow-500/10 blur-[120px]"></div>
+        <div className="absolute bottom-[10%] -right-[10%] w-[40%] h-[40%] rounded-full bg-blue-600/10 blur-[120px]"></div>
+      </div>
+
       {/* MODAL EDITOR AVATAR */}
       {selectedFile && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-4">
@@ -165,6 +213,23 @@ export default function Profile() {
             <div className="flex gap-3 w-full">
               <Button onClick={() => setSelectedFile(null)} variant="outline" className="flex-1">Cancelar</Button>
               <Button onClick={handleSaveAvatar} className="flex-1 bg-yellow-500 text-black font-bold" disabled={savingAvatar}>Confirmar</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL CONFIRMAR ELIMINACIÓN */}
+      {deleteModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-4">
+          <div className="bg-slate-900 border border-red-900/50 p-8 rounded-3xl max-w-sm w-full flex flex-col items-center shadow-[0_0_50px_-12px_rgba(220,38,38,0.2)]">
+            <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mb-6">
+              <ShieldAlert className="w-8 h-8 text-red-500" />
+            </div>
+            <h3 className="text-white font-black mb-2 text-xl text-center">¿Eliminar de la biblioteca?</h3>
+            <p className="text-slate-400 text-sm mb-8 text-center">Esta acción no se puede deshacer. Perderás el progreso guardado para esta obra.</p>
+            <div className="flex gap-3 w-full">
+              <Button onClick={() => setDeleteModalOpen(false)} variant="outline" className="flex-1 border-slate-700 text-slate-300 hover:bg-slate-800">Cancelar</Button>
+              <Button onClick={confirmDelete} className="flex-1 bg-red-600 hover:bg-red-500 text-white font-bold">Eliminar</Button>
             </div>
           </div>
         </div>
@@ -183,11 +248,10 @@ export default function Profile() {
       </nav>
 
       {/* HEADER */}
-      <header className="max-w-[1200px] mx-auto px-6 pt-12 pb-10 flex flex-col md:flex-row items-center gap-8">
+      <header className="relative z-10 max-w-[1200px] mx-auto px-6 pt-12 pb-10 flex flex-col md:flex-row items-center gap-8">
         <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
-          <div className="w-40 h-40 md:w-44 md:h-44 rounded-full border-4 border-slate-800 overflow-hidden bg-slate-900 shadow-2xl relative shadow-yellow-500/10">
+          <div className="w-32 h-32 md:w-40 md:h-40 rounded-full border-4 border-slate-800 overflow-hidden bg-slate-900 shadow-2xl relative shadow-yellow-500/10">
             {profile.picture ? (
-              
               <img src={profile.picture} alt="Avatar" className="w-full h-full object-cover" />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-5xl font-black text-yellow-500 bg-slate-900 uppercase">{profile.alias.substring(0, 2)}</div>
@@ -219,108 +283,147 @@ export default function Profile() {
       </header>
 
       {/* CUERPO DEL PERFIL */}
-      <div className="max-w-[1200px] mx-auto px-6 grid grid-cols-1 lg:grid-cols-3 gap-10">
+      <div className="relative z-10 max-w-[1200px] mx-auto px-6 grid grid-cols-1 lg:grid-cols-4 gap-8">
         
-        {/* COLUMNA IZQUIERDA: STATS Y LOGROS */}
+        {/* COLUMNA IZQUIERDA: STATS Y LOGROS (Más estrecha) */}
         <aside className="lg:col-span-1 space-y-6">
           
-          {/* STATS RÁPIDAS */}
-          <section className="bg-slate-900/80 border border-slate-800 p-6 rounded-3xl shadow-sm">
+          <section className="bg-slate-900/80 border border-slate-800 p-5 rounded-3xl shadow-sm backdrop-blur-md">
             <h2 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mb-4 text-center">Expediente</h2>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-slate-950/50 rounded-2xl p-4 text-center border border-slate-800/50">
-                <p className="text-2xl font-black text-white">{favorites.length}</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-slate-950/50 rounded-2xl p-3 text-center border border-slate-800/50">
+                <p className="text-xl font-black text-white">{favorites.length}</p>
                 <p className="text-[8px] uppercase text-slate-500 font-bold tracking-widest">Favoritos</p>
               </div>
-              <div className="bg-slate-950/50 rounded-2xl p-4 text-center border border-slate-800/50">
-                <p className="text-2xl font-black text-white">0</p>
+              <div className="bg-slate-950/50 rounded-2xl p-3 text-center border border-slate-800/50">
+                <p className="text-xl font-black text-white">0</p>
                 <p className="text-[8px] uppercase text-slate-500 font-bold tracking-widest">Reseñas</p>
               </div>
             </div>
           </section>
 
-          {/* SECCIÓN LOGROS */}
-          <section className="bg-slate-900/80 border border-slate-800 p-6 rounded-3xl shadow-sm">
+          <section className="bg-slate-900/80 border border-slate-800 p-5 rounded-3xl shadow-sm backdrop-blur-md">
             <h2 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mb-6 flex items-center gap-2"><Award className="w-4 h-4 text-yellow-500" /> Logros Desbloqueados</h2>
-            <div className="grid grid-cols-4 gap-3">
-              {badges.map(badge => (
-                <div key={badge.id} title={`${badge.name}: ${badge.desc}`} className={`aspect-square rounded-xl flex items-center justify-center border transition-all ${badge.active ? 'bg-yellow-500/10 border-yellow-500/50 text-yellow-500' : 'bg-slate-950/50 border-slate-800 text-slate-700 opacity-50'}`}>
-                  {badge.icon}
-                </div>
-              ))}
+            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+              {badges.map(badge => {
+                const isLockedSecret = badge.isSecret && !badge.active;
+                const displayIcon = isLockedSecret ? <Lock className="w-3.5 h-3.5" /> : badge.icon;
+                return (
+                  <div key={badge.id} title={`${isLockedSecret ? '???' : badge.name}: ${isLockedSecret ? badge.hint : badge.desc}`} 
+                    className={`aspect-square rounded-xl flex items-center justify-center border transition-all cursor-help
+                      ${badge.active ? 'bg-yellow-500/10 border-yellow-500/50 text-yellow-500 shadow-[0_0_15px_-3px_rgba(234,179,8,0.2)]' : 'bg-slate-950/50 border-slate-800 text-slate-700 opacity-50'}`}
+                  >
+                    {displayIcon}
+                  </div>
+                );
+              })}
             </div>
           </section>
 
-          {/* SECCIÓN GÉNEROS */}
-          <section className="bg-slate-900/80 border border-slate-800 p-6 rounded-3xl shadow-sm">
+          <section className="bg-slate-900/80 border border-slate-800 p-5 rounded-3xl shadow-sm backdrop-blur-md">
             <h2 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mb-6 flex items-center gap-2"><BarChart3 className="w-4 h-4 text-yellow-500" /> Gustos Personales</h2>
             <div className="space-y-4">
               {genreStats.length > 0 ? genreStats.map(([genre, count]) => (
                 <div key={genre}>
                   <div className="flex justify-between text-[10px] font-bold uppercase mb-1.5 text-slate-400">
-                    <span>{genre}</span>
-                    <span>{count}</span>
+                    <span>{genre}</span><span>{count}</span>
                   </div>
                   <div className="w-full h-1.5 bg-slate-950 rounded-full overflow-hidden">
                     <div className="h-full bg-yellow-500" style={{ width: `${(count / favorites.length) * 100}%` }}></div>
                   </div>
                 </div>
-              )) : <p className="text-xs text-slate-600 italic text-center">Añade obras para ver tus gustos.</p>}
+              )) : <p className="text-[10px] text-slate-600 italic text-center">Añade obras para ver tus gustos.</p>}
             </div>
           </section>
 
         </aside>
 
-        {/* COLUMNA DERECHA: BIBLIOTECA */}
-        <section className="lg:col-span-2">
-          <header className="flex items-center gap-3 mb-8">
-            <Heart className="w-5 h-5 fill-yellow-500 text-yellow-500" />
-            <h2 className="text-2xl font-black text-white tracking-tight uppercase italic">Mi Biblioteca</h2>
+        {/* COLUMNA DERECHA: BIBLIOTECA (Más ancha y con imágenes más pequeñas) */}
+        <section className="lg:col-span-3">
+          
+          <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+            <div className="flex items-center gap-3">
+              <Heart className="w-5 h-5 fill-yellow-500 text-yellow-500" />
+              <h2 className="text-2xl font-black text-white tracking-tight uppercase italic">Mi Biblioteca</h2>
+            </div>
+            
+            {/* NUEVO: BARRA DE BÚSQUEDA */}
+            {favorites.length > 0 && (
+              <div className="relative w-full sm:w-64">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                <Input 
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Buscar en mi biblioteca..."
+                  className="pl-9 h-10 bg-slate-900/80 backdrop-blur-md border-slate-800 text-slate-200 focus-visible:ring-yellow-500 placeholder:text-slate-600 rounded-xl"
+                />
+              </div>
+            )}
           </header>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
-            {favorites.map((fav) => {
-              const statusStyles = 
-                fav.status === 'watching' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
-                fav.status === 'completed' ? 'bg-green-500/10 text-green-400 border-green-500/20' :
-                'bg-slate-800/50 text-slate-300 border-slate-700';
+          {/* GRID MODIFICADO PARA IMÁGENES MÁS PEQUEÑAS */}
+          <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
+            
+            {favorites.length === 0 ? (
+              <div className="col-span-full flex flex-col items-center justify-center py-32 px-6 text-center bg-slate-900/30 border-2 border-dashed border-slate-800 rounded-3xl relative overflow-hidden group backdrop-blur-md">
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-yellow-500/0 group-hover:bg-yellow-500/10 blur-[80px] rounded-full pointer-events-none transition-colors duration-700"></div>
+                <Compass className="w-20 h-20 text-slate-800 mb-6 stroke-[1px] relative z-10" />
+                <h3 className="text-xl font-black text-slate-300 mb-2 tracking-tight relative z-10">Tu biblioteca está vacía</h3>
+                <p className="text-slate-500 max-w-sm mb-6 text-xs relative z-10">Explora el directorio, filtra por tus géneros favoritos y empieza a forjar tu leyenda en Nakamagate.</p>
+                <Link to="/directory" className="relative z-10">
+                  <Button className="bg-yellow-600 hover:bg-yellow-500 text-black font-black px-6 h-10 rounded-xl transition-all active:scale-95 uppercase tracking-widest text-[10px]">
+                    Explorar
+                  </Button>
+                </Link>
+              </div>
+            ) : filteredFavorites.length === 0 ? (
+              <div className="col-span-full py-20 text-center text-slate-500 border border-slate-800 border-dashed rounded-3xl bg-slate-900/30 backdrop-blur-sm">
+                <p className="font-semibold text-lg mb-1">Sin resultados</p>
+                <p className="text-sm">No se ha encontrado ninguna obra que contenga "{searchTerm}".</p>
+              </div>
+            ) : (
+              filteredFavorites.map((fav) => {
+                const statusStyles = 
+                  fav.status === 'watching' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
+                  fav.status === 'completed' ? 'bg-green-500/10 text-green-400 border-green-500/20' :
+                  'bg-slate-800/50 text-slate-300 border-slate-700';
 
-              return (
-                <article key={fav.media.id} className="flex flex-col bg-slate-900 border border-slate-800 rounded-xl overflow-hidden group">
-                  <div className="relative block aspect-[2/3] bg-slate-950">
-                    <img src={fav.media.image} alt={fav.media.title} className="w-full h-full object-cover" />
-                    <div className={`absolute top-2 left-2 px-2 py-1 rounded text-[9px] font-bold uppercase tracking-widest border backdrop-blur-sm ${statusStyles}`}>
-                      {fav.status === 'watching' ? 'Viendo' : fav.status === 'completed' ? 'Completado' : 'Pendiente'}
-                    </div>
-                    {/* BOTÓN ELIMINAR FLOTANTE */}
-                    <button 
-                      onClick={() => handleDeleteFavorite(fav.media.id)}
-                      className="absolute top-2 right-2 p-2 bg-red-600/80 hover:bg-red-600 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-all"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-
-                  <div className="p-3 flex flex-col flex-1 gap-3">
-                    <Link to={`/media/${fav.media.id}`}>
-                      <h3 className="font-bold text-xs text-slate-200 line-clamp-2 hover:text-yellow-400 transition-colors">{fav.media.title}</h3>
-                    </Link>
-                    <div className="relative mt-auto">
-                      <select
-                        value={fav.status}
-                        onChange={(e) => handleStatusChange(fav.media.id, e.target.value)}
-                        className="w-full bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-400 text-[10px] font-semibold rounded-lg pl-3 pr-8 py-2 focus:ring-1 focus:ring-yellow-500 appearance-none cursor-pointer"
+                return (
+                  <article key={fav.media.id} className="flex flex-col bg-slate-900/80 border border-slate-800 rounded-xl overflow-hidden group backdrop-blur-md hover:border-yellow-500/30 transition-colors">
+                    <div className="relative block aspect-[2/3] bg-slate-950">
+                      <img src={fav.media.image} alt={fav.media.title} className="w-full h-full object-cover" />
+                      <div className={`absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-widest border backdrop-blur-sm ${statusStyles}`}>
+                        {fav.status === 'watching' ? 'Viendo' : fav.status === 'completed' ? 'Completado' : 'Pendiente'}
+                      </div>
+                      <button 
+                        onClick={() => triggerDeleteModal(fav.media.id)}
+                        className="absolute top-1.5 right-1.5 p-1.5 bg-red-600/80 hover:bg-red-600 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-all"
                       >
-                        <option value="watching">Viendo</option>
-                        <option value="completed">Completado</option>
-                        <option value="pending">Pendiente</option>
-                      </select>
-                      <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500 pointer-events-none" />
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
                     </div>
-                  </div>
-                </article>
-              );
-            })}
+
+                    <div className="p-2 sm:p-3 flex flex-col flex-1 gap-2">
+                      <Link to={`/media/${fav.media.id}`}>
+                        <h3 className="font-bold text-[10px] sm:text-xs text-slate-200 line-clamp-2 hover:text-yellow-400 transition-colors leading-tight">{fav.media.title}</h3>
+                      </Link>
+                      <div className="relative mt-auto">
+                        <select
+                          value={fav.status}
+                          onChange={(e) => handleStatusChange(fav.media.id, e.target.value)}
+                          className="w-full bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-400 text-[9px] sm:text-[10px] font-semibold rounded-lg pl-2 pr-6 py-1.5 focus:ring-1 focus:ring-yellow-500 appearance-none cursor-pointer"
+                        >
+                          <option value="watching">Viendo</option>
+                          <option value="completed">Completado</option>
+                          <option value="pending">Pendiente</option>
+                        </select>
+                        <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-500 pointer-events-none" />
+                      </div>
+                    </div>
+                  </article>
+                );
+              })
+            )}
           </div>
         </section>
       </div>

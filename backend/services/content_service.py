@@ -35,15 +35,15 @@ async def get_home_service(user_id: int, session: Session):
             "Romance", "Sci-Fi", "Slice of Life", "Sports", "Supernatural"
         ]
 
-    recomendaciones=random.sample(posibles_generos,3)
+    recomendaciones=random.sample(posibles_generos,5)
+    paginas_random = [random.randint(1, 4) for _ in range(5)]
 
-
-    data = await anilist_client.get_home_data(genres=recomendaciones)
+    data = await anilist_client.get_home_data(genres=recomendaciones, pages=paginas_random)
     
-    for key in ["genre1", "genre2", "genre3"]:
+    for key in ["genre1", "genre2", "genre3", "genre4", "genre5"]:
         items = data[key]["items"]
         random.shuffle(items)
-        data[key]["items"] = items[:6]
+        data[key]["items"] = items
         
     return data
 
