@@ -1,83 +1,91 @@
-import { useEffect, useState, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { apiClient } from '../api/client';
-import { Heart, ArrowLeft, Star, Trash2, Edit2, Send, AlertTriangle, BookOpen, Tv, CheckCircle, Clock, Eye, X } from 'lucide-react';
+import {
+  Heart, ArrowLeft, Star, Trash2, Edit2, Send,
+  AlertTriangle, BookOpen, Tv, CheckCircle, Clock,
+  Eye, X, Play, ExternalLink, Users, GitBranch
+} from 'lucide-react';
 
 const BACKEND_URL = "http://localhost:8000";
 
+// ── Tipos ─────────────────────────────────────────────────────────────────────
+
+interface Trailer     { id: string; url: string; thumbnail: string | null }
+interface StreamLink  { site: string; url: string; color: string | null; icon: string | null }
+interface Character   { id: number; name: string; image: string | null; role: string }
+interface Relation    { id: number; title: string; image: string | null; type: string; format: string; relation: string }
+interface StaffMember { id: number; name: string; image: string | null; role: string }
+interface Studio      { id: number; name: string; url: string | null }
+
 interface MediaDetailData {
-  id: number;
-  type: string;
-  title: string;
-  title_en: string;
-  image: string;
-  banner: string | null;
-  score: number;
-  status: string;
-  description: string;
-  units: number;
-  genres: string[];
-  year: number;
+  id: number; type: string; title: string; title_en: string;
+  image: string; banner: string | null; score: number; status: string;
+  description: string; units: number; genres: string[]; year: number;
   is_adult: boolean;
+  trailer:    Trailer | null;
+  streaming:  StreamLink[];
+  characters: Character[];
+  relations:  Relation[];
+  staff:      StaffMember[];
+  studios:    Studio[];
 }
 
 interface Review {
   id: number;
-  user: {
-    id: number;
-    alias: string;
-    picture: string | null;
-  };
-  score: number;
-  content: string;
-  created_at: string;
+  user: { id: number; alias: string; picture: string | null };
+  score: number; content: string; created_at: string;
 }
 
-// ❌ BUG 1: La página nunca cargaba la reseña del usuario actual en userReview.
-//    La API devolvía todas las reseñas pero nunca se comparaba con el user_id
-//    del token para saber cuál era la propia. Añadimos currentUserId.
-interface CurrentUser {
-  id: number;
-  alias: string;
-}
+interface CurrentUser { id: number; alias: string }
+
+// ── Constantes ────────────────────────────────────────────────────────────────
 
 const STATUS_OPTIONS = [
-  { value: 'watching',      label: 'Viendo',        icon: Eye },
-  { value: 'completed',     label: 'Completado',    icon: CheckCircle },
-  { value: 'plan_to_watch', label: 'Pendiente',     icon: Clock },
+  { value: 'watching',      label: 'Viendo',     icon: Eye },
+  { value: 'completed',     label: 'Completado', icon: CheckCircle },
+  { value: 'plan_to_watch', label: 'Pendiente',  icon: Clock },
 ] as const;
 
+const RELATION_LABELS: Record<string, string> = {
+  SEQUEL:      'Secuela',
+  PREQUEL:     'Precuela',
+  SIDE_STORY:  'Historia paralela',
+  SPIN_OFF:    'Spin-off',
+  PARENT:      'Obra original',
+  ALTERNATIVE: 'Alternativa',
+};
+
+// ── Componente principal ──────────────────────────────────────────────────────
+
 export default function MediaDetail() {
-  const { id } = useParams<{ id: string }>();
+  const { id }   = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const descRef = useRef<HTMLParagraphElement>(null);
 
   const getImageUrl = (path: string | null | undefined) => {
     if (!path) return null;
     return path.startsWith('http') ? path : `${BACKEND_URL}${path}`;
   };
 
-  const [media, setMedia]               = useState<MediaDetailData | null>(null);
-  const [reviews, setReviews]           = useState<Review[]>([]);
-  const [loading, setLoading]           = useState(true);
-  const [accessError, setAccessError]   = useState<string | null>(null);
-  const [currentUser, setCurrentUser]   = useState<CurrentUser | null>(null);
+  const [media,        setMedia]        = useState<MediaDetailData | null>(null);
+  const [reviews,      setReviews]      = useState<Review[]>([]);
+  const [loading,      setLoading]      = useState(true);
+  const [accessError,  setAccessError]  = useState<string | null>(null);
+  const [currentUser,  setCurrentUser]  = useState<CurrentUser | null>(null);
 
-  // Favorito + estado
-  const [isFavorite, setIsFavorite]     = useState(false);
-  const [favStatus, setFavStatus]       = useState<string | null>(null);
+  const [isFavorite,    setIsFavorite]    = useState(false);
+  const [favStatus,     setFavStatus]     = useState<string | null>(null);
   const [statusLoading, setStatusLoading] = useState(false);
 
-  // Reseña
-  const [reviewScore, setReviewScore]   = useState(3);
-  const [reviewContent, setReviewContent] = useState('');
-  const [userReview, setUserReview]     = useState<Review | null>(null);
-  const [isEditingReview, setIsEditingReview] = useState(false);
+  const [reviewScore,      setReviewScore]      = useState(3);
+  const [reviewContent,    setReviewContent]    = useState('');
+  const [userReview,       setUserReview]       = useState<Review | null>(null);
+  const [isEditingReview,  setIsEditingReview]  = useState(false);
   const [submittingReview, setSubmittingReview] = useState(false);
 
-  // Toast en lugar de alert/confirm nativos
-  const [toast, setToast] = useState<{ msg: string; type: 'ok' | 'err' } | null>(null);
+  const [toast,         setToast]         = useState<{ msg: string; type: 'ok' | 'err' } | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [trailerOpen,   setTrailerOpen]   = useState(false);
 
   const showToast = (msg: string, type: 'ok' | 'err' = 'ok') => {
     setToast({ msg, type });
@@ -92,13 +100,11 @@ export default function MediaDetail() {
   useEffect(() => {
     const load = async () => {
       try {
-        // Cargamos usuario actual, media, favorito y reseñas en paralelo
         const [meRes, mediaRes] = await Promise.all([
-          apiClient.get('/auth/me'),        // ajusta el endpoint a tu API
+          apiClient.get('/auth/me'),
           apiClient.get(`/content/${id}`),
         ]);
-
-        const me: CurrentUser = meRes.data;
+        const me: CurrentUser    = meRes.data;
         const m: MediaDetailData = mediaRes.data;
         setCurrentUser(me);
         setMedia(m);
@@ -113,18 +119,15 @@ export default function MediaDetail() {
         if (reviewsRes.status === 'fulfilled') {
           const all: Review[] = Array.isArray(reviewsRes.value.data) ? reviewsRes.value.data : [];
           setReviews(all);
-          // ❌ BUG 1 (fix): Buscamos la reseña del usuario actual comparando IDs
+          // Buscamos la reseña del usuario actual comparando IDs
           const mine = all.find(r => r.user.id === me.id) || null;
           setUserReview(mine);
           if (mine) { setReviewScore(mine.score); setReviewContent(mine.content); }
         }
-
         if (favRes.status === 'fulfilled') {
-          const favData = favRes.value.data;
-          setIsFavorite(favData.is_favorite);
-          setFavStatus(favData.status || null);
+          setIsFavorite(favRes.value.data.is_favorite);
+          setFavStatus(favRes.value.data.status || null);
         }
-
       } catch (err: any) {
         if (err.response?.status === 403) {
           setAccessError(err.response?.data?.detail || "Acceso restringido (+18).");
@@ -136,18 +139,14 @@ export default function MediaDetail() {
     load();
   }, [id]);
 
-  // ❌ BUG 2: El favorito sólo se podía añadir/quitar, pero la API soporta
-  //    status (watching/completed/plan_to_watch) y nunca se mostraba ni gestionaba.
   const handleSetStatus = async (status: string) => {
     if (statusLoading) return;
     setStatusLoading(true);
     try {
       const mediaType = media?.type?.toLowerCase();
       if (favStatus === status) {
-        // Toggle off → quitar de favoritos
         await apiClient.delete(`/favorites/${id}?media_type=${mediaType}`);
-        setIsFavorite(false);
-        setFavStatus(null);
+        setIsFavorite(false); setFavStatus(null);
       } else {
         if (isFavorite) {
           await apiClient.patch(`/favorites/${id}`, { status, media_type: mediaType });
@@ -157,19 +156,13 @@ export default function MediaDetail() {
         }
         setFavStatus(status);
       }
-    } catch {
-      showToast('No se pudo actualizar el estado.', 'err');
-    } finally {
-      setStatusLoading(false);
-    }
+    } catch { showToast('No se pudo actualizar el estado.', 'err'); }
+    finally   { setStatusLoading(false); }
   };
 
   const handleSubmitReview = async () => {
-    // ❌ BUG 3: La validación era `reviewScore < 0` pero el score mínimo es 1.
-    //    Un score de 0 pasaba la validación y se enviaba al backend.
     if (!reviewContent.trim() || reviewScore < 1 || reviewScore > 5) {
-      showToast('Completa la reseña con puntuación y texto.', 'err');
-      return;
+      showToast('Completa la reseña con puntuación y texto.', 'err'); return;
     }
     setSubmittingReview(true);
     try {
@@ -188,39 +181,23 @@ export default function MediaDetail() {
         setUserReview(res.data);
         showToast('Reseña publicada.');
       }
-      const all = await reloadReviews(media?.type?.toLowerCase() || 'anime');
-      setReviews(all);
-    } catch {
-      showToast('Error al guardar la reseña.', 'err');
-    } finally {
-      setSubmittingReview(false);
-    }
+      setReviews(await reloadReviews(media?.type?.toLowerCase() || 'anime'));
+    } catch { showToast('Error al guardar la reseña.', 'err'); }
+    finally   { setSubmittingReview(false); }
   };
 
   const handleDeleteReview = async () => {
     if (!userReview) return;
     try {
       await apiClient.delete(`/reviews/${userReview.id}`);
-      setUserReview(null);
-      setReviewScore(3);
-      setReviewContent('');
+      setUserReview(null); setReviewScore(3); setReviewContent('');
       setConfirmDelete(false);
-      const all = await reloadReviews(media?.type?.toLowerCase() || 'anime');
-      setReviews(all);
+      setReviews(await reloadReviews(media?.type?.toLowerCase() || 'anime'));
       showToast('Reseña eliminada.');
-    } catch {
-      showToast('Error al eliminar la reseña.', 'err');
-    }
+    } catch { showToast('Error al eliminar la reseña.', 'err'); }
   };
 
-  // ❌ BUG 4: La descripción venía con etiquetas HTML de AniList (<br>, <i>, etc.)
-  //    y se mostraba como texto plano con whitespace-pre-line, haciendo que
-  //    aparecieran los tags en pantalla.
-  const cleanDescription = (html: string) => {
-    const tmp = document.createElement('div');
-    tmp.innerHTML = html;
-    return tmp.textContent || tmp.innerText || '';
-  };
+  // ── Estados de carga / error ──────────────────────────────────────────────
 
   if (loading) return (
     <main className="min-h-screen flex items-center justify-center bg-[#020617]">
@@ -233,11 +210,11 @@ export default function MediaDetail() {
 
   if (accessError) return (
     <main className="min-h-screen flex flex-col items-center justify-center bg-[#020617] text-white px-4">
-      <div className="relative bg-gradient-to-br from-red-950/40 to-[#020617] border border-red-500/30 p-10 rounded-3xl flex flex-col items-center text-center max-w-md shadow-2xl shadow-red-900/20">
+      <div className="bg-gradient-to-br from-red-950/40 to-[#020617] border border-red-500/30 p-10 rounded-3xl flex flex-col items-center text-center max-w-md shadow-2xl">
         <div className="w-24 h-24 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center mb-6">
           <AlertTriangle className="w-12 h-12 text-red-400" />
         </div>
-        <h2 className="text-3xl font-black text-white mb-3 uppercase tracking-wider italic">Zona Restringida</h2>
+        <h2 className="text-3xl font-black text-white mb-3 uppercase italic">Zona Restringida</h2>
         <p className="text-slate-400 mb-8">{accessError}</p>
         <button onClick={() => navigate('/home')} className="bg-yellow-500 hover:bg-yellow-400 text-black font-black py-3 px-8 rounded-xl transition-all hover:scale-105">
           Volver al inicio
@@ -264,7 +241,10 @@ export default function MediaDetail() {
       {/* TOAST */}
       {toast && (
         <div className={`fixed bottom-8 left-1/2 -translate-x-1/2 z-[300] flex items-center gap-3 px-6 py-4 rounded-2xl border backdrop-blur-xl shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-300 ${toast.type === 'ok' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-red-500/10 border-red-500/20 text-red-400'}`}>
-          {toast.type === 'ok' ? <CheckCircle className="w-5 h-5 shrink-0" /> : <AlertTriangle className="w-5 h-5 shrink-0" />}
+          {toast.type === 'ok'
+            ? <CheckCircle className="w-5 h-5 shrink-0" />
+            : <AlertTriangle className="w-5 h-5 shrink-0" />
+          }
           <p className="font-bold text-sm">{toast.msg}</p>
         </div>
       )}
@@ -276,7 +256,7 @@ export default function MediaDetail() {
             <h3 className="text-xl font-black text-white mb-2">¿Eliminar reseña?</h3>
             <p className="text-slate-400 mb-8 text-sm">Esta acción no se puede deshacer.</p>
             <div className="flex gap-3">
-              <button onClick={() => setConfirmDelete(false)} className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl transition-all">
+              <button onClick={() => setConfirmDelete(false)} className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-bold rounded-xl transition-all">
                 Cancelar
               </button>
               <button onClick={handleDeleteReview} className="flex-1 py-3 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl transition-all">
@@ -287,41 +267,50 @@ export default function MediaDetail() {
         </div>
       )}
 
-      {/* ── HERO BANNER ── */}
+      {/* MODAL TRÁILER */}
+      {trailerOpen && media.trailer && (
+        <div className="fixed inset-0 z-[200] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setTrailerOpen(false)}>
+          <div className="relative w-full max-w-4xl aspect-video rounded-2xl overflow-hidden shadow-2xl" onClick={e => e.stopPropagation()}>
+            <button onClick={() => setTrailerOpen(false)} className="absolute top-3 right-3 z-10 p-2 bg-black/60 hover:bg-black rounded-xl transition-all">
+              <X className="w-5 h-5 text-white" />
+            </button>
+            <iframe
+              src={`${media.trailer.url}?autoplay=1`}
+              className="w-full h-full"
+              allow="autoplay; fullscreen"
+              allowFullScreen
+            />
+          </div>
+        </div>
+      )}
+
+      {/* ── HERO BANNER ──────────────────────────────────────────────────────── */}
       <div className="relative h-[55vh] min-h-[420px] overflow-hidden">
-        {/* Imagen con blur de fondo para dar profundidad */}
-        <img src={bgImage} alt="" className="absolute inset-0 w-full h-full object-cover scale-105 opacity-20 blur-md" aria-hidden />
+        <img src={bgImage} alt="" aria-hidden className="absolute inset-0 w-full h-full object-cover scale-105 opacity-20 blur-md" />
         <img src={bgImage} alt="banner" className="absolute inset-0 w-full h-full object-cover opacity-40" />
-        {/* Gradientes */}
         <div className="absolute inset-0 bg-gradient-to-t from-[#020617] via-[#020617]/50 to-transparent" />
         <div className="absolute inset-0 bg-gradient-to-r from-[#020617]/80 via-transparent to-transparent" />
-        {/* Detalles decorativos dorados */}
         <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-yellow-500/30 to-transparent" />
         <div className="absolute top-6 left-6 md:left-16">
-          <button
-            onClick={() => navigate(-1)}
-            className="flex items-center gap-2 text-slate-400 hover:text-yellow-400 transition-colors group"
-          >
+          <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-slate-400 hover:text-yellow-400 transition-colors group">
             <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
             <span className="text-sm font-bold">Volver</span>
           </button>
         </div>
       </div>
 
-      {/* ── CONTENIDO PRINCIPAL ── */}
+      {/* ── CONTENIDO PRINCIPAL ──────────────────────────────────────────────── */}
       <div className="max-w-[1200px] mx-auto px-6 md:px-16 -mt-48 relative z-10">
 
         {/* CABECERA: Poster + Info */}
         <div className="flex flex-col md:flex-row gap-8 md:gap-12 mb-16">
 
-          {/* POSTER */}
+          {/* Poster */}
           <div className="shrink-0 flex justify-center md:justify-start">
             <div className="relative w-48 md:w-56 group">
-              {/* Glow dorado detrás del poster */}
               <div className="absolute -inset-2 bg-yellow-500/20 rounded-3xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
               <div className="relative rounded-2xl overflow-hidden border-2 border-white/10 shadow-2xl shadow-black/50">
                 <img src={media.image} alt={media.title} className="w-full aspect-[2/3] object-cover" />
-                {/* Badge tipo encima del poster */}
                 <div className="absolute top-3 left-3 flex items-center gap-1.5 bg-black/70 backdrop-blur-md px-2.5 py-1.5 rounded-lg border border-white/10">
                   {isAnime
                     ? <Tv className="w-3 h-3 text-yellow-400" />
@@ -338,7 +327,7 @@ export default function MediaDetail() {
             </div>
           </div>
 
-          {/* INFO */}
+          {/* Info */}
           <div className="flex-1 pt-32 md:pt-0 mt-4 md:mt-16">
 
             {/* Géneros */}
@@ -355,10 +344,26 @@ export default function MediaDetail() {
               {media.title}
             </h1>
             {media.title_en && media.title_en !== media.title && (
-              <p className="text-lg text-slate-500 mb-6">{media.title_en}</p>
+              <p className="text-lg text-slate-500 mb-4">{media.title_en}</p>
             )}
 
-            {/* Stats en línea */}
+            {/* Estudio */}
+            {media.studios?.length > 0 && (
+              <p className="text-slate-400 text-sm mb-5">
+                Producido por{' '}
+                {media.studios.map((s, i) => (
+                  <span key={s.id}>
+                    {s.url
+                      ? <a href={s.url} target="_blank" rel="noopener noreferrer" className="text-yellow-400 hover:underline font-bold">{s.name}</a>
+                      : <span className="text-yellow-400 font-bold">{s.name}</span>
+                    }
+                    {i < media.studios.length - 1 && ', '}
+                  </span>
+                ))}
+              </p>
+            )}
+
+            {/* Stats */}
             <div className="flex flex-wrap items-center gap-3 mb-8">
               {media.score > 0 && (
                 <div className="flex items-center gap-2 bg-yellow-500/10 border border-yellow-500/30 px-4 py-2 rounded-xl">
@@ -382,10 +387,8 @@ export default function MediaDetail() {
               </div>
             </div>
 
-            {/* ❌ BUG 2 (fix): Selector de estado (watching/completed/plan_to_watch).
-                Antes sólo había un botón de corazón sin estado. Ahora tres botones
-                que llaman a handleSetStatus y destacan el activo con dorado. */}
-            <div>
+            {/* Botones de estado en lista */}
+            <div className="mb-6">
               <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">Mi lista</p>
               <div className="flex flex-wrap gap-2">
                 {STATUS_OPTIONS.map(({ value, label, icon: Icon }) => {
@@ -409,33 +412,136 @@ export default function MediaDetail() {
                 })}
               </div>
             </div>
+
+            {/* Botón tráiler */}
+            {media.trailer && (
+              <button
+                onClick={() => setTrailerOpen(true)}
+                className="flex items-center gap-3 bg-white/5 hover:bg-yellow-500/10 border border-white/10 hover:border-yellow-500/30 text-white hover:text-yellow-400 font-bold px-5 py-2.5 rounded-xl transition-all group"
+              >
+                <div className="w-8 h-8 rounded-full bg-yellow-500 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <Play className="w-4 h-4 text-black fill-black" />
+                </div>
+                Ver tráiler
+              </button>
+            )}
           </div>
         </div>
 
-        {/* ── SINOPSIS ── */}
+        {/* ── DÓNDE VERLO ────────────────────────────────────────────────────── */}
+        {media.streaming?.length > 0 && (
+          <section className="mb-12">
+            <SectionTitle icon={<Play className="w-5 h-5" />} title="Dónde verlo" />
+            <div className="flex flex-wrap gap-3">
+              {media.streaming.map(link => (
+                <a
+                  key={link.site}
+                  href={link.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group flex items-center gap-3 px-5 py-3 bg-slate-900/60 hover:bg-slate-800 border border-slate-800 hover:border-slate-600 rounded-2xl transition-all hover:scale-105 hover:-translate-y-0.5 shadow-lg"
+                >
+                  <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: link.color || '#eab308' }} />
+                  <span className="font-bold text-slate-200 group-hover:text-white text-sm">{link.site}</span>
+                  <ExternalLink className="w-3.5 h-3.5 text-slate-600 group-hover:text-slate-400 transition-colors" />
+                </a>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* ── SINOPSIS ──────────────────────────────────────────────────────── */}
         <section className="mb-12">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-1 h-8 bg-yellow-500 rounded-full" />
-            <h2 className="text-2xl font-black text-white uppercase tracking-tight italic">Sinopsis</h2>
-          </div>
+          <SectionTitle title="Sinopsis" />
           <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-8">
-            {/* ❌ BUG 4 (fix): AniList devuelve HTML en la descripción. cleanDescription()
-                lo convierte a texto plano antes de renderizarlo. */}
-            <p ref={descRef} className="text-slate-300 leading-relaxed text-base">
-              {media.description ? cleanDescription(media.description) : 'No hay sinopsis disponible.'}
+            <p className="text-slate-300 leading-relaxed text-base">
+              {media.description || 'No hay sinopsis disponible.'}
             </p>
           </div>
         </section>
 
-        {/* ── MI RESEÑA ── */}
+        {/* ── PERSONAJES ────────────────────────────────────────────────────── */}
+        {media.characters?.length > 0 && (
+          <section className="mb-12">
+            <SectionTitle icon={<Users className="w-5 h-5" />} title="Personajes principales" />
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-4">
+              {media.characters.map(char => (
+                <div key={char.id} className="group flex flex-col items-center gap-2 text-center">
+                  <div className="w-full aspect-square rounded-2xl overflow-hidden border-2 border-slate-800 group-hover:border-yellow-500/40 transition-colors bg-slate-900 shadow-lg">
+                    {char.image
+                      ? <img src={char.image} alt={char.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                      : <div className="w-full h-full flex items-center justify-center text-slate-600 text-2xl font-black">{char.name?.[0]}</div>
+                    }
+                  </div>
+                  <p className="text-xs font-bold text-slate-300 group-hover:text-white transition-colors line-clamp-2 leading-tight">
+                    {char.name}
+                  </p>
+                  {char.role === 'MAIN' && (
+                    <span className="text-[9px] font-black text-yellow-500 uppercase tracking-wider bg-yellow-500/10 px-2 py-0.5 rounded-full border border-yellow-500/20">
+                      Principal
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* ── EQUIPO CREATIVO ───────────────────────────────────────────────── */}
+        {media.staff?.length > 0 && (
+          <section className="mb-12">
+            <SectionTitle title="Equipo creativo" />
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+              {media.staff.map(member => (
+                <div key={member.id} className="group flex items-center gap-3 bg-slate-900/50 border border-slate-800 hover:border-yellow-500/20 rounded-2xl p-3 transition-all hover:bg-slate-900">
+                  <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0 bg-slate-800 border border-slate-700">
+                    {member.image
+                      ? <img src={member.image} alt={member.name} className="w-full h-full object-cover" />
+                      : <div className="w-full h-full flex items-center justify-center text-slate-500 font-black">{member.name?.[0]}</div>
+                    }
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-white truncate">{member.name}</p>
+                    <p className="text-xs text-slate-500 truncate">{member.role}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* ── RELACIONES ────────────────────────────────────────────────────── */}
+        {media.relations?.length > 0 && (
+          <section className="mb-12">
+            <SectionTitle icon={<GitBranch className="w-5 h-5" />} title="También te puede interesar" />
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+              {media.relations.map(rel => (
+                <Link key={rel.id} to={`/media/${rel.id}`} className="group flex flex-col gap-2">
+                  <div className="relative aspect-[2/3] rounded-xl overflow-hidden border border-slate-800 group-hover:border-yellow-500/40 transition-all shadow-lg bg-slate-900">
+                    {rel.image
+                      ? <img src={rel.image} alt={rel.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                      : <div className="w-full h-full flex items-center justify-center text-slate-600"><BookOpen className="w-8 h-8" /></div>
+                    }
+                    <div className="absolute top-2 left-2">
+                      <span className="text-[9px] font-black uppercase tracking-wider px-2 py-1 rounded-lg bg-black/70 backdrop-blur-sm border border-white/10 text-yellow-400">
+                        {RELATION_LABELS[rel.relation] || rel.relation}
+                      </span>
+                    </div>
+                  </div>
+                  <p className="text-xs font-bold text-slate-300 group-hover:text-white transition-colors line-clamp-2">
+                    {rel.title}
+                  </p>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* ── MI RESEÑA ─────────────────────────────────────────────────────── */}
         <section className="mb-12">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-1 h-8 bg-yellow-500 rounded-full" />
-            <h2 className="text-2xl font-black text-white uppercase tracking-tight italic">Mi Reseña</h2>
-          </div>
+          <SectionTitle title="Mi Reseña" />
 
           {userReview && !isEditingReview ? (
-            // Vista de reseña existente
             <div className="relative bg-gradient-to-br from-yellow-500/5 to-slate-900/60 border border-yellow-500/20 rounded-2xl p-8">
               <div className="flex items-start justify-between mb-4">
                 <div className="flex gap-1">
@@ -444,31 +550,28 @@ export default function MediaDetail() {
                   ))}
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={() => setIsEditingReview(true)} className="p-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl transition-all hover:border-yellow-500/30">
+                  <button onClick={() => setIsEditingReview(true)} className="p-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl transition-all">
                     <Edit2 className="w-4 h-4 text-slate-400" />
                   </button>
                   <button onClick={() => setConfirmDelete(true)} className="p-2 bg-slate-800 hover:bg-red-900/30 border border-slate-700 hover:border-red-500/30 rounded-xl transition-all">
-                    <Trash2 className="w-4 h-4 text-slate-400 hover:text-red-400" />
+                    <Trash2 className="w-4 h-4 text-slate-400" />
                   </button>
                 </div>
               </div>
               <p className="text-slate-300 leading-relaxed">{userReview.content}</p>
             </div>
           ) : (
-            // Formulario
             <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-8 space-y-6">
-              {/* Stars interactivas */}
               <div>
                 <label className="block text-sm font-bold text-slate-400 uppercase tracking-wider mb-3">Puntuación</label>
                 <div className="flex gap-2">
                   {Array.from({ length: 5 }).map((_, i) => (
                     <button key={i} onClick={() => setReviewScore(i + 1)} className="hover:scale-125 transition-transform">
-                      <Star className="w-8 h-8 cursor-pointer transition-colors" style={{ fill: i < reviewScore ? '#eab308' : 'transparent', color: i < reviewScore ? '#eab308' : '#334155' }} />
+                      <Star className="w-8 h-8 cursor-pointer" style={{ fill: i < reviewScore ? '#eab308' : 'transparent', color: i < reviewScore ? '#eab308' : '#334155' }} />
                     </button>
                   ))}
                 </div>
               </div>
-              {/* Textarea */}
               <div>
                 <label className="block text-sm font-bold text-slate-400 uppercase tracking-wider mb-3">Tu opinión</label>
                 <textarea
@@ -482,11 +585,21 @@ export default function MediaDetail() {
               </div>
               <div className="flex gap-3 justify-end">
                 {isEditingReview && (
-                  <button onClick={() => { setIsEditingReview(false); if (userReview) { setReviewScore(userReview.score); setReviewContent(userReview.content); } }} className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-bold rounded-xl transition-all">
+                  <button
+                    onClick={() => {
+                      setIsEditingReview(false);
+                      if (userReview) { setReviewScore(userReview.score); setReviewContent(userReview.content); }
+                    }}
+                    className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-bold rounded-xl transition-all"
+                  >
                     Cancelar
                   </button>
                 )}
-                <button onClick={handleSubmitReview} disabled={submittingReview} className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 disabled:opacity-50 text-black font-black px-6 py-2.5 rounded-xl transition-all hover:scale-105">
+                <button
+                  onClick={handleSubmitReview}
+                  disabled={submittingReview}
+                  className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 disabled:opacity-50 text-black font-black px-6 py-2.5 rounded-xl transition-all hover:scale-105"
+                >
                   <Send className="w-4 h-4" />
                   {isEditingReview ? 'Actualizar' : 'Publicar'}
                 </button>
@@ -495,22 +608,19 @@ export default function MediaDetail() {
           )}
         </section>
 
-        {/* ── RESEÑAS DE LA COMUNIDAD ── */}
+        {/* ── RESEÑAS COMUNIDAD ─────────────────────────────────────────────── */}
         <section>
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-1 h-8 bg-yellow-500 rounded-full" />
-            <h2 className="text-2xl font-black text-white uppercase tracking-tight italic">
-              Comunidad
-              <span className="ml-3 text-base font-bold text-slate-500">({reviews.length})</span>
-            </h2>
-          </div>
+          <SectionTitle title="Comunidad" badge={reviews.length} />
 
           {reviews.length > 0 ? (
             <div className="grid gap-4">
               {reviews.map(review => {
                 const isOwn = review.user.id === currentUser?.id;
                 return (
-                  <div key={review.id} className={`relative bg-slate-900/40 border rounded-2xl p-6 transition-all ${isOwn ? 'border-yellow-500/30 bg-yellow-500/5' : 'border-slate-800'}`}>
+                  <div
+                    key={review.id}
+                    className={`relative bg-slate-900/40 border rounded-2xl p-6 transition-all ${isOwn ? 'border-yellow-500/30 bg-yellow-500/5' : 'border-slate-800'}`}
+                  >
                     {isOwn && (
                       <span className="absolute top-4 right-4 text-[10px] font-black text-yellow-500 uppercase tracking-widest bg-yellow-500/10 border border-yellow-500/20 px-2 py-1 rounded-full">
                         Tu reseña
@@ -518,7 +628,11 @@ export default function MediaDetail() {
                     )}
                     <div className="flex items-center gap-4 mb-4">
                       {review.user.picture ? (
-                        <img src={getImageUrl(review.user.picture)!} alt={review.user.alias} className="w-10 h-10 rounded-full object-cover border-2 border-slate-700" />
+                        <img
+                          src={getImageUrl(review.user.picture)!}
+                          alt={review.user.alias}
+                          className="w-10 h-10 rounded-full object-cover border-2 border-slate-700"
+                        />
                       ) : (
                         <div className="w-10 h-10 rounded-full bg-yellow-500/20 border-2 border-yellow-500/30 flex items-center justify-center shrink-0">
                           <span className="text-sm font-black text-yellow-400">{review.user.alias[0].toUpperCase()}</span>
@@ -547,5 +661,27 @@ export default function MediaDetail() {
         </section>
       </div>
     </main>
+  );
+}
+
+// ── Sub-componente reutilizable para títulos de sección ───────────────────────
+function SectionTitle({
+  title,
+  icon,
+  badge,
+}: {
+  title: string;
+  icon?: React.ReactNode;
+  badge?: number;
+}) {
+  return (
+    <div className="flex items-center gap-3 mb-6">
+      <div className="w-1 h-8 bg-yellow-500 rounded-full shrink-0" />
+      {icon && <span className="text-yellow-500">{icon}</span>}
+      <h2 className="text-2xl font-black text-white uppercase tracking-tight italic">{title}</h2>
+      {badge !== undefined && (
+        <span className="text-base font-bold text-slate-500">({badge})</span>
+      )}
+    </div>
   );
 }

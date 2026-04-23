@@ -6,12 +6,8 @@ from backend.services.adapter.anilist_adapter import MediaAdapter
 
 class AniListClient:
     def __init__(self):
-        # Ya no creamos el cliente aquí para evitar que se quede "atascado"
         pass
 
-    # ==========================================
-    # 🌟 EL SALVAVIDAS: Crea una conexión limpia
-    # ==========================================
     def _get_fresh_client(self):
         transport = AIOHTTPTransport(url="https://graphql.anilist.co")
         return Client(transport=transport, fetch_schema_from_transport=False)
@@ -40,23 +36,20 @@ class AniListClient:
                 rec4: Page(page: $p4, perPage: 20) { media(type: ANIME, genre: $g4, sort: POPULARITY_DESC, isAdult: false) { id type title { romaji } coverImage { large } averageScore } }
             }
         """)
-        
         variables = {
             "g1": genres[0], "g2": genres[1], "g3": genres[2], "g4": genres[3],
-            "p1": pages[0], "p2": pages[1], "p3": pages[2], "p4": pages[3]
+            "p1": pages[0],  "p2": pages[1],  "p3": pages[2],  "p4": pages[3]
         }
-        
         async with self._get_fresh_client() as session:
             result = await session.execute(query, variable_values=variables)
-            
             return {
-                "upcoming": MediaAdapter.list_to_standar_format(result.get("upcoming", {}).get("media")),
+                "upcoming":       MediaAdapter.list_to_standar_format(result.get("upcoming", {}).get("media")),
                 "trending_anime": MediaAdapter.list_to_standar_format(result.get("trendingAnime", {}).get("media")),
                 "trending_manga": MediaAdapter.list_to_standar_format(result.get("trendingMangas", {}).get("media")),
-                "genre1": { "name": genres[0], "items": MediaAdapter.list_to_standar_format(result.get("rec1", {}).get("media")) },
-                "genre2": { "name": genres[1], "items": MediaAdapter.list_to_standar_format(result.get("rec2", {}).get("media")) },
-                "genre3": { "name": genres[2], "items": MediaAdapter.list_to_standar_format(result.get("rec3", {}).get("media")) },
-                "genre4": { "name": genres[3], "items": MediaAdapter.list_to_standar_format(result.get("rec4", {}).get("media")) }
+                "genre1": {"name": genres[0], "items": MediaAdapter.list_to_standar_format(result.get("rec1", {}).get("media"))},
+                "genre2": {"name": genres[1], "items": MediaAdapter.list_to_standar_format(result.get("rec2", {}).get("media"))},
+                "genre3": {"name": genres[2], "items": MediaAdapter.list_to_standar_format(result.get("rec3", {}).get("media"))},
+                "genre4": {"name": genres[3], "items": MediaAdapter.list_to_standar_format(result.get("rec4", {}).get("media"))},
             }
 
     async def search_predictive(self, search_text: str, media_type: Mediatype):
@@ -70,100 +63,116 @@ class AniListClient:
             }
         """)
         variables = {"search": search_text, "type": media_type.strip().upper()}
-        
         async with self._get_fresh_client() as session:
             result = await session.execute(query, variable_values=variables)
-            raw_list = result.get("Page", {}).get("media", [])
-            formatted_result = MediaAdapter.list_to_standar_format(raw_list)
-            return formatted_result
+            return MediaAdapter.list_to_standar_format(result.get("Page", {}).get("media", []))
 
     async def get_media_details(self, media_id: int):
+        # ── Query ampliada con los nuevos campos ──────────────────────────────
         query = gql("""
             query ($id: Int) {
               Media(id: $id) {
-                id type title { romaji english native } description
-                bannerImage coverImage { extraLarge } episodes chapters
-                volumes status genres averageScore seasonYear isAdult
+                id
+                type
+                title { romaji english native }
+                description
+                bannerImage
+                coverImage { extraLarge }
+                episodes
+                chapters
+                volumes
+                status
+                genres
+                averageScore
+                startDate { year }
+                isAdult
+
+                # Tráiler (casi siempre YouTube)
+                trailer { id site thumbnail }
+
+                # Links externos filtrados por tipo STREAMING en el adaptador
+                externalLinks { url site color icon type }
+
+                # Personajes principales (máx 6, ordenados por relevancia)
+                characters(perPage: 6, sort: [ROLE, RELEVANCE]) {
+                  nodes { id name { full } image { medium } }
+                  edges { role }
+                }
+
+                # Relaciones narrativas (secuelas, precuelas, spin-offs…)
+                relations {
+                  nodes {
+                    id type format
+                    title { romaji }
+                    coverImage { medium }
+                  }
+                  edges { relationType }
+                }
+
+                # Staff relevante (director, autor, compositor…)
+                staff(perPage: 6, sort: [RELEVANCE]) {
+                  nodes { id name { full } image { medium } }
+                  edges { role }
+                }
+
+                # Estudio de producción principal
+                studios(isMain: true) {
+                  nodes { id name siteUrl }
+                }
               }
             }
         """)
         variables = {"id": media_id}
-        
         try:
             async with self._get_fresh_client() as session:
                 result = await session.execute(query, variable_values=variables)
                 media_data = result.get("Media")
-                
                 if not media_data:
                     return None
-                    
-                formatted_result = MediaAdapter.to_standar_format(media_data)
-                return formatted_result
+                return MediaAdapter.to_standar_format(media_data)
         except GraphQLError:
             return None
 
     async def get_media_batch(self, ids: list[int], media_type: str = None):
-        if not ids: 
+        if not ids:
             return []
-
         query = gql("""
             query ($ids: [Int], $type: MediaType) {
-            Page(perPage: 50) {
+              Page(perPage: 50) {
                 media(id_in: $ids, type: $type) {
-                id 
-                type 
-                title { romaji } 
-                coverImage { large } 
-                averageScore
-                genres
+                  id type title { romaji } coverImage { large } averageScore genres
                 }
-            }
+              }
             }
         """)
-
-        variables = {
-            "ids": ids,
-            "type": media_type
-        }
-        
+        variables = {"ids": ids, "type": media_type}
         async with self._get_fresh_client() as session:
             result = await session.execute(query, variable_values=variables)
-            raw_list = result.get("Page", {}).get("media", [])
-            return MediaAdapter.list_to_standar_format(raw_list)
+            return MediaAdapter.list_to_standar_format(result.get("Page", {}).get("media", []))
 
     async def get_directory_page(self, page: int, per_page: int, media_type: str, sort: str = "POPULARITY_DESC", genre: str = None):
         query = gql("""
             query ($page: Int, $perPage: Int, $type: MediaType, $sort: [MediaSort], $genreIn: [String]) {
               Page(page: $page, perPage: $perPage) {
-                pageInfo {
-                  total currentPage lastPage hasNextPage
-                }
+                pageInfo { total currentPage lastPage hasNextPage }
                 media(type: $type, sort: $sort, isAdult: false, genre_in: $genreIn) {
                   id type title { romaji } coverImage { large } averageScore format seasonYear status genres
                 }
               }
             }
         """)
-        
         variables = {
-            "page": page,
-            "perPage": per_page,
-            "type": media_type.strip().upper(),
-            "sort": [sort],
+            "page": page, "perPage": per_page,
+            "type": media_type.strip().upper(), "sort": [sort],
         }
-        
         if genre:
-            lista_generos = []
-            for g in genre.split(","):
-                lista_generos.append(g.strip())
-            variables["genreIn"] = lista_generos
-            
+            variables["genreIn"] = [g.strip() for g in genre.split(",")]
         async with self._get_fresh_client() as session:
             result = await session.execute(query, variable_values=variables)
             page_data = result.get("Page", {})
             return {
                 "page_info": page_data.get("pageInfo", {}),
-                "items": MediaAdapter.list_to_standar_format(page_data.get("media", []))
+                "items":     MediaAdapter.list_to_standar_format(page_data.get("media", []))
             }
 
 anilist_client = AniListClient()
