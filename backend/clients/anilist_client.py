@@ -18,24 +18,19 @@ class AniListClient:
 
     async def get_home_data(self, genres: list[str], pages: list[int]):
         query = gql("""
-            query ($g1: String, $g2: String, $g3: String, $g4: String, $g5: String, $p1: Int, $p2: Int, $p3: Int, $p4: Int, $p5: Int) {
-                upcoming: Page(perPage: 20) {
+            query ($g1: String, $g2: String, $g3: String, $g4: String, $p1: Int, $p2: Int, $p3: Int, $p4: Int) {
+                upcoming: Page(perPage: 10) {
                     media(type: ANIME, status: NOT_YET_RELEASED, sort: POPULARITY_DESC, isAdult: false) {
                         id type title { romaji } coverImage { large } averageScore
                     }
                 }
-                trending: Page(perPage: 20) {
+                trendingAnime: Page(perPage: 10) {
                     media(type: ANIME, sort: TRENDING_DESC, isAdult: false) {
                         id type title { romaji } coverImage { large } averageScore
                     }
                 }
-                topAnimes: Page(perPage: 20) {
-                    media(type: ANIME, sort: SCORE_DESC, isAdult: false) {
-                        id type title { romaji } coverImage { large } averageScore
-                    }
-                }
-                topMangas: Page(perPage: 20) {
-                    media(type: MANGA, sort: SCORE_DESC, isAdult: false) {
+                trendingMangas: Page(perPage: 10) {
+                    media(type: MANGA, sort: TRENDING_DESC, isAdult: false) {
                         id type title { romaji } coverImage { large } averageScore
                     }
                 }
@@ -43,13 +38,12 @@ class AniListClient:
                 rec2: Page(page: $p2, perPage: 20) { media(type: ANIME, genre: $g2, sort: POPULARITY_DESC, isAdult: false) { id type title { romaji } coverImage { large } averageScore } }
                 rec3: Page(page: $p3, perPage: 20) { media(type: ANIME, genre: $g3, sort: POPULARITY_DESC, isAdult: false) { id type title { romaji } coverImage { large } averageScore } }
                 rec4: Page(page: $p4, perPage: 20) { media(type: ANIME, genre: $g4, sort: POPULARITY_DESC, isAdult: false) { id type title { romaji } coverImage { large } averageScore } }
-                rec5: Page(page: $p5, perPage: 20) { media(type: ANIME, genre: $g5, sort: POPULARITY_DESC, isAdult: false) { id type title { romaji } coverImage { large } averageScore } }
             }
         """)
         
         variables = {
-            "g1": genres[0], "g2": genres[1], "g3": genres[2], "g4": genres[3], "g5": genres[4],
-            "p1": pages[0], "p2": pages[1], "p3": pages[2], "p4": pages[3], "p5": pages[4]
+            "g1": genres[0], "g2": genres[1], "g3": genres[2], "g4": genres[3],
+            "p1": pages[0], "p2": pages[1], "p3": pages[2], "p4": pages[3]
         }
         
         async with self._get_fresh_client() as session:
@@ -57,14 +51,12 @@ class AniListClient:
             
             return {
                 "upcoming": MediaAdapter.list_to_standar_format(result.get("upcoming", {}).get("media")),
-                "trending": MediaAdapter.list_to_standar_format(result.get("trending", {}).get("media")),
-                "top_animes": MediaAdapter.list_to_standar_format(result.get("topAnimes", {}).get("media")),
-                "top_mangas": MediaAdapter.list_to_standar_format(result.get("topMangas", {}).get("media")),
+                "trending_anime": MediaAdapter.list_to_standar_format(result.get("trendingAnime", {}).get("media")),
+                "trending_manga": MediaAdapter.list_to_standar_format(result.get("trendingMangas", {}).get("media")),
                 "genre1": { "name": genres[0], "items": MediaAdapter.list_to_standar_format(result.get("rec1", {}).get("media")) },
                 "genre2": { "name": genres[1], "items": MediaAdapter.list_to_standar_format(result.get("rec2", {}).get("media")) },
                 "genre3": { "name": genres[2], "items": MediaAdapter.list_to_standar_format(result.get("rec3", {}).get("media")) },
-                "genre4": { "name": genres[3], "items": MediaAdapter.list_to_standar_format(result.get("rec4", {}).get("media")) },
-                "genre5": { "name": genres[4], "items": MediaAdapter.list_to_standar_format(result.get("rec5", {}).get("media")) }
+                "genre4": { "name": genres[3], "items": MediaAdapter.list_to_standar_format(result.get("rec4", {}).get("media")) }
             }
 
     async def search_predictive(self, search_text: str, media_type: Mediatype):
@@ -79,7 +71,6 @@ class AniListClient:
         """)
         variables = {"search": search_text, "type": media_type.strip().upper()}
         
-        # ✅ APLICADO AQUÍ
         async with self._get_fresh_client() as session:
             result = await session.execute(query, variable_values=variables)
             raw_list = result.get("Page", {}).get("media", [])
@@ -99,7 +90,6 @@ class AniListClient:
         variables = {"id": media_id}
         
         try:
-            # ✅ APLICADO AQUÍ
             async with self._get_fresh_client() as session:
                 result = await session.execute(query, variable_values=variables)
                 media_data = result.get("Media")
@@ -136,7 +126,6 @@ class AniListClient:
             "type": media_type
         }
         
-        # ✅ APLICADO AQUÍ
         async with self._get_fresh_client() as session:
             result = await session.execute(query, variable_values=variables)
             raw_list = result.get("Page", {}).get("media", [])
@@ -169,7 +158,6 @@ class AniListClient:
                 lista_generos.append(g.strip())
             variables["genreIn"] = lista_generos
             
-        # ✅ APLICADO AQUÍ
         async with self._get_fresh_client() as session:
             result = await session.execute(query, variable_values=variables)
             page_data = result.get("Page", {})

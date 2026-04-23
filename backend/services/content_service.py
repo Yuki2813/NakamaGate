@@ -1,6 +1,7 @@
 from fastapi import HTTPException, status
 from sqlmodel import Session
 import random
+from datetime import date  # <-- NUEVA IMPORTACIÓN PARA LA SEMILLA
 
 from backend.clients.anilist_client import anilist_client
 from backend.models.favorite import Mediatype
@@ -14,13 +15,12 @@ from backend.repositories.user_repository import get_user_by_id
 
 async def get_home_service(user_id: int, session: Session):
 
-    user=get_user_by_id(id=user_id,session=session)
+    user = get_user_by_id(id=user_id, session=session)
 
     if not user:
-        raise HTTPException(status_code=404,detail="You are not logged in, or there was an error with your request")
+        raise HTTPException(status_code=404, detail="You are not logged in, or there was an error with your request")
     
     if user.isAdult:
-
         posibles_generos = [
             "Action", "Adventure", "Comedy", "Drama", "Ecchi", 
             "Fantasy", "Horror", "Mahou Shoujo", "Mecha", "Music", 
@@ -28,24 +28,51 @@ async def get_home_service(user_id: int, session: Session):
             "Slice of Life", "Sports", "Supernatural", "Thriller"
         ]
     else:
-
         posibles_generos = [
             "Action", "Adventure", "Comedy", "Fantasy", 
             "Mahou Shoujo", "Mecha", "Music", "Mystery", 
             "Romance", "Sci-Fi", "Slice of Life", "Sports", "Supernatural"
         ]
 
-    recomendaciones=random.sample(posibles_generos,5)
-    paginas_random = [random.randint(1, 4) for _ in range(5)]
+    # Reducimos a 4 carruseles aleatorios para encajar con el nuevo cliente
+    recomendaciones = random.sample(posibles_generos, 4)
+    paginas_random = [random.randint(1, 4) for _ in range(4)]
 
     data = await anilist_client.get_home_data(genres=recomendaciones, pages=paginas_random)
     
-    for key in ["genre1", "genre2", "genre3", "genre4", "genre5"]:
-        items = data[key]["items"]
-        random.shuffle(items)
-        data[key]["items"] = items
-        
-    return data
+    # --- LÓGICA GEMA DEL DÍA ---
+    today_seed = date.today().toordinal()
+    random.seed(today_seed)
+
+    # Anime del Día (de un género aleatorio, así garantizamos que sea algo novedoso)
+    pool_anime = data.get("genre1", {}).get("items", [])
+    anime_del_dia = random.choice(pool_anime) if pool_anime else None
+
+    # Manga del Día (Sacado de las tendencias actuales de Manga)
+    pool_manga = data.get("trending_manga", [])
+    manga_del_dia = random.choice(pool_manga) if pool_manga else None
+
+    random.seed() # Reseteamos la semilla inmediatamente
+    
+    # --- MEZCLA DE CARRUSELES ---
+    for key in ["genre1", "genre2", "genre3", "genre4"]:
+        if key in data and "items" in data[key]:
+            items = data[key]["items"]
+            random.shuffle(items)
+            data[key]["items"] = items
+            
+    # Devolvemos la nueva estructura estructurada
+    return {
+        "anime_del_dia": anime_del_dia,
+        "manga_del_dia": manga_del_dia,
+        "trending_anime": data.get("trending_anime", []),
+        "trending_manga": data.get("trending_manga", []),
+        "upcoming": data.get("upcoming", []),
+        "genre1": data.get("genre1", {}),
+        "genre2": data.get("genre2", {}),
+        "genre3": data.get("genre3", {}),
+        "genre4": data.get("genre4", {})
+    }
 
 
 # ==========================================

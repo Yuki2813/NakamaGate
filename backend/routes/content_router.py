@@ -4,7 +4,7 @@ from backend.database import get_db
 from backend.models.favorite import Mediatype
 from backend.security import get_current_user_id
 from backend.services.content_service import get_directory_service, get_home_service, get_media_details_service, search_media_service
-
+from fastapi_cache.decorator import cache
 
 router = APIRouter(
     prefix="/content",
@@ -15,6 +15,7 @@ router = APIRouter(
 # 1. PÁGINA PRINCIPAL (HOME)
 # ==========================================
 @router.get("/home")
+@cache(expire=3600)
 async def get_home(
     user_id: int = Depends(get_current_user_id),
     session: Session = Depends(get_db)
@@ -27,6 +28,7 @@ async def get_home(
 # 2. DIRECTORIO (EXPLORAR)
 # ==========================================
 @router.get("/directory")
+@cache(expire=3600)
 async def get_directory(
     media_type: Mediatype = Query(..., description="'ANIME' o 'MANGA'"),
 

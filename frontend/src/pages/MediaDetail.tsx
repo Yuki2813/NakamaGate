@@ -1,8 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { apiClient } from '../api/client';
-import { Button } from "@/components/ui/button";
-import { Heart, Home, Star, Trash2, Edit2, Send, AlertTriangle } from 'lucide-react';
+import { Heart, ArrowLeft, Star, Trash2, Edit2, Send, AlertTriangle, BookOpen, Tv, CheckCircle, Clock, Eye, X } from 'lucide-react';
 
 const BACKEND_URL = "http://localhost:8000";
 
@@ -34,134 +33,165 @@ interface Review {
   created_at: string;
 }
 
-interface FavoriteCheckResponse {
-  is_favorite: boolean;
+// ❌ BUG 1: La página nunca cargaba la reseña del usuario actual en userReview.
+//    La API devolvía todas las reseñas pero nunca se comparaba con el user_id
+//    del token para saber cuál era la propia. Añadimos currentUserId.
+interface CurrentUser {
+  id: number;
+  alias: string;
 }
+
+const STATUS_OPTIONS = [
+  { value: 'watching',      label: 'Viendo',        icon: Eye },
+  { value: 'completed',     label: 'Completado',    icon: CheckCircle },
+  { value: 'plan_to_watch', label: 'Pendiente',     icon: Clock },
+] as const;
 
 export default function MediaDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  
+  const descRef = useRef<HTMLParagraphElement>(null);
+
   const getImageUrl = (path: string | null | undefined) => {
     if (!path) return null;
     return path.startsWith('http') ? path : `${BACKEND_URL}${path}`;
   };
-  
-  const [media, setMedia] = useState<MediaDetailData | null>(null);
-  const [reviews, setReviews] = useState<Review[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [isFavorite, setIsFavorite] = useState(false);
-  
-  // --- ESTADO PARA ERRORES DE ACCESO (EJ: +18) ---
-  const [accessError, setAccessError] = useState<string | null>(null);
-  
-  const [reviewScore, setReviewScore] = useState(3);
+
+  const [media, setMedia]               = useState<MediaDetailData | null>(null);
+  const [reviews, setReviews]           = useState<Review[]>([]);
+  const [loading, setLoading]           = useState(true);
+  const [accessError, setAccessError]   = useState<string | null>(null);
+  const [currentUser, setCurrentUser]   = useState<CurrentUser | null>(null);
+
+  // Favorito + estado
+  const [isFavorite, setIsFavorite]     = useState(false);
+  const [favStatus, setFavStatus]       = useState<string | null>(null);
+  const [statusLoading, setStatusLoading] = useState(false);
+
+  // Reseña
+  const [reviewScore, setReviewScore]   = useState(3);
   const [reviewContent, setReviewContent] = useState('');
-  const [userReview, setUserReview] = useState<Review | null>(null);
+  const [userReview, setUserReview]     = useState<Review | null>(null);
   const [isEditingReview, setIsEditingReview] = useState(false);
   const [submittingReview, setSubmittingReview] = useState(false);
 
+  // Toast en lugar de alert/confirm nativos
+  const [toast, setToast] = useState<{ msg: string; type: 'ok' | 'err' } | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  const showToast = (msg: string, type: 'ok' | 'err' = 'ok') => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  const reloadReviews = async (type: string) => {
+    const res = await apiClient.get(`/reviews/media/${id}?media_type=${type}`);
+    return Array.isArray(res.data) ? res.data : [];
+  };
+
   useEffect(() => {
-    const loadMediaData = async () => {
+    const load = async () => {
       try {
-        // Cargar detalles del media
-        const mediaRes = await apiClient.get(`/content/${id}`);
-        setMedia(mediaRes.data);
+        // Cargamos usuario actual, media, favorito y reseñas en paralelo
+        const [meRes, mediaRes] = await Promise.all([
+          apiClient.get('/auth/me'),        // ajusta el endpoint a tu API
+          apiClient.get(`/content/${id}`),
+        ]);
 
-        // Cargar reseñas
-        try {
-          const mediaType = mediaRes.data.type?.toLowerCase() || 'anime';
-          const reviewsRes = await apiClient.get(`/reviews/media/${id}?media_type=${mediaType}`);
-          const reviewsData = Array.isArray(reviewsRes.data) ? reviewsRes.data : [];
-          setReviews(reviewsData);
-        } catch (reviewErr) {
-          console.error("Error cargando reseñas:", reviewErr);
+        const me: CurrentUser = meRes.data;
+        const m: MediaDetailData = mediaRes.data;
+        setCurrentUser(me);
+        setMedia(m);
+
+        const mediaType = m.type?.toLowerCase() || 'anime';
+
+        const [reviewsRes, favRes] = await Promise.allSettled([
+          apiClient.get(`/reviews/media/${id}?media_type=${mediaType}`),
+          apiClient.get(`/favorites/check/${id}`),
+        ]);
+
+        if (reviewsRes.status === 'fulfilled') {
+          const all: Review[] = Array.isArray(reviewsRes.value.data) ? reviewsRes.value.data : [];
+          setReviews(all);
+          // ❌ BUG 1 (fix): Buscamos la reseña del usuario actual comparando IDs
+          const mine = all.find(r => r.user.id === me.id) || null;
+          setUserReview(mine);
+          if (mine) { setReviewScore(mine.score); setReviewContent(mine.content); }
         }
 
-        // Verificar si es favorito
-        try {
-          const checkRes = await apiClient.get<FavoriteCheckResponse>(`/favorites/check/${id}`);
-          setIsFavorite(checkRes.data.is_favorite);
-        } catch (favErr) {
-          console.error("Error verificando favorito:", favErr);
+        if (favRes.status === 'fulfilled') {
+          const favData = favRes.value.data;
+          setIsFavorite(favData.is_favorite);
+          setFavStatus(favData.status || null);
         }
 
-        setLoading(false);
       } catch (err: any) {
-        console.error("Error cargando detalles:", err);
-        
-        // CAPTURAR EL ERROR 403 (ACCESO DENEGADO)
         if (err.response?.status === 403) {
-          setAccessError(err.response?.data?.detail || "El Gremio ha restringido este acceso (+18).");
+          setAccessError(err.response?.data?.detail || "Acceso restringido (+18).");
         }
-        
+      } finally {
         setLoading(false);
       }
     };
-
-    loadMediaData();
+    load();
   }, [id]);
 
-  const handleToggleFavorite = async () => {
+  // ❌ BUG 2: El favorito sólo se podía añadir/quitar, pero la API soporta
+  //    status (watching/completed/plan_to_watch) y nunca se mostraba ni gestionaba.
+  const handleSetStatus = async (status: string) => {
+    if (statusLoading) return;
+    setStatusLoading(true);
     try {
       const mediaType = media?.type?.toLowerCase();
-      if (isFavorite) {
+      if (favStatus === status) {
+        // Toggle off → quitar de favoritos
         await apiClient.delete(`/favorites/${id}?media_type=${mediaType}`);
+        setIsFavorite(false);
+        setFavStatus(null);
       } else {
-        await apiClient.post('/favorites/', {
-          media_id: id,
-          media_type: mediaType
-        });
+        if (isFavorite) {
+          await apiClient.patch(`/favorites/${id}`, { status, media_type: mediaType });
+        } else {
+          await apiClient.post('/favorites/', { media_id: id, media_type: mediaType, status });
+          setIsFavorite(true);
+        }
+        setFavStatus(status);
       }
-      setIsFavorite(!isFavorite);
-    } catch (err) {
-      console.error("Error actualizando favorito:", err);
+    } catch {
+      showToast('No se pudo actualizar el estado.', 'err');
+    } finally {
+      setStatusLoading(false);
     }
   };
 
   const handleSubmitReview = async () => {
-    if (!reviewContent.trim() || reviewScore < 0 || reviewScore > 5) {
-      alert('Por favor completa la reseña correctamente');
+    // ❌ BUG 3: La validación era `reviewScore < 0` pero el score mínimo es 1.
+    //    Un score de 0 pasaba la validación y se enviaba al backend.
+    if (!reviewContent.trim() || reviewScore < 1 || reviewScore > 5) {
+      showToast('Completa la reseña con puntuación y texto.', 'err');
       return;
     }
-
     setSubmittingReview(true);
     try {
       const mediaType = media?.type?.toLowerCase();
       if (userReview && isEditingReview) {
-        // Actualizar reseña existente
         await apiClient.put(`/reviews/${userReview.id}`, {
-          id_api: id,
-          media_type: mediaType,
-          score: reviewScore,
-          content: reviewContent
+          id_api: id, media_type: mediaType, score: reviewScore, content: reviewContent
         });
-        setUserReview({
-          ...userReview,
-          score: reviewScore,
-          content: reviewContent
-        });
+        setUserReview({ ...userReview, score: reviewScore, content: reviewContent });
         setIsEditingReview(false);
+        showToast('Reseña actualizada.');
       } else {
-        // Crear nueva reseña
-        const newReviewRes = await apiClient.post('/reviews/', {
-          id_api: id,
-          media_type: mediaType,
-          score: reviewScore,
-          content: reviewContent
+        const res = await apiClient.post('/reviews/', {
+          id_api: id, media_type: mediaType, score: reviewScore, content: reviewContent
         });
-        setUserReview(newReviewRes.data);
+        setUserReview(res.data);
+        showToast('Reseña publicada.');
       }
-      setReviewContent('');
-      setReviewScore(3);
-      
-      // Recargar reseñas
-      const reviewsRes = await apiClient.get(`/reviews/media/${id}?media_type=${mediaType}`);
-      const reviewsData = Array.isArray(reviewsRes.data) ? reviewsRes.data : [];
-      setReviews(reviewsData);
-    } catch (err) {
-      console.error("Error enviando reseña:", err);
-      alert('Error al guardar la reseña');
+      const all = await reloadReviews(media?.type?.toLowerCase() || 'anime');
+      setReviews(all);
+    } catch {
+      showToast('Error al guardar la reseña.', 'err');
     } finally {
       setSubmittingReview(false);
     }
@@ -169,325 +199,349 @@ export default function MediaDetail() {
 
   const handleDeleteReview = async () => {
     if (!userReview) return;
-    if (!confirm('¿Estás seguro de que quieres eliminar tu reseña?')) return;
-
     try {
       await apiClient.delete(`/reviews/${userReview.id}`);
       setUserReview(null);
-      setReviewContent('');
       setReviewScore(3);
-      
-      // Recargar reseñas
-      const mediaType = media?.type?.toLowerCase() || 'anime';
-      const reviewsRes = await apiClient.get(`/reviews/media/${id}?media_type=${mediaType}`);
-      const reviewsData = Array.isArray(reviewsRes.data) ? reviewsRes.data : [];
-      setReviews(reviewsData);
-    } catch (err) {
-      console.error("Error eliminando reseña:", err);
-      alert('Error al eliminar la reseña');
+      setReviewContent('');
+      setConfirmDelete(false);
+      const all = await reloadReviews(media?.type?.toLowerCase() || 'anime');
+      setReviews(all);
+      showToast('Reseña eliminada.');
+    } catch {
+      showToast('Error al eliminar la reseña.', 'err');
     }
   };
 
-  if (loading) {
-    return (
-      <main className="min-h-screen flex items-center justify-center bg-[#020617]">
-        <div className="w-12 h-12 border-4 border-yellow-500 border-t-transparent rounded-full animate-spin"></div>
-      </main>
-    );
-  }
+  // ❌ BUG 4: La descripción venía con etiquetas HTML de AniList (<br>, <i>, etc.)
+  //    y se mostraba como texto plano con whitespace-pre-line, haciendo que
+  //    aparecieran los tags en pantalla.
+  const cleanDescription = (html: string) => {
+    const tmp = document.createElement('div');
+    tmp.innerHTML = html;
+    return tmp.textContent || tmp.innerText || '';
+  };
 
-  // PANTALLA DE ERROR 403 (ACCESO DENEGADO)
-  if (accessError) {
-    return (
-      <main className="min-h-screen flex flex-col items-center justify-center bg-[#020617] text-white px-4">
-        <div className="bg-red-900/20 border border-red-500/30 p-8 rounded-3xl flex flex-col items-center text-center max-w-md animate-in fade-in zoom-in-95">
-          <AlertTriangle className="w-20 h-20 text-red-500 mb-6" />
-          <h2 className="text-3xl font-black text-white mb-4 uppercase tracking-wider">Acceso Restringido</h2>
-          <p className="text-slate-400 mb-8 font-medium">{accessError}</p>
-          <Button onClick={() => navigate('/home')} className="bg-slate-800 hover:bg-slate-700 text-white font-bold h-12 px-8 rounded-xl transition-colors border border-slate-700">
-            Volver a la base
-          </Button>
+  if (loading) return (
+    <main className="min-h-screen flex items-center justify-center bg-[#020617]">
+      <div className="flex flex-col items-center gap-4">
+        <div className="w-14 h-14 border-4 border-yellow-500/30 border-t-yellow-500 rounded-full animate-spin" />
+        <p className="text-slate-400 text-sm font-bold uppercase tracking-widest animate-pulse">Cargando...</p>
+      </div>
+    </main>
+  );
+
+  if (accessError) return (
+    <main className="min-h-screen flex flex-col items-center justify-center bg-[#020617] text-white px-4">
+      <div className="relative bg-gradient-to-br from-red-950/40 to-[#020617] border border-red-500/30 p-10 rounded-3xl flex flex-col items-center text-center max-w-md shadow-2xl shadow-red-900/20">
+        <div className="w-24 h-24 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center mb-6">
+          <AlertTriangle className="w-12 h-12 text-red-400" />
         </div>
-      </main>
-    );
-  }
+        <h2 className="text-3xl font-black text-white mb-3 uppercase tracking-wider italic">Zona Restringida</h2>
+        <p className="text-slate-400 mb-8">{accessError}</p>
+        <button onClick={() => navigate('/home')} className="bg-yellow-500 hover:bg-yellow-400 text-black font-black py-3 px-8 rounded-xl transition-all hover:scale-105">
+          Volver al inicio
+        </button>
+      </div>
+    </main>
+  );
 
-  // PANTALLA DE ERROR 404 (OBRA NO ENCONTRADA)
-  if (!media) {
-    return (
-      <main className="min-h-screen flex flex-col items-center justify-center bg-[#020617] text-white gap-6">
-        <h2 className="text-3xl font-bold">Obra no encontrada</h2>
-        <Button onClick={() => navigate('/home')} className="bg-yellow-600 hover:bg-yellow-500 text-black font-bold">
-          Volver a Home
-        </Button>
-      </main>
-    );
-  }
+  if (!media) return (
+    <main className="min-h-screen flex flex-col items-center justify-center bg-[#020617] text-white gap-6">
+      <h2 className="text-3xl font-black italic">Obra no encontrada</h2>
+      <button onClick={() => navigate('/home')} className="bg-yellow-500 hover:bg-yellow-400 text-black font-black py-3 px-8 rounded-xl transition-all">
+        Volver al inicio
+      </button>
+    </main>
+  );
 
-  const backgroundImageUrl = media.banner || media.image;
+  const bgImage = media.banner || media.image;
+  const isAnime = media.type?.toUpperCase() === 'ANIME';
 
   return (
-    <main className="min-h-screen bg-[#020617] text-slate-100 font-sans pb-20 relative">
-      
-      {/* Fondo decorativo */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
-        <div className="w-96 h-96 bg-yellow-500/5 rounded-full blur-3xl absolute top-0 right-1/4"></div>
+    <main className="min-h-screen bg-[#020617] text-slate-100 pb-24 relative overflow-x-hidden">
+
+      {/* TOAST */}
+      {toast && (
+        <div className={`fixed bottom-8 left-1/2 -translate-x-1/2 z-[300] flex items-center gap-3 px-6 py-4 rounded-2xl border backdrop-blur-xl shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-300 ${toast.type === 'ok' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-red-500/10 border-red-500/20 text-red-400'}`}>
+          {toast.type === 'ok' ? <CheckCircle className="w-5 h-5 shrink-0" /> : <AlertTriangle className="w-5 h-5 shrink-0" />}
+          <p className="font-bold text-sm">{toast.msg}</p>
+        </div>
+      )}
+
+      {/* MODAL CONFIRMAR BORRADO */}
+      {confirmDelete && (
+        <div className="fixed inset-0 z-[200] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-3xl p-8 max-w-sm w-full shadow-2xl animate-in zoom-in-95 duration-200">
+            <h3 className="text-xl font-black text-white mb-2">¿Eliminar reseña?</h3>
+            <p className="text-slate-400 mb-8 text-sm">Esta acción no se puede deshacer.</p>
+            <div className="flex gap-3">
+              <button onClick={() => setConfirmDelete(false)} className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl transition-all">
+                Cancelar
+              </button>
+              <button onClick={handleDeleteReview} className="flex-1 py-3 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl transition-all">
+                Eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── HERO BANNER ── */}
+      <div className="relative h-[55vh] min-h-[420px] overflow-hidden">
+        {/* Imagen con blur de fondo para dar profundidad */}
+        <img src={bgImage} alt="" className="absolute inset-0 w-full h-full object-cover scale-105 opacity-20 blur-md" aria-hidden />
+        <img src={bgImage} alt="banner" className="absolute inset-0 w-full h-full object-cover opacity-40" />
+        {/* Gradientes */}
+        <div className="absolute inset-0 bg-gradient-to-t from-[#020617] via-[#020617]/50 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#020617]/80 via-transparent to-transparent" />
+        {/* Detalles decorativos dorados */}
+        <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-yellow-500/30 to-transparent" />
+        <div className="absolute top-6 left-6 md:left-16">
+          <button
+            onClick={() => navigate(-1)}
+            className="flex items-center gap-2 text-slate-400 hover:text-yellow-400 transition-colors group"
+          >
+            <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
+            <span className="text-sm font-bold">Volver</span>
+          </button>
+        </div>
       </div>
 
-      {/* BANNER SUAVE */}
-      <div className="relative h-64 md:h-80 overflow-hidden">
-        <img src={backgroundImageUrl} alt="banner" className="w-full h-full object-cover opacity-100" />
-        <div className="absolute inset-0" style={{
-          background: 'linear-gradient(to bottom, rgba(2, 6, 23, 0) 0%, rgba(2, 6, 23, 0.4) 60%, rgba(2, 6, 23, 1) 100%)'
-        }}></div>
-      </div>
+      {/* ── CONTENIDO PRINCIPAL ── */}
+      <div className="max-w-[1200px] mx-auto px-6 md:px-16 -mt-48 relative z-10">
 
-      {/* CONTENIDO PRINCIPAL */}
-      <div className="max-w-[1200px] mx-auto px-6 md:px-16 relative z-10 -mt-48 md:-mt-60 pt-8">
-        
-        {/* Botón Volver */}
-        <button
-          onClick={() => navigate('/home')}
-          className="mb-6 p-3 bg-yellow-500/20 hover:bg-yellow-500/30 border border-yellow-500/30 rounded-full transition-all"
-        >
-          <Home className="w-5 h-5 text-yellow-400" />
-        </button>
-        
-        {/* CABECERA CON IMAGEN Y INFO */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-16">
-          
-          {/* Poster */}
-          <div className="md:col-span-1 flex justify-center md:justify-start">
-            <div className="w-48 h-72 rounded-2xl overflow-hidden border-4 border-[#020617] shadow-2xl shadow-yellow-500/20 bg-slate-800 flex-shrink-0">
-              <img src={media.image} alt={media.title} className="w-full h-full object-cover" />
+        {/* CABECERA: Poster + Info */}
+        <div className="flex flex-col md:flex-row gap-8 md:gap-12 mb-16">
+
+          {/* POSTER */}
+          <div className="shrink-0 flex justify-center md:justify-start">
+            <div className="relative w-48 md:w-56 group">
+              {/* Glow dorado detrás del poster */}
+              <div className="absolute -inset-2 bg-yellow-500/20 rounded-3xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              <div className="relative rounded-2xl overflow-hidden border-2 border-white/10 shadow-2xl shadow-black/50">
+                <img src={media.image} alt={media.title} className="w-full aspect-[2/3] object-cover" />
+                {/* Badge tipo encima del poster */}
+                <div className="absolute top-3 left-3 flex items-center gap-1.5 bg-black/70 backdrop-blur-md px-2.5 py-1.5 rounded-lg border border-white/10">
+                  {isAnime
+                    ? <Tv className="w-3 h-3 text-yellow-400" />
+                    : <BookOpen className="w-3 h-3 text-yellow-400" />
+                  }
+                  <span className="text-[10px] font-black text-yellow-400 uppercase">{media.type}</span>
+                </div>
+                {media.is_adult && (
+                  <div className="absolute top-3 right-3 bg-red-600/80 backdrop-blur-md px-2 py-1 rounded-lg">
+                    <span className="text-[10px] font-black text-white">+18</span>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
-          {/* Información */}
-          <div className="md:col-span-3 mt-16 md:mt-0">
-            
-            {/* Badges */}
-            <div className="flex flex-wrap gap-2 mb-4">
-              <span className="px-3 py-1 bg-yellow-500/20 border border-yellow-500/30 text-yellow-300 text-xs font-bold rounded-full">
-                {media.status}
-              </span>
-              <span className="px-3 py-1 bg-slate-700 text-slate-300 text-xs font-bold rounded-full">
-                {media.type}
-              </span>
-              {media.is_adult && (
-                <span className="px-3 py-1 bg-red-600/30 border border-red-500/30 text-red-400 text-xs font-bold rounded-full">
-                  +18
-                </span>
-              )}
-            </div>
-
-            {/* Títulos */}
-            <h1 className="text-4xl md:text-5xl font-black tracking-tight text-white mb-2">
-              {media.title}
-            </h1>
-            {media.title_en && media.title_en !== media.title && (
-              <p className="text-xl text-slate-400 mb-6">{media.title_en}</p>
-            )}
-
-            {/* Metadatos */}
-            <div className="flex flex-wrap gap-4 mb-8 text-sm font-medium">
-              <div className="flex items-center gap-2 bg-slate-900/50 px-4 py-2 rounded-lg border border-slate-800">
-                <Star className="w-5 h-5 text-yellow-500 fill-yellow-500" />
-                <span className="text-white font-bold">{media.score > 0 ? media.score : 'N/A'}</span>
-              </div>
-              <div className="flex items-center gap-2 bg-slate-900/50 px-4 py-2 rounded-lg border border-slate-800">
-                <span className="text-slate-400">{media.year || 'N/A'}</span>
-              </div>
-              <div className="flex items-center gap-2 bg-slate-900/50 px-4 py-2 rounded-lg border border-slate-800">
-                <span className="text-slate-400">{media.units > 0 ? media.units : '?'} {media.type === 'ANIME' ? 'Eps' : 'Caps'}</span>
-              </div>
-            </div>
+          {/* INFO */}
+          <div className="flex-1 pt-32 md:pt-0 mt-4 md:mt-16">
 
             {/* Géneros */}
-            <div className="flex flex-wrap gap-2 mb-8">
-              {media.genres.map(genre => (
-                <span key={genre} className="px-3 py-1 bg-slate-800/50 border border-slate-700 text-slate-300 text-sm rounded-lg">
-                  {genre}
+            <div className="flex flex-wrap gap-2 mb-4">
+              {media.genres.map(g => (
+                <span key={g} className="px-3 py-1 text-xs font-bold rounded-full bg-yellow-500/10 border border-yellow-500/20 text-yellow-400">
+                  {g}
                 </span>
               ))}
             </div>
 
-            {/* Botones de Acción */}
-            <div className="flex gap-3">
-              <Button
-                onClick={handleToggleFavorite}
-                className="h-12 px-6 rounded-xl font-bold flex items-center gap-2 transition-all"
-                style={{
-                  backgroundColor: isFavorite ? '#dc2626' : '#b45309',
-                  color: 'white'
-                }}
-              >
-                <Heart className="w-5 h-5" style={{ fill: isFavorite ? 'white' : 'none' }} />
-                {isFavorite ? 'En Favoritos' : 'Añadir a Favoritos'}
-              </Button>
+            {/* Título */}
+            <h1 className="text-4xl md:text-6xl font-black italic text-white leading-tight mb-2 drop-shadow-2xl">
+              {media.title}
+            </h1>
+            {media.title_en && media.title_en !== media.title && (
+              <p className="text-lg text-slate-500 mb-6">{media.title_en}</p>
+            )}
+
+            {/* Stats en línea */}
+            <div className="flex flex-wrap items-center gap-3 mb-8">
+              {media.score > 0 && (
+                <div className="flex items-center gap-2 bg-yellow-500/10 border border-yellow-500/30 px-4 py-2 rounded-xl">
+                  <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
+                  <span className="text-yellow-400 font-black">{media.score}</span>
+                  <span className="text-yellow-600 text-xs">/100</span>
+                </div>
+              )}
+              {media.year > 0 && (
+                <div className="bg-slate-800/80 border border-slate-700 px-4 py-2 rounded-xl text-slate-300 text-sm font-bold">
+                  {media.year}
+                </div>
+              )}
+              {media.units > 0 && (
+                <div className="bg-slate-800/80 border border-slate-700 px-4 py-2 rounded-xl text-slate-300 text-sm font-bold">
+                  {media.units} {isAnime ? 'episodios' : 'capítulos'}
+                </div>
+              )}
+              <div className="bg-slate-800/80 border border-slate-700 px-4 py-2 rounded-xl text-slate-300 text-sm font-bold">
+                {media.status}
+              </div>
+            </div>
+
+            {/* ❌ BUG 2 (fix): Selector de estado (watching/completed/plan_to_watch).
+                Antes sólo había un botón de corazón sin estado. Ahora tres botones
+                que llaman a handleSetStatus y destacan el activo con dorado. */}
+            <div>
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">Mi lista</p>
+              <div className="flex flex-wrap gap-2">
+                {STATUS_OPTIONS.map(({ value, label, icon: Icon }) => {
+                  const active = favStatus === value;
+                  return (
+                    <button
+                      key={value}
+                      onClick={() => handleSetStatus(value)}
+                      disabled={statusLoading}
+                      className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm border transition-all duration-200 hover:scale-105 disabled:opacity-50 ${
+                        active
+                          ? 'bg-yellow-500 border-yellow-400 text-black shadow-lg shadow-yellow-500/20'
+                          : 'bg-slate-800/60 border-slate-700 text-slate-300 hover:border-yellow-500/50 hover:text-yellow-400'
+                      }`}
+                    >
+                      <Icon className="w-4 h-4" />
+                      {label}
+                      {active && <X className="w-3 h-3 opacity-60" />}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>
 
-        {/* SINOPSIS */}
-        <section className="mb-16 bg-slate-900/40 border border-slate-800 rounded-2xl p-8">
-          <h2 className="text-2xl font-bold text-white mb-4">Sinopsis</h2>
-          <p className="text-slate-300 leading-relaxed whitespace-pre-line">
-            {media.description || 'No hay sinopsis disponible.'}
-          </p>
+        {/* ── SINOPSIS ── */}
+        <section className="mb-12">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-1 h-8 bg-yellow-500 rounded-full" />
+            <h2 className="text-2xl font-black text-white uppercase tracking-tight italic">Sinopsis</h2>
+          </div>
+          <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-8">
+            {/* ❌ BUG 4 (fix): AniList devuelve HTML en la descripción. cleanDescription()
+                lo convierte a texto plano antes de renderizarlo. */}
+            <p ref={descRef} className="text-slate-300 leading-relaxed text-base">
+              {media.description ? cleanDescription(media.description) : 'No hay sinopsis disponible.'}
+            </p>
+          </div>
         </section>
 
-        {/* MI RESEÑA */}
-        <section className="mb-16 bg-slate-900/40 border border-slate-800 rounded-2xl p-8">
-          <h2 className="text-2xl font-bold text-white mb-6">Mi Reseña</h2>
-          
+        {/* ── MI RESEÑA ── */}
+        <section className="mb-12">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-1 h-8 bg-yellow-500 rounded-full" />
+            <h2 className="text-2xl font-black text-white uppercase tracking-tight italic">Mi Reseña</h2>
+          </div>
+
           {userReview && !isEditingReview ? (
-            <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6 mb-6">
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <div className="flex gap-1">
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <Star
-                        key={i}
-                        className="w-5 h-5"
-                        style={{
-                          fill: i < userReview.score ? '#eab308' : 'transparent',
-                          color: i < userReview.score ? '#eab308' : '#475569'
-                        }}
-                      />
-                    ))}
-                  </div>
-                </div>
-                <button
-                  onClick={() => setIsEditingReview(true)}
-                  className="p-2 hover:bg-slate-700 rounded-lg transition-colors"
-                >
-                  <Edit2 className="w-4 h-4 text-slate-400" />
-                </button>
-              </div>
-              <p className="text-slate-300 mb-4">{userReview.content}</p>
-              <button
-                onClick={handleDeleteReview}
-                className="flex items-center gap-2 text-red-400 hover:text-red-300 text-sm"
-              >
-                <Trash2 className="w-4 h-4" /> Eliminar
-              </button>
-            </div>
-          ) : (
-            <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6 space-y-4">
-              {/* Selector de puntuación */}
-              <div>
-                <label className="block text-sm font-semibold text-slate-300 mb-2">Puntuación</label>
+            // Vista de reseña existente
+            <div className="relative bg-gradient-to-br from-yellow-500/5 to-slate-900/60 border border-yellow-500/20 rounded-2xl p-8">
+              <div className="flex items-start justify-between mb-4">
                 <div className="flex gap-1">
                   {Array.from({ length: 5 }).map((_, i) => (
-                    <button
-                      key={i}
-                      onClick={() => setReviewScore(i + 1)}
-                      className="p-2 hover:scale-110 transition-transform"
-                    >
-                      <Star
-                        className="w-6 h-6 cursor-pointer transition-colors"
-                        style={{
-                          fill: i < reviewScore ? '#eab308' : 'transparent',
-                          color: i < reviewScore ? '#eab308' : '#64748b'
-                        }}
-                      />
+                    <Star key={i} className="w-6 h-6" style={{ fill: i < userReview.score ? '#eab308' : 'transparent', color: i < userReview.score ? '#eab308' : '#334155' }} />
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={() => setIsEditingReview(true)} className="p-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl transition-all hover:border-yellow-500/30">
+                    <Edit2 className="w-4 h-4 text-slate-400" />
+                  </button>
+                  <button onClick={() => setConfirmDelete(true)} className="p-2 bg-slate-800 hover:bg-red-900/30 border border-slate-700 hover:border-red-500/30 rounded-xl transition-all">
+                    <Trash2 className="w-4 h-4 text-slate-400 hover:text-red-400" />
+                  </button>
+                </div>
+              </div>
+              <p className="text-slate-300 leading-relaxed">{userReview.content}</p>
+            </div>
+          ) : (
+            // Formulario
+            <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-8 space-y-6">
+              {/* Stars interactivas */}
+              <div>
+                <label className="block text-sm font-bold text-slate-400 uppercase tracking-wider mb-3">Puntuación</label>
+                <div className="flex gap-2">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <button key={i} onClick={() => setReviewScore(i + 1)} className="hover:scale-125 transition-transform">
+                      <Star className="w-8 h-8 cursor-pointer transition-colors" style={{ fill: i < reviewScore ? '#eab308' : 'transparent', color: i < reviewScore ? '#eab308' : '#334155' }} />
                     </button>
                   ))}
                 </div>
               </div>
-
-              {/* Texto de reseña */}
+              {/* Textarea */}
               <div>
-                <label className="block text-sm font-semibold text-slate-300 mb-2">
-                  Tu Reseña (máx. 255 caracteres)
-                </label>
+                <label className="block text-sm font-bold text-slate-400 uppercase tracking-wider mb-3">Tu opinión</label>
                 <textarea
                   value={reviewContent}
-                  onChange={(e) => setReviewContent(e.target.value.slice(0, 255))}
-                  placeholder="Comparte tu opinión..."
-                  className="w-full bg-slate-900/50 border border-slate-700 text-white rounded-xl p-3 focus:outline-none focus:border-yellow-500/50 resize-none"
+                  onChange={e => setReviewContent(e.target.value.slice(0, 255))}
+                  placeholder="Comparte tu experiencia con esta obra..."
+                  className="w-full bg-slate-800/50 border border-slate-700 focus:border-yellow-500/50 text-white placeholder-slate-600 rounded-xl p-4 focus:outline-none resize-none transition-colors"
                   rows={4}
                 />
-                <p className="text-xs text-slate-500 mt-1">{reviewContent.length}/255</p>
+                <p className="text-xs text-slate-600 mt-1 text-right">{reviewContent.length}/255</p>
               </div>
-
-              {/* Botones */}
               <div className="flex gap-3 justify-end">
                 {isEditingReview && (
-                  <button
-                    onClick={() => {
-                      setIsEditingReview(false);
-                      if (userReview) {
-                        setReviewScore(userReview.score);
-                        setReviewContent(userReview.content);
-                      }
-                    }}
-                    className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors"
-                  >
+                  <button onClick={() => { setIsEditingReview(false); if (userReview) { setReviewScore(userReview.score); setReviewContent(userReview.content); } }} className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-bold rounded-xl transition-all">
                     Cancelar
                   </button>
                 )}
-                <Button
-                  onClick={handleSubmitReview}
-                  disabled={submittingReview}
-                  className="bg-yellow-600 hover:bg-yellow-500 text-black font-bold flex items-center gap-2"
-                >
+                <button onClick={handleSubmitReview} disabled={submittingReview} className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 disabled:opacity-50 text-black font-black px-6 py-2.5 rounded-xl transition-all hover:scale-105">
                   <Send className="w-4 h-4" />
-                  {isEditingReview ? 'Actualizar' : 'Publicar'} Reseña
-                </Button>
+                  {isEditingReview ? 'Actualizar' : 'Publicar'}
+                </button>
               </div>
             </div>
           )}
         </section>
 
-        {/* RESEÑAS DE OTROS USUARIOS */}
+        {/* ── RESEÑAS DE LA COMUNIDAD ── */}
         <section>
-          <h2 className="text-2xl font-bold text-white mb-6">
-            Reseñas de la Comunidad ({reviews.length})
-          </h2>
-          
-          {reviews && reviews.length > 0 ? (
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-1 h-8 bg-yellow-500 rounded-full" />
+            <h2 className="text-2xl font-black text-white uppercase tracking-tight italic">
+              Comunidad
+              <span className="ml-3 text-base font-bold text-slate-500">({reviews.length})</span>
+            </h2>
+          </div>
+
+          {reviews.length > 0 ? (
             <div className="grid gap-4">
-              {reviews.map(review => (
-                <div key={review.id} className="bg-slate-900/40 border border-slate-800 rounded-xl p-6">
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex items-center gap-3">
+              {reviews.map(review => {
+                const isOwn = review.user.id === currentUser?.id;
+                return (
+                  <div key={review.id} className={`relative bg-slate-900/40 border rounded-2xl p-6 transition-all ${isOwn ? 'border-yellow-500/30 bg-yellow-500/5' : 'border-slate-800'}`}>
+                    {isOwn && (
+                      <span className="absolute top-4 right-4 text-[10px] font-black text-yellow-500 uppercase tracking-widest bg-yellow-500/10 border border-yellow-500/20 px-2 py-1 rounded-full">
+                        Tu reseña
+                      </span>
+                    )}
+                    <div className="flex items-center gap-4 mb-4">
                       {review.user.picture ? (
-                        <img 
-                          src={getImageUrl(review.user.picture)}
-                          alt={review.user.alias}
-                          className="w-10 h-10 rounded-full object-cover"
-                        />
+                        <img src={getImageUrl(review.user.picture)!} alt={review.user.alias} className="w-10 h-10 rounded-full object-cover border-2 border-slate-700" />
                       ) : (
-                        <div className="w-10 h-10 rounded-full bg-yellow-500/30 flex items-center justify-center">
-                          <span className="text-xs font-bold text-yellow-400">{review.user.alias[0]}</span>
+                        <div className="w-10 h-10 rounded-full bg-yellow-500/20 border-2 border-yellow-500/30 flex items-center justify-center shrink-0">
+                          <span className="text-sm font-black text-yellow-400">{review.user.alias[0].toUpperCase()}</span>
                         </div>
                       )}
                       <div>
-                        <p className="font-semibold text-white">{review.user.alias}</p>
-                        <div className="flex gap-1 mt-1">
+                        <p className="font-bold text-white text-sm">{review.user.alias}</p>
+                        <div className="flex gap-0.5 mt-1">
                           {Array.from({ length: 5 }).map((_, i) => (
-                            <Star
-                              key={i}
-                              className="w-4 h-4"
-                              style={{
-                                fill: i < review.score ? '#eab308' : 'transparent',
-                                color: i < review.score ? '#eab308' : '#475569'
-                              }}
-                            />
+                            <Star key={i} className="w-3.5 h-3.5" style={{ fill: i < review.score ? '#eab308' : 'transparent', color: i < review.score ? '#eab308' : '#334155' }} />
                           ))}
                         </div>
                       </div>
                     </div>
+                    <p className="text-slate-300 text-sm leading-relaxed">{review.content}</p>
                   </div>
-                  <p className="text-slate-300">{review.content}</p>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
-            <div className="bg-slate-900/40 border border-slate-800 border-dashed rounded-xl p-8 text-center">
-              <p className="text-slate-400">Aún no hay reseñas. ¡Sé el primero!</p>
+            <div className="flex flex-col items-center justify-center py-16 bg-slate-900/30 border border-dashed border-slate-800 rounded-2xl gap-3">
+              <Heart className="w-10 h-10 text-slate-700" />
+              <p className="text-slate-500 font-bold">Sé el primero en opinar</p>
             </div>
           )}
         </section>

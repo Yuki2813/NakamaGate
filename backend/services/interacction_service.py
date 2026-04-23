@@ -188,7 +188,7 @@ def delete_review_service(review_id: int, user_id: int, session: Session):
     is_owner = (review.id_user == user_id)
     is_admin = (user.rol == Rol.admin) 
     
-    if not is_owner and not is_admin:
+    if not is_owner or not is_admin:
         raise HTTPException(status_code=403, detail="You can only delete your own reviews")
         
     if delete_review(review_id=review_id, session=session):
