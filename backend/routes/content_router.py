@@ -28,16 +28,13 @@ async def get_home(
 # 2. DIRECTORIO (EXPLORAR)
 # ==========================================
 @router.get("/directory")
-@cache(expire=3600)
+# @cache(expire=3600)
 async def get_directory(
     media_type: Mediatype = Query(..., description="'ANIME' o 'MANGA'"),
-
     page: int = Query(default=1, ge=1, description="Número de página (mínimo 1)"),
-
     genre: str = Query(default=None, description="Filtrar por un género específico"),
-
+    status: str = Query(default=None, description="Filtrar por estado (RELEASING, FINISHED, NOT_YET_RELEASED)"),
     user_id: int = Depends(get_current_user_id),
-
     session: Session = Depends(get_db)
 ):
 
@@ -46,7 +43,8 @@ async def get_directory(
         page=page, 
         media_type=media_type, 
         session=session, 
-        genre=genre
+        genre=genre,
+        status=status # <-- SE LO PASAMOS AL SERVICIO
     )
 
 

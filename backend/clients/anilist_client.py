@@ -150,12 +150,12 @@ class AniListClient:
             result = await session.execute(query, variable_values=variables)
             return MediaAdapter.list_to_standar_format(result.get("Page", {}).get("media", []))
 
-    async def get_directory_page(self, page: int, per_page: int, media_type: str, sort: str = "POPULARITY_DESC", genre: str = None):
+    async def get_directory_page(self, page: int, per_page: int, media_type: str, sort: str = "POPULARITY_DESC", genre: str = None, status: str = None):
         query = gql("""
-            query ($page: Int, $perPage: Int, $type: MediaType, $sort: [MediaSort], $genreIn: [String]) {
+            query ($page: Int, $perPage: Int, $type: MediaType, $sort: [MediaSort], $genreIn: [String], $status: MediaStatus) {
               Page(page: $page, perPage: $perPage) {
                 pageInfo { total currentPage lastPage hasNextPage }
-                media(type: $type, sort: $sort, isAdult: false, genre_in: $genreIn) {
+                media(type: $type, sort: $sort, isAdult: false, genre_in: $genreIn, status: $status) {
                   id type title { romaji } coverImage { large } averageScore format seasonYear status genres
                 }
               }
@@ -163,10 +163,14 @@ class AniListClient:
         """)
         variables = {
             "page": page, "perPage": per_page,
-            "type": media_type.strip().upper(), "sort": [sort],
+            "type": media_type.strip().upper(), 
+            "sort": [sort], # Aquí usaremos POPULARITY_DESC por defecto
         }
         if genre:
             variables["genreIn"] = [g.strip() for g in genre.split(",")]
+        if status:
+            variables["status"] = status.strip().upper()
+        print(f"🔥 PIDIENDO A ANILIST CON ORDEN: {variables['sort']}")    
         async with self._get_fresh_client() as session:
             result = await session.execute(query, variable_values=variables)
             page_data = result.get("Page", {})

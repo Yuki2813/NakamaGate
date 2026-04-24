@@ -4,7 +4,7 @@ import { apiClient } from '../api/client';
 import {
   Heart, ArrowLeft, Star, Trash2, Edit2, Send,
   AlertTriangle, BookOpen, Tv, CheckCircle, Clock,
-  Eye, X, Play, ExternalLink, Users, GitBranch
+  Eye, X, Play, ExternalLink, Users, GitBranch, ListPlus
 } from 'lucide-react';
 
 const BACKEND_URL = "http://localhost:8000";
@@ -119,7 +119,6 @@ export default function MediaDetail() {
         if (reviewsRes.status === 'fulfilled') {
           const all: Review[] = Array.isArray(reviewsRes.value.data) ? reviewsRes.value.data : [];
           setReviews(all);
-          // Buscamos la reseña del usuario actual comparando IDs
           const mine = all.find(r => r.user.id === me.id) || null;
           setUserReview(mine);
           if (mine) { setReviewScore(mine.score); setReviewContent(mine.content); }
@@ -302,11 +301,12 @@ export default function MediaDetail() {
       {/* ── CONTENIDO PRINCIPAL ──────────────────────────────────────────────── */}
       <div className="max-w-[1200px] mx-auto px-6 md:px-16 -mt-48 relative z-10">
 
-        {/* CABECERA: Poster + Info */}
         <div className="flex flex-col md:flex-row gap-8 md:gap-12 mb-16">
 
-          {/* Poster */}
-          <div className="shrink-0 flex justify-center md:justify-start">
+          {/* ── COLUMNA IZQUIERDA: Poster + Acciones ────────────────────────── */}
+          <div className="shrink-0 flex flex-col items-center md:items-start gap-6">
+            
+            {/* Poster */}
             <div className="relative w-48 md:w-56 group">
               <div className="absolute -inset-2 bg-yellow-500/20 rounded-3xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
               <div className="relative rounded-2xl overflow-hidden border-2 border-white/10 shadow-2xl shadow-black/50">
@@ -325,10 +325,39 @@ export default function MediaDetail() {
                 )}
               </div>
             </div>
+
+            {/* Botones de Mi Lista (Movidos debajo del póster) */}
+            <div className="w-48 md:w-56 flex flex-col gap-2">
+              <div className="flex items-center gap-2 mb-1">
+                <ListPlus className="w-4 h-4 text-slate-500" />
+                <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Añadir a lista</span>
+              </div>
+              {STATUS_OPTIONS.map(({ value, label, icon: Icon }) => {
+                const active = favStatus === value;
+                return (
+                  <button
+                    key={value}
+                    onClick={() => handleSetStatus(value)}
+                    disabled={statusLoading}
+                    className={`flex items-center justify-between px-5 py-3 rounded-xl font-bold text-sm border transition-all duration-200 disabled:opacity-50 group/btn ${
+                      active
+                        ? 'bg-yellow-500 border-yellow-400 text-black shadow-[0_0_15px_rgba(234,179,8,0.2)]'
+                        : 'bg-slate-800/60 border-slate-700 text-slate-300 hover:border-yellow-500/50 hover:text-yellow-400 hover:bg-slate-800'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Icon className="w-4 h-4" />
+                      {label}
+                    </div>
+                    {active && <X className="w-4 h-4 opacity-50 group-hover/btn:opacity-100 transition-opacity" />}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
-          {/* Info */}
-          <div className="flex-1 pt-32 md:pt-0 mt-4 md:mt-16">
+          {/* ── COLUMNA DERECHA: Info + Sinopsis ────────────────────────────── */}
+          <div className="flex-1 pt-4 md:pt-0 mt-4 md:mt-16">
 
             {/* Géneros */}
             <div className="flex flex-wrap gap-2 mb-4">
@@ -387,40 +416,14 @@ export default function MediaDetail() {
               </div>
             </div>
 
-            {/* Botones de estado en lista */}
-            <div className="mb-6">
-              <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">Mi lista</p>
-              <div className="flex flex-wrap gap-2">
-                {STATUS_OPTIONS.map(({ value, label, icon: Icon }) => {
-                  const active = favStatus === value;
-                  return (
-                    <button
-                      key={value}
-                      onClick={() => handleSetStatus(value)}
-                      disabled={statusLoading}
-                      className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm border transition-all duration-200 hover:scale-105 disabled:opacity-50 ${
-                        active
-                          ? 'bg-yellow-500 border-yellow-400 text-black shadow-lg shadow-yellow-500/20'
-                          : 'bg-slate-800/60 border-slate-700 text-slate-300 hover:border-yellow-500/50 hover:text-yellow-400'
-                      }`}
-                    >
-                      <Icon className="w-4 h-4" />
-                      {label}
-                      {active && <X className="w-3 h-3 opacity-60" />}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
             {/* Botón tráiler */}
             {media.trailer && (
               <button
                 onClick={() => setTrailerOpen(true)}
-                className="flex items-center gap-3 bg-white/5 hover:bg-yellow-500/10 border border-white/10 hover:border-yellow-500/30 text-white hover:text-yellow-400 font-bold px-5 py-2.5 rounded-xl transition-all group"
+                className="inline-flex items-center gap-3 bg-white/5 hover:bg-yellow-500/10 border border-white/10 hover:border-yellow-500/30 text-white hover:text-yellow-400 font-bold px-6 py-3 rounded-xl transition-all group"
               >
                 <div className="w-8 h-8 rounded-full bg-yellow-500 flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <Play className="w-4 h-4 text-black fill-black" />
+                  <Play className="w-4 h-4 text-black fill-black ml-0.5" />
                 </div>
                 Ver tráiler
               </button>
@@ -510,20 +513,20 @@ export default function MediaDetail() {
           </section>
         )}
 
-        {/* ── RELACIONES ────────────────────────────────────────────────────── */}
+        {/* ── RELACIONES (IMÁGENES ARREGLADAS) ──────────────────────────────── */}
         {media.relations?.length > 0 && (
           <section className="mb-12">
             <SectionTitle icon={<GitBranch className="w-5 h-5" />} title="También te puede interesar" />
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
               {media.relations.map(rel => (
                 <Link key={rel.id} to={`/media/${rel.id}`} className="group flex flex-col gap-2">
-                  <div className="relative aspect-[2/3] rounded-xl overflow-hidden border border-slate-800 group-hover:border-yellow-500/40 transition-all shadow-lg bg-slate-900">
+                  <div className="relative aspect-[2/3] w-full rounded-xl overflow-hidden border border-slate-800 group-hover:border-yellow-500/40 transition-all shadow-lg bg-slate-900 shrink-0">
                     {rel.image
-                      ? <img src={rel.image} alt={rel.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                      : <div className="w-full h-full flex items-center justify-center text-slate-600"><BookOpen className="w-8 h-8" /></div>
+                      ? <img src={rel.image} alt={rel.title} className="absolute inset-0 w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500" />
+                      : <div className="absolute inset-0 flex items-center justify-center text-slate-600"><BookOpen className="w-8 h-8" /></div>
                     }
-                    <div className="absolute top-2 left-2">
-                      <span className="text-[9px] font-black uppercase tracking-wider px-2 py-1 rounded-lg bg-black/70 backdrop-blur-sm border border-white/10 text-yellow-400">
+                    <div className="absolute top-2 left-2 z-10">
+                      <span className="text-[9px] font-black uppercase tracking-wider px-2 py-1 rounded-lg bg-black/70 backdrop-blur-sm border border-white/10 text-yellow-400 shadow-md">
                         {RELATION_LABELS[rel.relation] || rel.relation}
                       </span>
                     </div>

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   Filter, ChevronLeft, ChevronRight, Star, AlertTriangle, 
-  Search, Hash, Check 
+  Hash, Check, PlayCircle, Clock, LayoutGrid
 } from 'lucide-react';
 import { apiClient } from '../api/client';
 import { getImageUrl } from '../utils/helpers';
@@ -29,6 +29,14 @@ interface MediaItem {
 const ADULT_GENRES = ["Action", "Adventure", "Comedy", "Drama", "Ecchi", "Fantasy", "Horror", "Mahou Shoujo", "Mecha", "Music", "Mystery", "Psychological", "Romance", "Sci-Fi", "Slice of Life", "Sports", "Supernatural", "Thriller"];
 const SAFE_GENRES = ["Action", "Adventure", "Comedy", "Fantasy", "Mahou Shoujo", "Mecha", "Music", "Mystery", "Romance", "Sci-Fi", "Slice of Life", "Sports", "Supernatural"];
 
+// OPCIONES DE ESTADO CON ICONOS
+const STATUS_OPTIONS = [
+  { id: "", label: "Todos", icon: LayoutGrid },
+  { id: "RELEASING", label: "En Emisión", icon: PlayCircle },
+  { id: "FINISHED", label: "Finalizados", icon: Check },
+  { id: "NOT_YET_RELEASED", label: "Próximos", icon: Clock }
+];
+
 export default function Directory() {
   const [items, setItems] = useState<MediaItem[]>([]);
   const [pageInfo, setPageInfo] = useState<PageInfo | null>(null);
@@ -40,6 +48,8 @@ export default function Directory() {
   const [mediaType, setMediaType] = useState<'ANIME' | 'MANGA'>('ANIME');
   
   const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
+  const [selectedStatus, setSelectedStatus] = useState<string>("");
+  
   const [showGenreMenu, setShowGenreMenu] = useState(false);
   const [jumpPage, setJumpPage] = useState("");
 
@@ -55,17 +65,15 @@ export default function Directory() {
       setErrorMsg(null);
       try {
         let url = `/content/directory?media_type=${mediaType.toLowerCase()}&page=${page}`;
-        if (selectedGenres.length > 0) {
-          url += `&genre=${selectedGenres.join(',')}`;
-        }
+        if (selectedGenres.length > 0) url += `&genre=${selectedGenres.join(',')}`;
+        if (selectedStatus) url += `&status=${selectedStatus}`;
 
         const response = await apiClient.get(url);
         const fetchedItems = response.data.items || [];
 
-        // LÓGICA DE REBOTE MEJORADA
-        // Si pedimos una página que no existe (ej: saltamos a la 50 y está vacía)
+        // REBOTE: Si pedimos una página vacía, volvemos a la anterior
         if (fetchedItems.length === 0 && page > 1) {
-          setPage(page - 1); // Rebotamos a la página anterior en vez de a la 1
+          setPage(page - 1);
           return;
         }
 
@@ -85,7 +93,7 @@ export default function Directory() {
     }, 400);
 
     return () => clearTimeout(delayDebounceFn);
-  }, [page, mediaType, selectedGenres]);
+  }, [page, mediaType, selectedGenres, selectedStatus]);
 
   const toggleGenre = (genre: string) => {
     setSelectedGenres(prev => {
@@ -105,25 +113,16 @@ export default function Directory() {
     }
   };
 
-  // --- NUEVA PAGINACIÓN INTELIGENTE ---
   const getPaginationRange = () => {
     const current = page;
     const range = [];
-    
-    // Mostrar 2 páginas anteriores (si existen)
     if (current > 2) range.push(current - 2);
     if (current > 1) range.push(current - 1);
-    
-    // Página actual
     range.push(current);
-    
-    // Mostrar páginas siguientes SOLO si la actual está completamente llena (24 items)
     if (items.length === 24) {
       range.push(current + 1);
-      // Solo mostramos la +2 si sabemos que AniList no ha cortado la lista
       if (pageInfo?.hasNextPage) range.push(current + 2);
     }
-    
     return range;
   };
 
@@ -143,38 +142,60 @@ export default function Directory() {
         <div className="h-1 w-20 bg-yellow-500 rounded-full mb-4"></div>
       </header>
 
-      {/* IMPORTANTE: z-50 aquí para que el menú de géneros tape a las cards */}
       <section className="max-w-[1400px] mx-auto px-6 md:px-16 mb-12 relative z-50">
-        <div className="bg-slate-900/40 backdrop-blur-2xl border border-yellow-500/10 p-5 rounded-3xl flex flex-col lg:flex-row gap-6 items-center justify-between shadow-2xl">
+        <div className="bg-slate-900/40 backdrop-blur-2xl border border-yellow-500/10 p-5 rounded-3xl flex flex-col xl:flex-row gap-6 items-start xl:items-center justify-between shadow-2xl">
           
-          <div className="flex flex-col sm:flex-row flex-wrap gap-4 items-center w-full lg:w-auto relative">
+          <div className="flex flex-col md:flex-row flex-wrap gap-4 items-center w-full xl:w-auto relative">
+            
+            {/* TIPO: ANIME / MANGA */}
             <div className="flex bg-black/40 p-1.5 rounded-2xl border border-slate-800 w-full sm:w-auto">
               <button 
-                onClick={() => { setMediaType('ANIME'); setPage(1); setSelectedGenres([]); }}
+                onClick={() => { setMediaType('ANIME'); setPage(1); setSelectedGenres([]); setSelectedStatus(""); }}
                 className={`flex-1 sm:flex-none px-6 py-2.5 rounded-xl font-black text-xs uppercase transition-all duration-300 ${mediaType === 'ANIME' ? 'bg-yellow-500 text-black shadow-[0_0_20px_rgba(234,179,8,0.3)]' : 'text-slate-500 hover:text-white'}`}
               >
                 Anime
               </button>
               <button 
-                onClick={() => { setMediaType('MANGA'); setPage(1); setSelectedGenres([]); }}
+                onClick={() => { setMediaType('MANGA'); setPage(1); setSelectedGenres([]); setSelectedStatus(""); }}
                 className={`flex-1 sm:flex-none px-6 py-2.5 rounded-xl font-black text-xs uppercase transition-all duration-300 ${mediaType === 'MANGA' ? 'bg-yellow-500 text-black shadow-[0_0_20px_rgba(234,179,8,0.3)]' : 'text-slate-500 hover:text-white'}`}
               >
                 Manga
               </button>
             </div>
 
+            {/* BOTONES DE ESTADO HORIZONTALES */}
+            <div className="flex bg-black/40 p-1.5 rounded-2xl border border-slate-800 w-full sm:w-auto overflow-x-auto custom-scrollbar">
+              {STATUS_OPTIONS.map(opt => {
+                const Icon = opt.icon;
+                const isActive = selectedStatus === opt.id;
+                return (
+                  <button
+                    key={opt.label}
+                    onClick={() => { setSelectedStatus(opt.id); setPage(1); }}
+                    className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs uppercase whitespace-nowrap transition-all duration-300 ${
+                      isActive ? 'bg-slate-700 text-white shadow-md' : 'text-slate-500 hover:text-slate-300'
+                    }`}
+                  >
+                    <Icon className="w-3.5 h-3.5" />
+                    {opt.label}
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* DROPDOWN DE GÉNEROS */}
             <div className="relative w-full sm:w-auto">
               <Button 
                 variant="outline"
                 onClick={() => setShowGenreMenu(!showGenreMenu)}
                 className="w-full sm:w-auto bg-black/40 border-slate-800 hover:bg-slate-800 hover:text-white hover:border-yellow-500/50 text-slate-300 rounded-2xl h-[44px] px-6 font-bold flex items-center justify-between gap-3 transition-all"
               >
-                <div className="flex items-center gap-2">
-                  <Filter className="w-4 h-4 text-yellow-500" />
-                  <span>Filtros</span>
+                <div className="flex items-center gap-2 truncate">
+                  <Filter className="w-4 h-4 text-yellow-500 shrink-0" />
+                  <span className="truncate">Géneros</span>
                 </div>
                 {selectedGenres.length > 0 && (
-                  <Badge className="bg-yellow-500 text-black px-1.5 py-0 font-black">
+                  <Badge className="bg-yellow-500 text-black px-1.5 py-0 font-black shrink-0">
                     {selectedGenres.length}/4
                   </Badge>
                 )}
@@ -218,7 +239,8 @@ export default function Directory() {
             </div>
           </div>
 
-          <form onSubmit={handleJumpPage} className="flex items-center gap-3 bg-yellow-500/5 hover:bg-yellow-500/10 p-1.5 rounded-2xl border border-yellow-500/20 transition-all w-full lg:w-auto">
+          {/* NAVEGADOR DE PÁGINAS RÁPIDO */}
+          <form onSubmit={handleJumpPage} className="flex items-center gap-3 bg-yellow-500/5 hover:bg-yellow-500/10 p-1.5 rounded-2xl border border-yellow-500/20 transition-all w-full xl:w-auto">
             <div className="bg-yellow-500 text-black p-2 rounded-xl">
               <Hash className="w-4 h-4" />
             </div>
@@ -227,7 +249,7 @@ export default function Directory() {
               placeholder="Ir a pág..." 
               value={jumpPage} 
               onChange={(e) => setJumpPage(e.target.value)}
-              className="bg-transparent text-white text-sm font-black outline-none w-full lg:w-24 placeholder:text-slate-600 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              className="bg-transparent text-white text-sm font-black outline-none w-full xl:w-24 placeholder:text-slate-600 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
             />
             <Button type="submit" className="bg-transparent hover:bg-white/10 text-yellow-500 font-bold text-xs h-9">
               Ir
@@ -261,10 +283,18 @@ export default function Directory() {
                 <figure className="relative aspect-[2/3] overflow-hidden rounded-2xl bg-slate-900 border border-slate-800 transition-all duration-500 group-hover:border-yellow-500/40 group-hover:shadow-[0_0_30px_rgba(234,179,8,0.2)] group-hover:-translate-y-2">
                   <img src={getImageUrl(item.image) || ''} alt={item.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" loading="lazy" />
                   <div className="absolute inset-0 bg-gradient-to-t from-[#020617] via-transparent to-transparent opacity-80 group-hover:opacity-40 transition-opacity"></div>
-                  <div className="absolute bottom-3 left-3 flex items-center gap-1.5 bg-black/60 backdrop-blur-md px-2.5 py-1.5 rounded-xl border border-white/10 shadow-lg">
-                    <Star className="w-3.5 h-3.5 text-yellow-500 fill-yellow-500" />
-                    <span className="text-xs font-black text-white">{item.score || '??'}</span>
-                  </div>
+                  
+                  {/* LOGICA DE SCORE ACTUALIZADA */}
+                  {item.score > 0 ? (
+                    <div className="absolute bottom-3 left-3 flex items-center gap-1.5 bg-black/60 backdrop-blur-md px-2.5 py-1.5 rounded-xl border border-white/10 shadow-lg">
+                      <Star className="w-3.5 h-3.5 text-yellow-500 fill-yellow-500" />
+                      <span className="text-xs font-black text-white">{item.score}</span>
+                    </div>
+                  ) : (
+                    <div className="absolute bottom-3 left-3 flex items-center gap-1.5 bg-black/60 backdrop-blur-md px-2.5 py-1.5 rounded-xl border border-white/10 opacity-50">
+                      <span className="text-[10px] font-black text-slate-400">SIN NOTA</span>
+                    </div>
+                  )}
                 </figure>
                 <div className="mt-4 flex-grow min-h-[44px]">
                   <h3 className="text-sm font-bold text-slate-300 group-hover:text-yellow-400 transition-colors line-clamp-2 leading-tight">{item.title}</h3>
@@ -275,11 +305,7 @@ export default function Directory() {
 
           <div className="mt-20 flex flex-col xl:flex-row items-center justify-center gap-8">
             <div className="flex flex-wrap items-center justify-center gap-2 md:gap-3">
-              <Button 
-                disabled={page <= 1} 
-                onClick={() => setPage(p => p - 1)}
-                className="bg-slate-900/50 border border-slate-800 hover:border-yellow-500 text-white rounded-2xl w-10 h-10 md:w-12 md:h-12 p-0 transition-all"
-              >
+              <Button disabled={page <= 1} onClick={() => setPage(p => p - 1)} className="bg-slate-900/50 border border-slate-800 hover:border-yellow-500 text-white rounded-2xl w-10 h-10 md:w-12 md:h-12 p-0 transition-all">
                 <ChevronLeft className="w-5 h-5 md:w-6 md:h-6" />
               </Button>
 
@@ -288,34 +314,22 @@ export default function Directory() {
                   <button
                     key={`page-${p}`}
                     onClick={() => setPage(p as number)}
-                    className={`w-10 h-10 md:w-12 md:h-12 rounded-2xl font-black text-xs md:text-sm transition-all border-2 ${
-                      page === p 
-                      ? 'bg-yellow-500 border-yellow-500 text-black shadow-[0_0_20px_rgba(234,179,8,0.4)] md:scale-110' 
-                      : 'bg-slate-900/50 border-slate-800 text-slate-400 hover:border-yellow-500/40 hover:text-white'
-                    }`}
+                    className={`w-10 h-10 md:w-12 md:h-12 rounded-2xl font-black text-xs md:text-sm transition-all border-2 ${page === p ? 'bg-yellow-500 border-yellow-500 text-black shadow-[0_0_20px_rgba(234,179,8,0.4)] md:scale-110' : 'bg-slate-900/50 border-slate-800 text-slate-400 hover:border-yellow-500/40 hover:text-white'}`}
                   >
                     {p}
                   </button>
                 ))}
               </div>
 
-              <Button 
-                disabled={items.length < 24} // Si no tenemos 24, IMPOSIBLE que haya página siguiente
-                onClick={() => setPage(p => p + 1)}
-                className="bg-slate-900/50 border border-slate-800 hover:border-yellow-500 text-white rounded-2xl w-10 h-10 md:w-12 md:h-12 p-0 transition-all disabled:opacity-30"
-              >
+              <Button disabled={items.length < 24} onClick={() => setPage(p => p + 1)} className="bg-slate-900/50 border border-slate-800 hover:border-yellow-500 text-white rounded-2xl w-10 h-10 md:w-12 md:h-12 p-0 transition-all disabled:opacity-30">
                 <ChevronRight className="w-5 h-5 md:w-6 md:h-6" />
               </Button>
             </div>
           </div>
 
-          {/* MENSAJE DE ESTADO INFERIOR ACTUALIZADO */}
           <div className="mt-10 text-center">
             <p className="text-[10px] font-black text-slate-600 uppercase tracking-[0.2em]">
-              {items.length < 24 
-                ? `Archivo Nakama • Fin de los Registros (Página ${page})` 
-                : `Archivo Nakama • Explorando Página ${page}`
-              }
+              {items.length < 24 ? `Archivo Nakama • Fin de los Registros (Página ${page})` : `Archivo Nakama • Explorando Página ${page}`}
             </p>
           </div>
         </section>
