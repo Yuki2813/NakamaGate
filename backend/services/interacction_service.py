@@ -50,17 +50,21 @@ async def add_media_to_list(user_id: int, id_api: int, media_type: MediaType, se
     
 
 def update_media_status(user_id: int, favorite_id: int, new_status: str, session: Session):
-    if(update_status_favorite(iduser=user_id,idapi=favorite_id,status=new_status,session=session)):
-        return{"message":"The status was updated successfully"}
+    status_updated = update_status_favorite(iduser=user_id, idapi=favorite_id, status=new_status, session=session)
+
+    if status_updated:
+        return {"message": "The status was updated successfully"}
     else:
-        raise HTTPException(status_code=404,detail="The anime/manga could not be found ")
+        raise HTTPException(status_code=404, detail="The anime/manga could not be found")
 
 
-def remove_media_from_list(user_id: int, id_api: int,media_type:Mediatype,session: Session):
-    if(delete_user_favorite(id_user=user_id,idapi=id_api,session=session,media=media_type)):
-        return {"message":"The anime/manga was properly removed"}
+def remove_media_from_list(user_id: int, id_api: int, media_type: Mediatype, session: Session):
+    removal_successful = delete_user_favorite(id_user=user_id, idapi=id_api, session=session, media=media_type)
+
+    if removal_successful:
+        return {"message": "The anime/manga was properly removed"}
     else:
-        raise HTTPException(status_code=404,detail="At this time, we are unable to remove the manga/anime you requested")
+        raise HTTPException(status_code=404, detail="At this time, we are unable to remove the manga/anime you requested")
 
 
 async def get_favorite_list(user_id: int, session: Session):
@@ -161,11 +165,11 @@ async def create_review_service(user_id: int, id_api: int, media_type: MediaType
 
 
 def update_review_service(review_id: int, user_id: int, score: int, content: str, session: Session):
-    if score<0 or score>5:
-        raise HTTPException(status_code=400,detail="The score must be between 0 and 5")
-    
-    if len(content)<1 or len(content)>255:
-        raise HTTPException(status_code=400,detail="The review content must be between 1 and 255 characters.")
+    if score < 0 or score > 5:
+        raise HTTPException(status_code=400, detail="The score must be between 0 and 5")
+
+    if len(content) < 1 or len(content) > 255:
+        raise HTTPException(status_code=400, detail="The review content must be between 1 and 255 characters.")
     review = get_review_by_id(review_id=review_id, session=session)
 
     if not review:
@@ -188,7 +192,7 @@ def delete_review_service(review_id: int, user_id: int, session: Session):
     is_owner = (review.id_user == user_id)
     is_admin = (user.rol == Rol.admin) 
     
-    if not is_owner or not is_admin:
+    if not is_owner and not is_admin:
         raise HTTPException(status_code=403, detail="You can only delete your own reviews")
         
     if delete_review(review_id=review_id, session=session):
@@ -196,7 +200,7 @@ def delete_review_service(review_id: int, user_id: int, session: Session):
     else:
         raise HTTPException(status_code=400, detail="Unable to delete review")
     
-def get_reviews_by_media_service(id_api:int,media_type:MediaType,session:Session):
+def get_reviews_by_media_service(id_api: int, media_type: MediaType, session: Session):
     results = get_reviews_by_media(id_api=id_api, media_type=media_type, session=session)
 
     final_reviews = []

@@ -104,12 +104,12 @@ export default function MediaDetail() {
           apiClient.get('/auth/me'),
           apiClient.get(`/content/${id}`),
         ]);
-        const me: CurrentUser    = meRes.data;
-        const m: MediaDetailData = mediaRes.data;
-        setCurrentUser(me);
-        setMedia(m);
+        const loggedInUser: CurrentUser    = meRes.data;
+        const mediaData: MediaDetailData   = mediaRes.data;
+        setCurrentUser(loggedInUser);
+        setMedia(mediaData);
 
-        const mediaType = m.type?.toLowerCase() || 'anime';
+        const mediaType = mediaData.type?.toLowerCase() || 'anime';
 
         const [reviewsRes, favRes] = await Promise.allSettled([
           apiClient.get(`/reviews/media/${id}?media_type=${mediaType}`),
@@ -117,11 +117,14 @@ export default function MediaDetail() {
         ]);
 
         if (reviewsRes.status === 'fulfilled') {
-          const all: Review[] = Array.isArray(reviewsRes.value.data) ? reviewsRes.value.data : [];
-          setReviews(all);
-          const mine = all.find(r => r.user.id === me.id) || null;
-          setUserReview(mine);
-          if (mine) { setReviewScore(mine.score); setReviewContent(mine.content); }
+          const allReviews: Review[] = Array.isArray(reviewsRes.value.data) ? reviewsRes.value.data : [];
+          setReviews(allReviews);
+          const myExistingReview = allReviews.find(r => r.user.id === loggedInUser.id) || null;
+          setUserReview(myExistingReview);
+          if (myExistingReview) {
+            setReviewScore(myExistingReview.score);
+            setReviewContent(myExistingReview.content);
+          }
         }
         if (favRes.status === 'fulfilled') {
           setIsFavorite(favRes.value.data.is_favorite);
@@ -145,7 +148,8 @@ export default function MediaDetail() {
       const mediaType = media?.type?.toLowerCase();
       if (favStatus === status) {
         await apiClient.delete(`/favorites/${id}?media_type=${mediaType}`);
-        setIsFavorite(false); setFavStatus(null);
+        setIsFavorite(false);
+        setFavStatus(null);
       } else {
         if (isFavorite) {
           await apiClient.patch(`/favorites/${id}`, { status, media_type: mediaType });
@@ -155,8 +159,11 @@ export default function MediaDetail() {
         }
         setFavStatus(status);
       }
-    } catch { showToast('No se pudo actualizar el estado.', 'err'); }
-    finally   { setStatusLoading(false); }
+    } catch {
+      showToast('No se pudo actualizar el estado.', 'err');
+    } finally {
+      setStatusLoading(false);
+    }
   };
 
   const handleSubmitReview = async () => {
@@ -181,19 +188,26 @@ export default function MediaDetail() {
         showToast('Reseña publicada.');
       }
       setReviews(await reloadReviews(media?.type?.toLowerCase() || 'anime'));
-    } catch { showToast('Error al guardar la reseña.', 'err'); }
-    finally   { setSubmittingReview(false); }
+    } catch {
+      showToast('Error al guardar la reseña.', 'err');
+    } finally {
+      setSubmittingReview(false);
+    }
   };
 
   const handleDeleteReview = async () => {
     if (!userReview) return;
     try {
       await apiClient.delete(`/reviews/${userReview.id}`);
-      setUserReview(null); setReviewScore(3); setReviewContent('');
+      setUserReview(null);
+      setReviewScore(3);
+      setReviewContent('');
       setConfirmDelete(false);
       setReviews(await reloadReviews(media?.type?.toLowerCase() || 'anime'));
       showToast('Reseña eliminada.');
-    } catch { showToast('Error al eliminar la reseña.', 'err'); }
+    } catch {
+      showToast('Error al eliminar la reseña.', 'err');
+    }
   };
 
   // ── Estados de carga / error ──────────────────────────────────────────────

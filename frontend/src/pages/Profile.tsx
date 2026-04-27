@@ -3,11 +3,11 @@ import { Link } from 'react-router-dom';
 import { apiClient } from '../api/client';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { 
-  Heart, Star, ShieldAlert, Settings, Home, 
+import {
+  Heart, Star, ShieldAlert, Settings, Home,
   Edit2, Camera, Check, X, ChevronDown, Trash2, Award, BarChart3,
   Flame, Trophy, PlayCircle, Swords, Brain, Clock, Sparkles, Lock,
-  Compass, Search
+  Compass, Search, ShieldCheck
 } from 'lucide-react';
 import Loader from '../components/Loader';
 import AvatarEditor from 'react-avatar-editor';
@@ -31,6 +31,7 @@ interface UserProfile {
   id: number;
   alias: string;
   picture: string | null;
+  is_adult: boolean;
 }
 
 export default function Profile() {
@@ -53,12 +54,17 @@ export default function Profile() {
 
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [mediaToDelete, setMediaToDelete] = useState<number | null>(null);
+  const [mediaTypeToDelete, setMediaTypeToDelete] = useState<string>("ANIME");
+
+  const [isAdult, setIsAdult] = useState(false);
+  const [savingAdult, setSavingAdult] = useState(false);
 
   const fetchProfileData = async () => {
     try {
       const profileRes = await apiClient.get('/auth/me');
       setProfile(profileRes.data);
       setNewAlias(profileRes.data.alias);
+      setIsAdult(profileRes.data.is_adult ?? false);
 
       const favsRes = await apiClient.get('/favorites/');
       setFavorites(favsRes.data);
@@ -150,20 +156,34 @@ export default function Profile() {
     }
   };
 
-  const triggerDeleteModal = (mediaId: number) => {
+  const triggerDeleteModal = (mediaId: number, mediaType: string) => {
     setMediaToDelete(mediaId);
+    setMediaTypeToDelete(mediaType);
     setDeleteModalOpen(true);
   };
 
   const confirmDelete = async () => {
     if (!mediaToDelete) return;
     try {
-      await apiClient.delete(`/favorites/${mediaToDelete}?media_type=anime`);
+      await apiClient.delete(`/favorites/${mediaToDelete}?media_type=${mediaTypeToDelete.toLowerCase()}`);
       setFavorites(prev => prev.filter(fav => fav.media.id !== mediaToDelete));
       setDeleteModalOpen(false);
       setMediaToDelete(null);
     } catch (error) {
       console.error("Error eliminando:", error);
+    }
+  };
+
+  const handleToggleAdult = async () => {
+    const newValue = !isAdult;
+    setSavingAdult(true);
+    try {
+      await apiClient.patch('/auth/me/adult', { is_adult: newValue });
+      setIsAdult(newValue);
+    } catch (error) {
+      console.error("Error actualizando preferencia:", error);
+    } finally {
+      setSavingAdult(false);
     }
   };
 
@@ -336,6 +356,30 @@ export default function Profile() {
             </div>
           </section>
 
+          <section className="bg-slate-900/80 border border-slate-800 p-5 rounded-3xl shadow-sm backdrop-blur-md">
+            <h2 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mb-5 flex items-center gap-2">
+              <Settings className="w-4 h-4 text-yellow-500" /> Ajustes de Cuenta
+            </h2>
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-1.5 mb-0.5">
+                  <ShieldCheck className="w-3.5 h-3.5 text-slate-400" />
+                  <p className="text-xs font-bold text-slate-300">Contenido Adulto</p>
+                </div>
+                <p className="text-[9px] text-slate-600 leading-tight">Activa para ver contenido Ecchi y +18</p>
+              </div>
+              <button
+                type="button"
+                onClick={handleToggleAdult}
+                disabled={savingAdult}
+                title={isAdult ? "Desactivar contenido adulto" : "Activar contenido adulto"}
+                className={`relative shrink-0 w-11 h-6 rounded-full overflow-hidden transition-colors duration-200 disabled:opacity-50 ${isAdult ? 'bg-yellow-500' : 'bg-slate-700'}`}
+              >
+                <span className={`absolute top-1 left-0 w-4 h-4 bg-white rounded-full shadow transition-transform duration-200 ${isAdult ? 'translate-x-6' : 'translate-x-1'}`} />
+              </button>
+            </div>
+          </section>
+
         </aside>
 
         {/* COLUMNA DERECHA: BIBLIOTECA (Más ancha y con imágenes más pequeñas) */}
@@ -396,7 +440,7 @@ export default function Profile() {
                         {fav.status === 'watching' ? 'Viendo' : fav.status === 'completed' ? 'Completado' : 'Pendiente'}
                       </div>
                       <button 
-                        onClick={() => triggerDeleteModal(fav.media.id)}
+                        onClick={() => triggerDeleteModal(fav.media.id, fav.media.type)}
                         className="absolute top-1.5 right-1.5 p-1.5 bg-red-600/80 hover:bg-red-600 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-all"
                       >
                         <Trash2 className="w-3.5 h-3.5" />

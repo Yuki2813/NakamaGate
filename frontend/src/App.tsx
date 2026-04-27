@@ -7,12 +7,15 @@ import Register from './pages/Register';
 import Home from './pages/Home';
 import MediaDetail from './pages/MediaDetail';
 import Navbar from './components/Navbar';
+import Footer from './components/Footer';
 import Profile from './pages/Profile';
 import ProfileFriend from './pages/ProfileFriend';
 import Directory from './pages/Directory';
 import Community from './pages/Community';
+import TermsOfService from './pages/TermsOfService';
+
 const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-// Layout con Navbar
+
 function LayoutWithNavbar() {
   return (
     <>
@@ -20,6 +23,7 @@ function LayoutWithNavbar() {
       <div className="min-h-screen bg-[#f8fafc] dark:bg-[#0f172a]">
         <Outlet />
       </div>
+      <Footer />
     </>
   );
 }
@@ -36,6 +40,7 @@ function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/friend/:id" element={<ProfileFriend />} />
+          <Route path="/terms" element={<TermsOfService />} />
           
           {/* Rutas con Navbar */}
           <Route element={<LayoutWithNavbar />}>

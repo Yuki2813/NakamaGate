@@ -81,7 +81,7 @@ def update_avatar(user_id: int, file: UploadFile, session: Session):
         ruta_web = upload_result.get("secure_url")
 
     except Exception as e:
-        raise HTTPException(status_code=300, detail=f"Error al subir imagen a Cloudinary: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error al subir imagen a Cloudinary: {str(e)}")
 
     # 4. Actualizar la base de datos (tu tabla User)
     exito = update_user_avatar(user_id=user_id, ruta=ruta_web, session=session)
@@ -96,8 +96,9 @@ def update_avatar(user_id: int, file: UploadFile, session: Session):
     return {"message": "Your avatar saved correctly", "picture": ruta_web}
 
 def delete_account(user_id: int, session: Session):
-    check=delete_user(id=user_id,session=session)
-    if check==None:
+    deletion_result = delete_user(id=user_id, session=session)
+
+    if deletion_result is None:
         raise HTTPException(status_code=404, detail="User doesn't exist")
     
 # ==========================================
@@ -105,34 +106,33 @@ def delete_account(user_id: int, session: Session):
 # ==========================================
 
 def send_friend_request_service(requester_id: int, receiver_id: int, session: Session):
-    if requester_id==receiver_id:
+    if requester_id == receiver_id:
         raise HTTPException(status_code=400, detail="You can't send a friend request to yourself")
-    
-    check=check_id_exist(id=receiver_id,session=session)
 
-    if  not check:
+    receiver_exists = check_id_exist(id=receiver_id, session=session)
+    if not receiver_exists:
         raise HTTPException(status_code=404, detail="The user you are trying to send the request to doesn't exist")
-    
-    check=send_friend_request(receiver_id=receiver_id,requester_id=requester_id,session=session)
 
-    if not check:
-        raise HTTPException(status_code=404, detail="You already have a  request with this user")
-    else:
-        return {"message":"the request has been submitted"}
+    request_sent = send_friend_request(receiver_id=receiver_id, requester_id=requester_id, session=session)
+    if not request_sent:
+        raise HTTPException(status_code=404, detail="You already have a request with this user")
 
-        
+    return {"message": "the request has been submitted"}
+
 
 def accept_friend_request_service(requester_id: int, current_user_id: int, session: Session):
+    request_accepted = accept_friend_request(requester_id=requester_id, receiver_id=current_user_id, session=session)
 
-    if(accept_friend_request(requester_id=requester_id,receiver_id=current_user_id,session=session)):
-        return {"message":"All is correct"}
+    if request_accepted:
+        return {"message": "All is correct"}
     else:
         raise HTTPException(status_code=404, detail="Something went wrong")
 
 def remove_friend(user_id_a: int, user_id_b: int, session: Session):
+    friendship_removed = remove_friendship(user_id_A=user_id_a, user_id_B=user_id_b, session=session)
 
-    if(remove_friendship(user_id_A=user_id_a,user_id_B=user_id_b,session=session)):
-        return {"message":"All is correct"}
+    if friendship_removed:
+        return {"message": "All is correct"}
     else:
         raise HTTPException(status_code=404, detail="Friendship not found")
 
@@ -147,9 +147,11 @@ def get_user_social_data(user_id: int, session: Session):
     processed_friend_ids = set()
 
     for rel in raw_friends:
-        friend_id = rel.receiver_id if rel.requester_id == user_id else rel.requester_id
-        
-        # NUEVO: Solo lo añadimos si NO está en nuestro set de procesados
+        if rel.requester_id == user_id:
+            friend_id = rel.receiver_id
+        else:
+            friend_id = rel.requester_id
+
         if friend_id not in processed_friend_ids:
             friend_user = get_user_by_id(id=friend_id, session=session)
             if friend_user:
@@ -196,11 +198,18 @@ async def get_user_favorites_protected(current_user_id: int, target_user_id: int
 
 
 def search_users_service(alias: str, current_user_id: int, session: Session):
+    if len(alias) < 2 or len(alias) > 50:
+        raise HTTPException(status_code=400, detail="El termino de busqueda debe tener entre 2 y 50 caracteres")
 
-    users = search_users_repo(alias=alias, current_user_id=current_user_id, session=session)
-    
-    resultado = []
-    for user in users:
-        item = {"id": user.id, "alias": user.alias, "picture": user.picture}
-        resultado.append(item)
-    return resultado
+    matched_users = search_users_repo(alias=alias, current_user_id=current_user_id, session=session)
+
+    public_profiles = []
+    for user in matched_users:
+        public_profile = {
+            "id": user.id,
+            "alias": user.alias,
+            "picture": user.picture
+        }
+        public_profiles.append(public_profile)
+
+    return public_profiles

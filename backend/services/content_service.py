@@ -36,7 +36,10 @@ async def get_home_service(user_id: int, session: Session):
 
     # Reducimos a 4 carruseles aleatorios para encajar con el nuevo cliente
     recomendaciones = random.sample(posibles_generos, 4)
-    paginas_random = [random.randint(1, 4) for _ in range(4)]
+
+    paginas_random = []
+    for _ in range(4):
+        paginas_random.append(random.randint(1, 4))
 
     data = await anilist_client.get_home_data(genres=recomendaciones, pages=paginas_random)
     
@@ -103,8 +106,8 @@ async def search_media_service(user_id: int, search_text: str, media_type: Media
 async def get_media_details_service(media_id: int, user_id: int, session: Session):
     try:
         content = await anilist_client.get_media_details(media_id=media_id)
-    except:
-        raise HTTPException(status_code=401,detail="Media not found")
+    except Exception:
+        raise HTTPException(status_code=404, detail="Media not found")
 
     if not content:
         raise HTTPException(status_code=404, detail="No results match your search")

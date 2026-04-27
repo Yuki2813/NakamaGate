@@ -13,9 +13,6 @@ router = APIRouter(
     tags=["Favorites"]
 )
 
-
-router = APIRouter(prefix="/favorites", tags=["Favorites"])
-
 class FavoriteAdd(BaseModel):
     media_id: int = Field(..., example=1, description="ID del anime o manga de AniList")
     media_type: Mediatype = Field(..., example="ANIME", description="Tipo de contenido")

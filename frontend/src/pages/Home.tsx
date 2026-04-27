@@ -73,9 +73,8 @@ export default function Home() {
         });
       }
 
-      const watchingMedia = userFavorites
-        .filter((fav: any) => fav.status === 'watching')
-        .map((fav: any) => fav.media);
+      const watchingFavorites = userFavorites.filter((fav: any) => fav.status === 'watching');
+      const watchingMedia = watchingFavorites.map((fav: any) => fav.media);
 
       if (watchingMedia.length > 0) {
         formattedSections.push({ section_title: "▶️ Continuar Viendo", items: watchingMedia });
@@ -165,8 +164,8 @@ export default function Home() {
   if (fetchState.loading) return <Loader text="Sincronizando Nakamagate..." />;
 
   // Separamos los carruseles: los que son "Continuar viendo" y el resto
-  const continuarViendo = sections.find(s => s.section_title.includes("Continuar"));
-  const restSections = sections.filter(s => !s.section_title.includes("Continuar"));
+  const continuarViendoSection = sections.find(s => s.section_title.includes("Continuar"));
+  const remainingSections = sections.filter(s => !s.section_title.includes("Continuar"));
 
   return (
     <main className="min-h-screen bg-[#020617] text-slate-200 pb-20 relative overflow-hidden">
@@ -297,11 +296,11 @@ export default function Home() {
             <Link to="/directory" className="text-xs font-bold text-yellow-500 uppercase tracking-widest hover:underline">Ver todo</Link>
           </div>
 
-          {continuarViendo && continuarViendo.items.length > 0 ? (
+          {continuarViendoSection && continuarViendoSection.items.length > 0 ? (
             <div className="px-4 md:px-8">
             <Carousel opts={{ align: "start", loop: true }} className="w-full">
               <CarouselContent className="-ml-4">
-                {continuarViendo.items.map((item) => (
+                {continuarViendoSection.items.map((item) => (
                   <CarouselItem key={item.id} className="pl-4 basis-[45%] sm:basis-1/3 md:basis-1/4 lg:basis-1/5 xl:basis-1/6">
                     <MediaCard item={item} favoriteIds={favoriteIds} toggleFavorite={toggleFavorite} />
                   </CarouselItem>
@@ -326,7 +325,7 @@ export default function Home() {
         </section>
 
         {/* CARRUSELES DINÁMICOS (Top 10s y géneros) */}
-        {restSections.map((section, idx) => {
+        {remainingSections.map((section, idx) => {
           const isTop10 = section.section_title.includes("Top 10");
 
           return (

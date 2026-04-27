@@ -1,6 +1,6 @@
 from typing import Optional
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
 import requests
 from sqlmodel import Session
 from pydantic import BaseModel, EmailStr, Field
@@ -8,6 +8,7 @@ from backend.database import get_db
 from backend.security import get_current_user_id
 from backend.services.auth_service import get_user_by_email_service, get_user_by_id_service, process_google_login, register_user, login_user
 from backend.services.user_service import search_users_service, update_alias, update_avatar
+from backend.repositories.user_repository import update_user_adult
 
 router = APIRouter(
     prefix="/auth",
@@ -42,8 +43,6 @@ class UserUpdate(BaseModel):
 
 @router.post("/register", status_code=status.HTTP_201_CREATED)
 def register(data: UserRegister, session: Session = Depends(get_db)):
-
-
     return register_user(
         email=data.email,
         alias=data.alias,
@@ -54,7 +53,6 @@ def register(data: UserRegister, session: Session = Depends(get_db)):
 
 @router.post("/login")
 def login(data: UserLogin, session: Session = Depends(get_db)):
-
     return login_user(
         email=data.email, 
         password=data.password, 
@@ -146,6 +144,21 @@ async def search_users_endpoint(
         current_user_id=current_user, 
         session=session
     )
+
+class UpdateAdultRequest(BaseModel):
+    is_adult: bool
+
+@router.patch("/me/adult", summary="Actualizar preferencia de contenido adulto")
+async def change_adult_preference(
+    data: UpdateAdultRequest,
+    user_id: int = Depends(get_current_user_id),
+    session: Session = Depends(get_db)
+):
+    updated = update_user_adult(user_id=user_id, is_adult=data.is_adult, session=session)
+    if not updated:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {"message": "Content preference updated", "is_adult": data.is_adult}
+
 
 class GoogleTokenRequest(BaseModel):
     token: str

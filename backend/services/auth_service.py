@@ -39,36 +39,45 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 
 def register_user(email: str, alias: str, password: str, is_adult: bool, session: Session):
-    
-    if len(password)<8:
-        raise  HTTPException(status_code=400, detail="The password is too short, try another with more characters")
+
+    if len(password) < 8:
+        raise HTTPException(status_code=400, detail="The password is too short, try another with more characters")
+
     if len(password) > 72:
         raise HTTPException(
-            status_code=400, 
+            status_code=400,
             detail="The password is too long. Maximum 72 characters."
         )
-    user_check_email=check_email_exist(email=email,session=session)
-    if user_check_email :
-        raise  HTTPException(status_code=400, detail="This email is already in use login or try another email")
-    
-    user_check_alias=check_alias_exist(alias=alias,session=session)
 
-    if user_check_alias :
-        raise  HTTPException(status_code=400, detail="The alias is already in use try to use another alias")
-    
-    new_user=createUser(email=email,alias=alias,password=get_password_hash(password=password),is_adult=is_adult,session=session)
-    return_user={
-        "email":new_user.email,
-        "alias":new_user.alias,
-        "picture":new_user.picture
+    email_already_exists = check_email_exist(email=email, session=session)
+    if email_already_exists:
+        raise HTTPException(status_code=400, detail="This email is already in use login or try another email")
+
+    alias_already_exists = check_alias_exist(alias=alias, session=session)
+    if alias_already_exists:
+        raise HTTPException(status_code=400, detail="The alias is already in use try to use another alias")
+
+    new_user = createUser(
+        email=email,
+        alias=alias,
+        password=get_password_hash(password=password),
+        is_adult=is_adult,
+        session=session
+    )
+
+    created_user_data = {
+        "email": new_user.email,
+        "alias": new_user.alias,
+        "picture": new_user.picture
     }
 
-    return return_user
+    return created_user_data
 
 def login_user(email: str, password: str, session: Session):
-    user=get_user_by_email(email=email,session=session)
+    user = get_user_by_email(email=email, session=session)
 
-    if not user or not verify_password(plain_password=password, hashed_password=user.password):
+    password_is_valid = user and verify_password(plain_password=password, hashed_password=user.password)
+    if not password_is_valid:
         raise HTTPException(status_code=401, detail="Wrong email or password")
 
     token_data = {
@@ -83,27 +92,28 @@ def login_user(email: str, password: str, session: Session):
 
     return {"access_token": access_token, "token_type": "bearer"}
 
-def get_user_by_id_service(id_user:int,session:Session):
-    user=get_user_by_id(id=id_user,session=session)
+def get_user_by_id_service(id_user: int, session: Session):
+    user = get_user_by_id(id=id_user, session=session)
 
     if not user:
-        raise HTTPException(status_code=404,detail="User not found")
-    else:
-        return user
-    
+        raise HTTPException(status_code=404, detail="User not found")
+
+    return user
+
 def get_user_by_email_service(email: str, session: Session):
     user = get_user_by_email(email=email, session=session)
 
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    else:
-        return user
+
+    return user
 
 
 def process_google_login(google_token: str, session: Session):
     # 1. Validar el token con Google
-    google_url = f"https://www.googleapis.com/oauth2/v3/userinfo?access_token={google_token}"
-    response = requests.get(google_url)
+    google_url = "https://www.googleapis.com/oauth2/v2/userinfo"
+    auth_headers = {"Authorization": f"Bearer {google_token}"}
+    response = requests.get(google_url, headers=auth_headers, timeout=10)
 
     if response.status_code != 200:
         raise HTTPException(

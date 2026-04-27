@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
 from sqlmodel import Session
 
@@ -93,7 +93,7 @@ async def delete_review(
 @router.get("/media/{media_id}", summary="Obtener todas las reseñas de un anime o manga")
 async def get_media_reviews(
     media_id: int,
-    media_type: MediaType, 
+    media_type: MediaType = Query(..., description="ANIME o MANGA"),
     session: Session = Depends(get_db)
 ):
 
