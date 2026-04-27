@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { 
-  Search, UserPlus, UserX, Users, ShieldCheck, 
-  Clock, UserSearch, AlertTriangle, CheckCircle2 
+import { Link } from 'react-router-dom';
+import {
+  Search, UserPlus, UserX, Users, ShieldCheck,
+  Clock, UserSearch, AlertTriangle, CheckCircle2
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
@@ -269,13 +270,15 @@ export default function Community() {
                   friends.map((user: any) => (
                     <Card key={user.id} className="bg-slate-800/90 border-slate-600 hover:border-yellow-500/50 shadow-xl rounded-3xl relative group overflow-hidden">
                       <CardContent className="p-8 flex flex-col items-center">
-                        <div className="relative mb-5">
-                          <div className="w-24 h-24 rounded-full border-4 border-yellow-500 overflow-hidden shadow-lg bg-slate-900 group-hover:scale-105 transition-transform">
-                            <img src={getImageUrl(user.picture) || ''} className="w-full h-full object-cover" alt={user.alias} />
+                        <Link to={`/friend/${user.id}`} className="flex flex-col items-center w-full">
+                          <div className="relative mb-5">
+                            <div className="w-24 h-24 rounded-full border-4 border-yellow-500 overflow-hidden shadow-lg bg-slate-900 group-hover:scale-105 transition-transform">
+                              <img src={getImageUrl(user.picture) || ''} className="w-full h-full object-cover" alt={user.alias} />
+                            </div>
+                            <ShieldCheck className="absolute bottom-0 right-0 w-8 h-8 text-yellow-500 fill-slate-900" />
                           </div>
-                          <ShieldCheck className="absolute bottom-0 right-0 w-8 h-8 text-yellow-500 fill-slate-900" />
-                        </div>
-                        <p className="font-black text-xl text-white uppercase tracking-tight mb-2 truncate w-full text-center">{user.alias}</p>
+                          <p className="font-black text-xl text-white uppercase tracking-tight mb-2 truncate w-full text-center group-hover:text-yellow-400 transition-colors">{user.alias}</p>
+                        </Link>
                         <Badge variant="outline" className="border-yellow-500 text-yellow-500 text-[10px] font-black uppercase bg-yellow-500/10 px-3 py-0.5">Aliado Rango S</Badge>
                       </CardContent>
                       

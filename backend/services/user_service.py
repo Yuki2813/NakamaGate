@@ -197,6 +197,31 @@ async def get_user_favorites_protected(current_user_id: int, target_user_id: int
     return await get_favorite_list(user_id=target_user_id, session=session)
 
 
+def get_public_friends_list(target_user_id: int, session: Session):
+    raw_friends = get_friends(user_id=target_user_id, session=session)
+
+    processed_friend_ids = set()
+    formatted_friends = []
+
+    for rel in raw_friends:
+        if rel.requester_id == target_user_id:
+            friend_id = rel.receiver_id
+        else:
+            friend_id = rel.requester_id
+
+        if friend_id not in processed_friend_ids:
+            friend_user = get_user_by_id(id=friend_id, session=session)
+            if friend_user:
+                formatted_friends.append({
+                    "id": friend_user.id,
+                    "alias": friend_user.alias,
+                    "picture": friend_user.picture
+                })
+            processed_friend_ids.add(friend_id)
+
+    return formatted_friends
+
+
 def search_users_service(alias: str, current_user_id: int, session: Session):
     if len(alias) < 2 or len(alias) > 50:
         raise HTTPException(status_code=400, detail="El termino de busqueda debe tener entre 2 y 50 caracteres")

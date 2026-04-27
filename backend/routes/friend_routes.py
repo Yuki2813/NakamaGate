@@ -8,7 +8,8 @@ from backend.services.user_service import (
     accept_friend_request_service,
     remove_friend,
     get_user_social_data,
-    get_user_favorites_protected
+    get_user_favorites_protected,
+    get_public_friends_list
 )
 
 router = APIRouter(prefix="/friends", tags=["Friends"])
@@ -66,6 +67,15 @@ def get_social_data_endpoint(
         user_id=current_user, 
         session=session
     )
+
+
+@router.get("/{target_user_id}")
+def get_user_friends_endpoint(
+    target_user_id: int,
+    current_user: int = Depends(get_current_user_id),
+    session: Session = Depends(get_db)
+):
+    return get_public_friends_list(target_user_id=target_user_id, session=session)
 
 
 @router.get("/{target_user_id}/favorites")

@@ -21,15 +21,9 @@ interface FavoriteItem {
   media: MediaData;
 }
 
-interface FriendUser {
-  id: number;
-  alias: string;
-  picture: string | null;
-}
-
 interface SocialData {
-  friends: FriendUser[];
-  pending: FriendUser[];
+  friends: { id: number }[];
+  pending: unknown[];
 }
 
 interface UserProfile {
@@ -44,68 +38,40 @@ export default function ProfileFriend() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
   const [socialData, setSocialData] = useState<SocialData | null>(null);
-  const [userFriends, setUserFriends] = useState<FriendUser[]>([]);
-  
+
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
 
   useEffect(() => {
     const fetchProfileData = async () => {
-      try {
-        if (!id) {
-          setLoading(false);
-          return;
-        }
+      if (!id) {
+        setLoading(false);
+        return;
+      }
 
-        // 1. Cargar Perfil
-        console.log(`Cargando perfil de usuario ${id}`);
+      try {
         const profileRes = await apiClient.get(`/auth/users/${id}`);
         setProfile(profileRes.data);
-        console.log("Perfil cargado:", profileRes.data);
-
-        // 2. Cargar Favoritos
-        const favsRes = await apiClient.get(`/friends/${id}/favorites`);
-        setFavorites(favsRes.data);
-        console.log("Favoritos cargados:", favsRes.data);
-
-        // 3. Cargar Datos Sociales del usuario autenticado (para ver si es amigo)
-        try {
-          const socialRes = await apiClient.get('/friends/social-data');
-          setSocialData(socialRes.data);
-        } catch (socialErr) {
-          console.error("Error cargando datos sociales:", socialErr);
-        }
-
-        // 4. Cargar amigos de este usuario
-        try {
-          console.log(`Cargando amigos de usuario ${id}`);
-          const friendsRes = await apiClient.get(`/friends/${id}`);
-          console.log("Respuesta de amigos:", friendsRes.data);
-          const friendsList = Array.isArray(friendsRes.data) 
-            ? friendsRes.data 
-            : (friendsRes.data?.friends || []);
-          console.log("Lista de amigos procesada:", friendsList);
-          setUserFriends(friendsList);
-        } catch (err) {
-          console.error("Error cargando amigos del usuario:", err);
-          // Intenta alternativa
-          try {
-            console.log(`Intentando endpoint alternativo: /friends/${id}/friends`);
-            const altRes = await apiClient.get(`/friends/${id}/friends`);
-            console.log("Respuesta alternativa:", altRes.data);
-            const friendsList = Array.isArray(altRes.data) ? altRes.data : (altRes.data?.friends || []);
-            setUserFriends(friendsList);
-          } catch (altErr) {
-            console.error("Error en endpoint alternativo:", altErr);
-            setUserFriends([]);
-          }
-        }
-
+      } catch {
         setLoading(false);
-      } catch (err) {
-        console.error("Error cargando el perfil:", err);
-        setLoading(false);
+        return;
       }
+
+      try {
+        const favsRes = await apiClient.get(`/friends/${id}/favorites`);
+        setFavorites(Array.isArray(favsRes.data) ? favsRes.data : []);
+      } catch {
+        setFavorites([]);
+      }
+
+      try {
+        const socialRes = await apiClient.get('/friends/social-data');
+        setSocialData(socialRes.data);
+      } catch {
+        // sin datos sociales, los botones de amistad se ocultarán
+      }
+
+      setLoading(false);
     };
 
     fetchProfileData();
@@ -219,53 +185,14 @@ export default function ProfileFriend() {
       {/* ================= CONTENIDO PRINCIPAL ================= */}
       <div className="max-w-[1200px] mx-auto px-6 md:px-16 mt-12 grid grid-cols-1 lg:grid-cols-3 gap-10">
         
-        {/* COLUMNA IZQUIERDA (ESTADÍSTICAS Y AMIGOS) */}
+        {/* COLUMNA IZQUIERDA (ESTADÍSTICAS) */}
         <aside className="lg:col-span-1 space-y-8">
           <section className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl">
             <h2 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-6">Estadísticas</h2>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-[#020617] rounded-2xl p-4 text-center border border-slate-800/50">
-                <span className="block text-3xl font-black text-yellow-500">{favorites.length}</span>
-                <span className="text-xs font-medium text-slate-400">Favoritos</span>
-              </div>
-              <div className="bg-[#020617] rounded-2xl p-4 text-center border border-slate-800/50">
-                <span className="block text-3xl font-black text-yellow-500">{userFriends.length}</span>
-                <span className="text-xs font-medium text-slate-400">Amigos</span>
-              </div>
+            <div className="bg-[#020617] rounded-2xl p-4 text-center border border-slate-800/50">
+              <span className="block text-3xl font-black text-yellow-500">{favorites.length}</span>
+              <span className="text-xs font-medium text-slate-400">Favoritos</span>
             </div>
-          </section>
-
-          <section className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl">
-            <h2 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-6">
-              Nakamas de {profile.alias}
-            </h2>
-            
-            {userFriends && userFriends.length > 0 ? (
-              <ul className="space-y-4">
-                {userFriends.slice(0, 5).map((friend) => (
-                  <li key={friend.id}>
-                    <Link to={`/friend/${friend.id}`} className="flex items-center gap-3 group">
-                      <div className="w-10 h-10 rounded-full bg-[#020617] border border-slate-700 overflow-hidden group-hover:border-yellow-500 transition-colors">
-                        {getImageUrl(friend.picture) ? (
-                          <img src={getImageUrl(friend.picture)!} alt={friend.alias} className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-xs font-bold text-yellow-500 bg-slate-900">
-                            {friend.alias.substring(0,2).toUpperCase()}
-                          </div>
-                        )}
-                      </div>
-                      <span className="font-semibold text-slate-300 group-hover:text-yellow-500 transition-colors">
-                        {friend.alias}
-                      </span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-sm text-slate-500 italic text-center py-4">
-                {profile.alias} aún no tiene amigos.
-              </p>
-            )}
           </section>
         </aside>
 

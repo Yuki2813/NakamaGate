@@ -53,8 +53,9 @@ def update_review(review_id:int, score:int, content:str,session:Session):
     else:
         return None
 
-def delete_review(review_id:int,session:Session):
-    review_delete=session.get(Review,review_id)
+def delete_review(review_id: int, session: Session):
+    statement = select(Review).where(Review.id == review_id)
+    review_delete = session.exec(statement).first()
     if review_delete:
         session.delete(review_delete)
         session.commit()
