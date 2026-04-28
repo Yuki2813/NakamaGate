@@ -20,7 +20,7 @@ function LayoutWithNavbar() {
   return (
     <>
       <Navbar />
-      <div className="min-h-screen bg-[#f8fafc] dark:bg-[#0f172a]">
+      <div className="min-h-screen">
         <Outlet />
       </div>
       <Footer />

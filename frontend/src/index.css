@@ -1,32 +1,86 @@
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *)); /* 👈 ESTA ES LA LÍNEA MÁGICA QUE FALTABA */
+
 @import "tw-animate-css";
 @import "@fontsource-variable/geist";
 
+/* 1. DEFINIMOS LOS COLORES PARA MODO CLARO Y OSCURO */
+@layer base {
+  :root {
+    --background: 100% 0 0; /* Blanco */
+    --foreground: 14.5% 0 0;
+    --card: 100% 0 0;
+    --card-foreground: 14.5% 0 0;
+    --popover: 100% 0 0;
+    --popover-foreground: 14.5% 0 0;
+    --primary: 20.5% 0 0;
+    --primary-foreground: 98.5% 0 0;
+    --secondary: 97% 0 0;
+    --secondary-foreground: 20.5% 0 0;
+    --muted: 97% 0 0;
+    --muted-foreground: 55.6% 0 0;
+    --accent: 97% 0 0;
+    --accent-foreground: 20.5% 0 0;
+    --destructive: 57.7% 0.245 27.325;
+    --border: 92.2% 0 0;
+    --input: 92.2% 0 0;
+    --ring: 70.8% 0 0;
+  }
+
+  .dark {
+    --background: 14.5% 0 0; /* Oscuro */
+    --foreground: 98.5% 0 0;
+    --card: 14.5% 0 0;
+    --card-foreground: 98.5% 0 0;
+    --popover: 14.5% 0 0;
+    --popover-foreground: 98.5% 0 0;
+    --primary: 98.5% 0 0;
+    --primary-foreground: 20.5% 0 0;
+    --secondary: 26.9% 0 0;
+    --secondary-foreground: 98.5% 0 0;
+    --muted: 26.9% 0 0;
+    --muted-foreground: 70.8% 0 0;
+    --accent: 26.9% 0 0;
+    --accent-foreground: 98.5% 0 0;
+    --destructive: 39.6% 0.141 25.723;
+    --border: 26.9% 0 0;
+    --input: 26.9% 0 0;
+    --ring: 43.9% 0 0;
+  }
+}
+
+/* 2. TAILWIND v4 LEE NUESTRAS VARIABLES DINÁMICAS */
 @theme inline {
-  --color-background: oklch(1 0 0);
-  --color-foreground: oklch(0.145 0 0);
-  --color-card: oklch(1 0 0);
-  --color-card-foreground: oklch(0.145 0 0);
-  --color-popover: oklch(1 0 0);
-  --color-popover-foreground: oklch(0.145 0 0);
-  --color-primary: oklch(0.205 0 0);
-  --color-primary-foreground: oklch(0.985 0 0);
-  --color-secondary: oklch(0.97 0 0);
-  --color-secondary-foreground: oklch(0.205 0 0);
-  --color-muted: oklch(0.97 0 0);
-  --color-muted-foreground: oklch(0.556 0 0);
-  --color-accent: oklch(0.97 0 0);
-  --color-accent-foreground: oklch(0.205 0 0);
-  --color-destructive: oklch(0.577 0.245 27.325);
-  --color-border: oklch(0.922 0 0);
-  --color-input: oklch(0.922 0 0);
-  --color-ring: oklch(0.708 0 0);
+  --color-background: oklch(var(--background));
+  --color-foreground: oklch(var(--foreground));
+  --color-card: oklch(var(--card));
+  --color-card-foreground: oklch(var(--card-foreground));
+  --color-popover: oklch(var(--popover));
+  --color-popover-foreground: oklch(var(--popover-foreground));
+  --color-primary: oklch(var(--primary));
+  --color-primary-foreground: oklch(var(--primary-foreground));
+  --color-secondary: oklch(var(--secondary));
+  --color-secondary-foreground: oklch(var(--secondary-foreground));
+  --color-muted: oklch(var(--muted));
+  --color-muted-foreground: oklch(var(--muted-foreground));
+  --color-accent: oklch(var(--accent));
+  --color-accent-foreground: oklch(var(--accent-foreground));
+  --color-destructive: oklch(var(--destructive));
+  --color-border: oklch(var(--border));
+  --color-input: oklch(var(--input));
+  --color-ring: oklch(var(--ring));
+  
   --radius-sm: 0.375rem;
   --radius-md: 0.625rem;
   --radius-lg: 0.75rem;
 }
 
+/* 3. TUS REGLAS GLOBALES */
 @layer base {
+  * {
+    @apply border-border;
+  }
+  
   body {
     @apply bg-slate-50 text-slate-900 transition-colors duration-300 dark:bg-[#020617] dark:text-slate-100;
   }

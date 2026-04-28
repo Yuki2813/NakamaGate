@@ -9,7 +9,10 @@ import {
 } from "@/components/ui/carousel";
 import { Card } from "@/components/ui/card";
 import { Link } from 'react-router-dom';
-import { Heart, CheckCircle2, AlertCircle, X, Star, BookOpen, Tv, Play, RefreshCw } from 'lucide-react';
+import { 
+  Heart, CheckCircle2, AlertCircle, X, Star, BookOpen, Tv, 
+  Play, RefreshCw, Flame, Sparkles, Trophy, PlayCircle, Calendar, Compass 
+} from 'lucide-react';
 import Loader from '../components/Loader';
 
 interface MediaItem {
@@ -25,8 +28,6 @@ interface HomeSection {
   items: MediaItem[];
 }
 
-// ❌ BUG 1: No había estado de error. Si la API falla, la pantalla queda
-//    vacía y el usuario no sabe qué pasó.
 interface FetchState {
   loading: boolean;
   error: string | null;
@@ -48,8 +49,6 @@ export default function Home() {
   }>({ show: false, type: 'success', message: '' });
 
   const fetchData = async () => {
-    // ❌ BUG 1 (cont.): El try/catch existía pero no guardaba el error en
-    //    ningún estado. El catch sólo hacía console.error.
     setFetchState({ loading: true, error: null });
     try {
       const [homeRes, favsRes] = await Promise.all([
@@ -65,10 +64,11 @@ export default function Home() {
 
       const formattedSections: HomeSection[] = [];
 
+      // Nombres de sección limpios, sin emoticonos
       if (data.trending_anime && data.trending_anime.length > 0) {
         setHeroBanner(data.trending_anime[0]);
         formattedSections.push({ 
-          section_title: "🔥 Top 10 Animes del Día", 
+          section_title: "Top 10 Animes del Día", 
           items: data.trending_anime.slice(1, 10) 
         });
       }
@@ -77,21 +77,18 @@ export default function Home() {
       const watchingMedia = watchingFavorites.map((fav: any) => fav.media);
 
       if (watchingMedia.length > 0) {
-        formattedSections.push({ section_title: "▶️ Continuar Viendo", items: watchingMedia });
+        formattedSections.push({ section_title: "Continuar Viendo", items: watchingMedia });
       }
-
-      // ❌ BUG 2: Si el usuario no tiene "Continuar Viendo", ese slot desaparece
-      //    sin ningún mensaje. Lo manejamos más abajo en el JSX con un CTA.
 
       if (data.trending_manga && data.trending_manga.length > 0) {
         formattedSections.push({ 
-          section_title: "🔥 Top 10 Mangas del Día", 
+          section_title: "Top 10 Mangas del Día", 
           items: data.trending_manga.slice(0, 10) 
         });
       }
 
       if (data.upcoming && data.upcoming.length > 0) {
-        formattedSections.push({ section_title: "✨ Próximos Estrenos", items: data.upcoming });
+        formattedSections.push({ section_title: "Próximos Estrenos", items: data.upcoming });
       }
 
       if (data.genre1) formattedSections.push({ section_title: `Explora: ${data.genre1.name}`, items: data.genre1.items });
@@ -107,7 +104,6 @@ export default function Home() {
 
     } catch (err) {
       console.error("Error cargando datos:", err);
-      // ❌ BUG 1 (fix): Ahora guardamos el error para mostrarlo al usuario.
       setFetchState({ loading: false, error: "No se pudieron cargar los contenidos. Intenta de nuevo." });
     }
   };
@@ -146,11 +142,19 @@ export default function Home() {
     }
   };
 
-  // ❌ BUG 1 (fix): Pantalla de error con botón para reintentar.
+  // Asignador de iconos dinámico según el título de la sección
+  const getSectionIcon = (title: string) => {
+    if (title.includes("Top 10")) return <Trophy className="w-6 h-6 text-yellow-500" />;
+    if (title.includes("Continuar")) return <PlayCircle className="w-6 h-6 text-yellow-500" />;
+    if (title.includes("Próximos")) return <Calendar className="w-6 h-6 text-yellow-500" />;
+    return <Compass className="w-6 h-6 text-yellow-500" />;
+  };
+
   if (fetchState.error) return (
-    <main className="min-h-screen bg-slate-50 dark:bg-[#020617] flex flex-col items-center justify-center gap-6 text-slate-700 dark:text-slate-200">
+    /* Limpiado el bg para que coja el del body */
+    <main className="min-h-screen flex flex-col items-center justify-center gap-6 text-slate-700 dark:text-slate-200">
       <AlertCircle className="w-12 h-12 text-red-400" />
-      <p className="text-lg font-bold text-slate-300">{fetchState.error}</p>
+      <p className="text-lg font-bold text-slate-700 dark:text-slate-300">{fetchState.error}</p>
       <button 
         onClick={fetchData}
         className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 text-black font-black py-3 px-8 rounded-xl transition-all"
@@ -163,16 +167,16 @@ export default function Home() {
 
   if (fetchState.loading) return <Loader text="Sincronizando Nakamagate..." />;
 
-  // Separamos los carruseles: los que son "Continuar viendo" y el resto
   const continuarViendoSection = sections.find(s => s.section_title.includes("Continuar"));
   const remainingSections = sections.filter(s => !s.section_title.includes("Continuar"));
 
   return (
-    <main className="min-h-screen bg-slate-50 dark:bg-[#020617] text-slate-800 dark:text-slate-200 pb-20 relative overflow-hidden">
+    /* Limpiado el bg para que coja el del body */
+    <main className="min-h-screen text-slate-800 dark:text-slate-200 pb-20 relative overflow-hidden">
       
       {/* NOTIFICACIONES */}
       {notification.show && (
-        <div className="fixed inset-0 z-200 flex items-end justify-center sm:items-center p-4 pointer-events-none">
+        <div className="fixed inset-0 z-[200] flex items-end justify-center sm:items-center p-4 pointer-events-none">
           <div className={`pointer-events-auto flex items-center gap-4 px-6 py-4 rounded-2xl border backdrop-blur-xl shadow-2xl animate-in fade-in slide-in-from-bottom-8 duration-300 ${notification.type === 'success' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-red-500/10 border-red-500/20 text-red-400'}`}>
             {notification.type === 'success' ? <CheckCircle2 className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
             <p className="font-bold text-sm">{notification.message}</p>
@@ -186,27 +190,31 @@ export default function Home() {
         <section className="relative w-full h-[65vh] min-h-[550px] mb-12 overflow-hidden shadow-2xl flex items-center">
           <img 
             src={heroBanner.image} 
-            className="absolute inset-0 w-full h-full object-cover opacity-30 blur-xl scale-110 transition-transform duration-[20s] animate-pulse"
+            className="absolute inset-0 w-full h-full object-cover opacity-30 blur-xl scale-110"
             alt="blur background"
           />
-          <div className="absolute inset-0 bg-linear-to-t from-[#020617] via-[#020617]/70 to-transparent"></div>
-          <div className="absolute inset-0 bg-linear-to-r from-[#020617] via-[#020617]/40 to-transparent"></div>
+          {/* AHORA LOS GRADIENTES ADMITEN MODO CLARO Y OSCURO */}
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-50 dark:from-[#020617] via-slate-50/80 dark:via-[#020617]/70 to-transparent"></div>
+          <div className="absolute inset-0 bg-gradient-to-r from-slate-50/80 dark:from-[#020617]/60 via-transparent to-transparent"></div>
 
-          <div className="relative z-10 w-full max-w-350 mx-auto px-6 md:px-16 flex flex-col md:flex-row items-center gap-10">
-            <div className="hidden md:block w-56 lg:w-72 shrink-0 rounded-2xl overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.5)] border border-white/10">
+          <div className="relative z-10 w-full max-w-[1400px] mx-auto px-6 md:px-16 flex flex-col md:flex-row items-center gap-10">
+            <div className="hidden md:block w-56 lg:w-72 shrink-0 rounded-2xl overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.5)] border border-slate-300 dark:border-white/10">
                <img src={heroBanner.image} alt={heroBanner.title} className="w-full h-full object-cover" />
             </div>
             <div className="flex-1 text-center md:text-left">
-              <span className="text-yellow-500 font-black tracking-widest text-xs uppercase mb-4 block">🔥 TENDENCIA MÁXIMA HOY</span>
-              <h1 className="text-4xl md:text-6xl lg:text-7xl font-black text-white leading-tight mb-4 drop-shadow-2xl italic">{heroBanner.title}</h1>
+              <div className="flex items-center gap-2 justify-center md:justify-start text-yellow-500 font-black tracking-widest text-xs uppercase mb-4">
+                <Flame className="w-4 h-4" />
+                <span>TENDENCIA MÁXIMA HOY</span>
+              </div>
+              {/* Título adaptable */}
+              <h1 className="text-4xl md:text-6xl lg:text-7xl font-black text-slate-900 dark:text-white leading-tight mb-4 drop-shadow-2xl italic">{heroBanner.title}</h1>
               
-              {/* ❌ BUG 3: El score del hero existía en los datos pero no se mostraba en la UI.
-                  Sólo aparecía en las cards de carrusel. */}
               {heroBanner.score > 0 && (
                 <div className="flex items-center gap-2 justify-center md:justify-start mb-8">
                   <Star className="w-5 h-5 text-yellow-500 fill-yellow-500" />
                   <span className="text-yellow-500 font-black text-xl">{heroBanner.score}</span>
-                  <span className="text-slate-400 text-sm">/ 100</span>
+                  {/* Texto adaptable */}
+                  <span className="text-slate-600 dark:text-slate-400 text-sm">/ 100</span>
                 </div>
               )}
 
@@ -214,7 +222,8 @@ export default function Home() {
                 <Link to={`/media/${heroBanner.id}`}>
                   <button className="bg-yellow-500 hover:bg-yellow-400 text-black font-black text-lg py-4 px-10 rounded-2xl transition-all hover:scale-105 shadow-xl shadow-yellow-500/20">Ver ahora</button>
                 </Link>
-                <button onClick={(e) => toggleFavorite(e, heroBanner)} className={`p-4 rounded-2xl backdrop-blur-md border transition-all ${favoriteIds.has(heroBanner.id) ? 'bg-yellow-500 text-black border-yellow-400' : 'bg-white/5 text-white border-white/10 hover:bg-white/10'}`}>
+                {/* Botón de favoritos adaptable */}
+                <button onClick={(e) => toggleFavorite(e, heroBanner)} className={`p-4 rounded-2xl backdrop-blur-md border transition-all ${favoriteIds.has(heroBanner.id) ? 'bg-yellow-500 text-black border-yellow-400' : 'bg-white/50 dark:bg-white/5 text-slate-900 dark:text-white border-slate-300 dark:border-white/10 hover:bg-white/80 dark:hover:bg-white/10'}`}>
                   <Heart className={`w-6 h-6 ${favoriteIds.has(heroBanner.id) ? 'fill-current' : ''}`} />
                 </button>
               </div>
@@ -225,20 +234,20 @@ export default function Home() {
 
       <div className="relative z-10 space-y-20">
 
-        {/* ❌ BUG 4 (LAYOUT): Las gemas del día estaban separadas por todos los carruseles.
-            El usuario veía el anime del día, luego 4-6 carruseles largos, y al final el manga.
-            El manga quedaba "enterrado" y nadie lo veía.
-            FIX: Juntar ambas gemas en una sola sección side-by-side justo después del hero. */}
+        {/* GEMAS DEL DÍA */}
         {(animeDelDia || mangaDelDia) && (
-          <section className="max-w-350 mx-auto px-6 md:px-16">
-            <h2 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white italic uppercase tracking-tighter mb-8">✨ Gemas del Día</h2>
+          <section className="max-w-[1400px] mx-auto px-6 md:px-16">
+            <div className="flex items-center gap-3 mb-8">
+              <Sparkles className="w-6 h-6 text-yellow-500" />
+              <h2 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white italic uppercase tracking-tighter">Gemas del Día</h2>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               
               {/* ANIME DEL DÍA */}
               {animeDelDia && (
-                <div className="group relative overflow-hidden rounded-[2.5rem] bg-linear-to-br from-indigo-600/20 to-slate-200 dark:to-slate-900 border border-indigo-500/20 p-8 flex gap-6 items-center shadow-2xl">
+                <div className="group relative overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-indigo-600/20 to-slate-200 dark:to-slate-900 border border-indigo-500/20 p-8 flex gap-6 items-center shadow-2xl">
                   <div className="w-32 md:w-40 shrink-0 rounded-2xl overflow-hidden shadow-2xl transition-transform group-hover:scale-105">
-                    <img src={animeDelDia.image} className="w-full h-full object-cover aspect-2/3" alt="anime day" />
+                    <img src={animeDelDia.image} className="w-full h-full object-cover aspect-[2/3]" alt="anime day" />
                   </div>
                   <div className="flex-1 space-y-3 min-w-0">
                     <div className="flex items-center gap-2">
@@ -261,9 +270,9 @@ export default function Home() {
 
               {/* MANGA DEL DÍA */}
               {mangaDelDia && (
-                <div className="group relative overflow-hidden rounded-[2.5rem] bg-linear-to-br from-amber-600/10 to-slate-200 dark:to-slate-900 border border-amber-500/20 p-8 flex gap-6 items-center shadow-2xl">
+                <div className="group relative overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-amber-600/10 to-slate-200 dark:to-slate-900 border border-amber-500/20 p-8 flex gap-6 items-center shadow-2xl">
                   <div className="w-32 md:w-40 shrink-0 rounded-2xl overflow-hidden shadow-2xl transition-transform group-hover:scale-105">
-                    <img src={mangaDelDia.image} className="w-full h-full object-cover aspect-2/3" alt="manga day" />
+                    <img src={mangaDelDia.image} className="w-full h-full object-cover aspect-[2/3]" alt="manga day" />
                   </div>
                   <div className="flex-1 space-y-3 min-w-0">
                     <div className="flex items-center gap-2">
@@ -287,12 +296,13 @@ export default function Home() {
           </section>
         )}
 
-        {/* ❌ BUG 2 (fix): Sección "Continuar Viendo" con CTA si está vacía.
-            Antes si el usuario no tenía nada en watching, la sección desaparecía
-            sin más. Ahora mostramos un mensaje con link al directorio. */}
-        <section className="max-w-350 mx-auto px-6 md:px-16">
+        {/* CONTINUAR VIENDO */}
+        <section className="max-w-[1400px] mx-auto px-6 md:px-16">
           <div className="flex items-center justify-between mb-8">
-            <h2 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white italic uppercase tracking-tighter">▶️ Continuar Viendo</h2>
+            <div className="flex items-center gap-3">
+              <PlayCircle className="w-6 h-6 text-yellow-500" />
+              <h2 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white italic uppercase tracking-tighter">Continuar Viendo</h2>
+            </div>
             <Link to="/directory" className="text-xs font-bold text-yellow-500 uppercase tracking-widest hover:underline">Ver todo</Link>
           </div>
 
@@ -311,9 +321,8 @@ export default function Home() {
             </Carousel>
             </div>
           ) : (
-            // CTA cuando no hay nada en watching
             <div className="flex flex-col items-center justify-center py-16 rounded-2xl border border-dashed border-slate-300 dark:border-white/10 gap-4">
-              <Play className="w-10 h-10 text-slate-600" />
+              <Play className="w-10 h-10 text-slate-400 dark:text-slate-600" />
               <p className="text-slate-500 font-bold">No estás viendo nada todavía</p>
               <Link to="/directory">
                 <button className="bg-yellow-500 hover:bg-yellow-400 text-black font-black py-2 px-6 rounded-xl transition-all text-sm">
@@ -329,45 +338,46 @@ export default function Home() {
           const isTop10 = section.section_title.includes("Top 10");
 
           return (
-            <section key={idx} className="max-w-350 mx-auto group/section">
+            <section key={idx} className="max-w-[1400px] mx-auto group/section">
               <div className="flex items-center justify-between px-6 md:px-16 mb-8">
-                <h2 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white italic uppercase tracking-tighter">{section.section_title}</h2>
+                <div className="flex items-center gap-3">
+                  {getSectionIcon(section.section_title)}
+                  <h2 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white italic uppercase tracking-tighter">{section.section_title}</h2>
+                </div>
                 <Link to="/directory" className="text-xs font-bold text-yellow-500 uppercase tracking-widest hover:underline">Ver todo</Link>
               </div>
 
-              {/* ❌ BUG 7: Con px-6/px-16 en el wrapper y botones a -left-6/-right-6,
-                  los botones quedaban exactamente en el borde del padding, montándose
-                  encima del primer y último item. Subimos el padding a px-10/px-24
-                  y los botones a -left-10/-right-10 para que salgan fuera del contenido. */}
               <div className="px-10 md:px-24">
                 <Carousel opts={{ align: "start", loop: true }} className="w-full">
                   <CarouselContent className="-ml-4">
                     {section.items.map((item, itemIdx) => (
-                      <CarouselItem key={item.id} className={`pl-4 ${isTop10 ? 'basis-[60%] sm:basis-1/3 md:basis-1/4 lg:basis-1/5 overflow-visible' : 'basis-[45%] sm:basis-1/3 md:basis-1/4 lg:basis-1/5 xl:basis-1/6'}`}>
+                      <CarouselItem key={item.id} className={`pl-4 ${isTop10 ? 'basis-[55%] sm:basis-[40%] md:basis-[30%] lg:basis-[25%] xl:basis-[20%] overflow-visible' : 'basis-[45%] sm:basis-1/3 md:basis-1/4 lg:basis-1/5 xl:basis-1/6'}`}>
                         {isTop10 ? (
-                          <div className="relative h-full py-4 pr-2">
+                          <div className="relative h-full py-4 flex items-end justify-end">
+                            
+                            {/* NÚMERO GIGANTE ESTILO NETFLIX ADAPTATIVO */}
                             <span
-                              className="absolute left-0 bottom-2 font-black leading-none select-none pointer-events-none transition-opacity opacity-25 group-hover/section:opacity-50"
+                              className="absolute left-[-15px] sm:left-[-10px] bottom-1 font-black leading-none select-none pointer-events-none drop-shadow-xl"
                               style={{
-                                fontSize: 'clamp(80px, 10vw, 130px)',
-                                WebkitTextStroke: '2px rgba(255,255,255,0.6)',
-                                color: 'transparent',
-                                zIndex: 1,
-                                lineHeight: 0.85,
+                                fontSize: 'clamp(110px, 14vw, 160px)',
+                                color: 'transparent', 
+                                zIndex: 1, 
+                                letterSpacing: '-0.08em',
                               }}
                             >
-                              {itemIdx + (section.section_title.includes("Anime") ? 2 : 1)}
+                              <span className="webkit-text-stroke-light dark:webkit-text-stroke-dark">
+                                {itemIdx + (section.section_title.includes("Anime") ? 2 : 1)}
+                              </span>
                             </span>
-                            {/* Imagen desplazada ~30% a la derecha para dejar el número visible */}
-                            <Link
-                              to={`/media/${item.id}`}
-                              className="block relative transition-transform hover:scale-105"
-                              style={{ marginLeft: '30%', zIndex: 2 }}
-                            >
-                              <div className="aspect-2/3 rounded-xl overflow-hidden border border-white/10 shadow-2xl">
-                                <img src={item.image} className="w-full h-full object-cover" alt="top" />
-                              </div>
-                            </Link>
+                            {/* Truco para el borde del texto adaptable */}
+                            <style>{`
+                              .webkit-text-stroke-light { -webkit-text-stroke: 3px rgba(0,0,0,0.1); }
+                              .dark .webkit-text-stroke-dark { -webkit-text-stroke: 3px rgba(255,255,255,0.8); }
+                            `}</style>
+                            
+                            <div className="relative w-[70%] sm:w-[75%]" style={{ zIndex: 2 }}>
+                              <MediaCard item={item} favoriteIds={favoriteIds} toggleFavorite={toggleFavorite} />
+                            </div>
                           </div>
                         ) : (
                           <MediaCard item={item} favoriteIds={favoriteIds} toggleFavorite={toggleFavorite} />
@@ -388,9 +398,7 @@ export default function Home() {
   );
 }
 
-// ❌ BUG 5 (ESTRUCTURA): La MediaCard estaba duplicada inline en dos sitios
-//    distintos del JSX (en "Continuar Viendo" y en los géneros). Cualquier
-//    cambio había que hacerlo dos veces. Extraemos el componente.
+// Componente MediaCard unificado
 function MediaCard({ 
   item, 
   favoriteIds, 
@@ -401,9 +409,9 @@ function MediaCard({
   toggleFavorite: (e: React.MouseEvent, item: MediaItem) => void;
 }) {
   return (
-    <Card className="bg-transparent border-none group/card">
-      <Link to={`/media/${item.id}`}>
-        <figure className="relative aspect-2/3 rounded-2xl overflow-hidden border border-slate-200 dark:border-white/5 bg-slate-100 dark:bg-slate-900 transition-all duration-300 group-hover/card:border-yellow-500/50 group-hover/card:-translate-y-2 shadow-xl">
+    <Card className="bg-transparent border-none group/card h-full">
+      <Link to={`/media/${item.id}`} className="block h-full">
+        <figure className="relative aspect-[2/3] rounded-2xl overflow-hidden border border-slate-200 dark:border-white/5 bg-slate-100 dark:bg-slate-900 transition-all duration-300 group-hover/card:border-yellow-500/50 group-hover/card:-translate-y-2 shadow-xl">
           <button 
             onClick={(e) => toggleFavorite(e, item)} 
             className={`absolute top-3 right-3 p-2.5 rounded-full backdrop-blur-md z-20 border transition-all ${favoriteIds.has(item.id) ? 'bg-yellow-500 text-black border-yellow-400' : 'bg-black/50 text-white border-transparent opacity-0 group-hover/card:opacity-100 hover:scale-110'}`}
@@ -412,8 +420,9 @@ function MediaCard({
           </button>
           <img src={item.image} className="w-full h-full object-cover transition-transform duration-700 group-hover/card:scale-110" alt="media" />
           {item.score > 0 && (
-            <div className="absolute bottom-3 left-3 bg-black/70 backdrop-blur-md px-2 py-1 rounded-lg text-[10px] font-black text-yellow-500 border border-white/10">
-              ★ {item.score}
+            <div className="absolute bottom-3 left-3 flex items-center gap-1.5 bg-black/70 backdrop-blur-md px-2.5 py-1 rounded-lg border border-white/10 shadow-lg">
+              <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />
+              <span className="text-[11px] font-black text-white">{item.score}</span>
             </div>
           )}
         </figure>

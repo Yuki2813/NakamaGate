@@ -3,8 +3,8 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { apiClient } from '../api/client';
 import {
   Heart, ArrowLeft, Star, Trash2, Edit2, Send,
-  AlertTriangle, BookOpen, Tv, CheckCircle, Clock,
-  Eye, X, Play, ExternalLink, Users, GitBranch, ListPlus
+  AlertTriangle, BookOpen, Tv, CheckCircle, X, 
+  Play, ExternalLink, Users, GitBranch
 } from 'lucide-react';
 
 const BACKEND_URL = "http://localhost:8000";
@@ -41,12 +41,6 @@ interface CurrentUser { id: number; alias: string; rol: string }
 
 // ── Constantes ────────────────────────────────────────────────────────────────
 
-const STATUS_OPTIONS = [
-  { value: 'watching',      label: 'Viendo',     icon: Eye },
-  { value: 'completed',     label: 'Completado', icon: CheckCircle },
-  { value: 'plan_to_watch', label: 'Pendiente',  icon: Clock },
-] as const;
-
 const RELATION_LABELS: Record<string, string> = {
   SEQUEL:      'Secuela',
   PREQUEL:     'Precuela',
@@ -74,7 +68,6 @@ export default function MediaDetail() {
   const [currentUser,  setCurrentUser]  = useState<CurrentUser | null>(null);
 
   const [isFavorite,    setIsFavorite]    = useState(false);
-  const [favStatus,     setFavStatus]     = useState<string | null>(null);
   const [statusLoading, setStatusLoading] = useState(false);
 
   const [reviewScore,      setReviewScore]      = useState(3);
@@ -128,7 +121,6 @@ export default function MediaDetail() {
         }
         if (favRes.status === 'fulfilled') {
           setIsFavorite(favRes.value.data.is_favorite);
-          setFavStatus(favRes.value.data.status || null);
         }
       } catch (err: any) {
         if (err.response?.status === 403) {
@@ -141,26 +133,22 @@ export default function MediaDetail() {
     load();
   }, [id]);
 
-  const handleSetStatus = async (status: string) => {
+  const toggleFavorite = async () => {
     if (statusLoading) return;
     setStatusLoading(true);
     try {
-      const mediaType = media?.type?.toLowerCase();
-      if (favStatus === status) {
+      const mediaType = media?.type?.toLowerCase() || 'anime';
+      if (isFavorite) {
         await apiClient.delete(`/favorites/${id}?media_type=${mediaType}`);
         setIsFavorite(false);
-        setFavStatus(null);
+        showToast('Eliminado de favoritos.');
       } else {
-        if (isFavorite) {
-          await apiClient.patch(`/favorites/${id}`, { status, media_type: mediaType });
-        } else {
-          await apiClient.post('/favorites/', { media_id: id, media_type: mediaType, status });
-          setIsFavorite(true);
-        }
-        setFavStatus(status);
+        await apiClient.post('/favorites/', { media_id: id, media_type: mediaType });
+        setIsFavorite(true);
+        showToast('¡Añadido a favoritos!');
       }
     } catch {
-      showToast('No se pudo actualizar el estado.', 'err');
+      showToast('No se pudo actualizar favoritos.', 'err');
     } finally {
       setStatusLoading(false);
     }
@@ -342,33 +330,20 @@ export default function MediaDetail() {
               </div>
             </div>
 
-            {/* Botones de Mi Lista (Movidos debajo del póster) */}
-            <div className="w-48 md:w-56 flex flex-col gap-2">
-              <div className="flex items-center gap-2 mb-1">
-                <ListPlus className="w-4 h-4 text-slate-500" />
-                <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Añadir a lista</span>
-              </div>
-              {STATUS_OPTIONS.map(({ value, label, icon: Icon }) => {
-                const active = favStatus === value;
-                return (
-                  <button
-                    key={value}
-                    onClick={() => handleSetStatus(value)}
-                    disabled={statusLoading}
-                    className={`flex items-center justify-between px-5 py-3 rounded-xl font-bold text-sm border transition-all duration-200 disabled:opacity-50 group/btn ${
-                      active
-                        ? 'bg-yellow-500 border-yellow-400 text-black shadow-[0_0_15px_rgba(234,179,8,0.2)]'
-                        : 'bg-slate-100 dark:bg-slate-800/60 border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-yellow-500/50 hover:text-yellow-500 dark:hover:text-yellow-400 hover:bg-slate-200 dark:hover:bg-slate-800'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <Icon className="w-4 h-4" />
-                      {label}
-                    </div>
-                    {active && <X className="w-4 h-4 opacity-50 group-hover/btn:opacity-100 transition-opacity" />}
-                  </button>
-                );
-              })}
+            {/* BOTÓN ÚNICO DE FAVORITOS (Reemplaza la lista de estados) */}
+            <div className="w-48 md:w-56 mt-2">
+              <button
+                onClick={toggleFavorite}
+                disabled={statusLoading}
+                className={`w-full flex items-center justify-center gap-3 px-5 py-3.5 rounded-xl font-black text-sm border transition-all duration-300 disabled:opacity-50 group ${
+                  isFavorite
+                    ? 'bg-yellow-500 border-yellow-400 text-black shadow-[0_0_20px_rgba(234,179,8,0.3)]'
+                    : 'bg-slate-100 dark:bg-slate-800/60 border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-yellow-500/50 hover:text-yellow-500 dark:hover:text-yellow-400 hover:bg-slate-200 dark:hover:bg-slate-800'
+                }`}
+              >
+                <Heart className={`w-5 h-5 transition-transform group-hover:scale-110 ${isFavorite ? 'fill-current' : ''}`} />
+                {isFavorite ? 'En Favoritos' : 'Añadir a Favoritos'}
+              </button>
             </div>
           </div>
 
@@ -529,7 +504,7 @@ export default function MediaDetail() {
           </section>
         )}
 
-        {/* ── RELACIONES (IMÁGENES ARREGLADAS) ──────────────────────────────── */}
+        {/* ── RELACIONES ──────────────────────────────── */}
         {media.relations?.length > 0 && (
           <section className="mb-12">
             <SectionTitle icon={<GitBranch className="w-5 h-5" />} title="También te puede interesar" />
