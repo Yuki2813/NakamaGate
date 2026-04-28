@@ -59,6 +59,9 @@ export default function Profile() {
   const [isAdult, setIsAdult] = useState(false);
   const [savingAdult, setSavingAdult] = useState(false);
 
+  const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+
   const fetchProfileData = async () => {
     try {
       const profileRes = await apiClient.get('/auth/me');
@@ -187,6 +190,17 @@ export default function Profile() {
     }
   };
 
+  const handleDeleteAccount = async () => {
+    if (deleteConfirmText !== 'ELIMINAR') return;
+    try {
+      await apiClient.delete('/auth/me');
+      localStorage.removeItem('token');
+      window.location.href = '/';
+    } catch (error) {
+      console.error("Error eliminando cuenta:", error);
+    }
+  };
+
   const handleSaveAvatar = () => {
     if (editorRef.current) {
       setSavingAvatar(true);
@@ -212,7 +226,7 @@ export default function Profile() {
   if (!profile) return <div className="text-white p-10 text-center">Perfil no encontrado.</div>;
 
   return (
-    <main className="min-h-screen bg-[#020617] text-slate-200 pb-20 relative font-sans overflow-hidden">
+    <main className="min-h-screen bg-slate-50 dark:bg-[#020617] text-slate-800 dark:text-slate-200 pb-20 relative font-sans overflow-hidden">
       
       {/* FONDOS MEZCLADOS: CUADRÍCULA + DESTELLOS DE AURA */}
       <div className="fixed inset-0 pointer-events-none z-0">
@@ -223,7 +237,7 @@ export default function Profile() {
 
       {/* MODAL EDITOR AVATAR */}
       {selectedFile && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-4">
+        <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/90 backdrop-blur-md p-4">
           <div className="bg-slate-900 border border-slate-800 p-8 rounded-3xl max-w-sm w-full flex flex-col items-center">
             <h3 className="text-white font-black mb-6 uppercase tracking-tighter">Ajustar Perfil</h3>
             <div className="rounded-full overflow-hidden border-2 border-yellow-500/50 mb-6 bg-black">
@@ -238,9 +252,47 @@ export default function Profile() {
         </div>
       )}
 
+      {/* MODAL BORRAR CUENTA */}
+      {deleteAccountOpen && (
+        <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/90 backdrop-blur-md p-4">
+          <div className="bg-slate-900 border border-red-900/50 p-8 rounded-3xl max-w-sm w-full flex flex-col items-center shadow-[0_0_50px_-12px_rgba(220,38,38,0.3)]">
+            <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mb-6">
+              <ShieldAlert className="w-8 h-8 text-red-500" />
+            </div>
+            <h3 className="text-white font-black mb-2 text-xl text-center">¿Eliminar tu cuenta?</h3>
+            <p className="text-slate-400 text-sm mb-6 text-center leading-relaxed">
+              Esta acción es <span className="text-red-400 font-bold">permanente e irreversible</span>. Perderás todos tus favoritos y reseñas. Escribe <span className="text-white font-black">ELIMINAR</span> para confirmar.
+            </p>
+            <input
+              type="text"
+              value={deleteConfirmText}
+              onChange={(e) => setDeleteConfirmText(e.target.value)}
+              placeholder="Escribe ELIMINAR"
+              className="w-full mb-5 bg-slate-800 border border-slate-700 focus:border-red-500/50 text-white placeholder-slate-600 px-4 py-2.5 rounded-xl focus:outline-none transition-colors"
+            />
+            <div className="flex gap-3 w-full">
+              <Button
+                onClick={() => { setDeleteAccountOpen(false); setDeleteConfirmText(''); }}
+                variant="outline"
+                className="flex-1 border-slate-700 text-slate-300 hover:bg-slate-800"
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleDeleteAccount}
+                disabled={deleteConfirmText !== 'ELIMINAR'}
+                className="flex-1 bg-red-600 hover:bg-red-500 disabled:opacity-40 text-white font-bold"
+              >
+                Eliminar
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* MODAL CONFIRMAR ELIMINACIÓN */}
       {deleteModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-4">
+        <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/90 backdrop-blur-md p-4">
           <div className="bg-slate-900 border border-red-900/50 p-8 rounded-3xl max-w-sm w-full flex flex-col items-center shadow-[0_0_50px_-12px_rgba(220,38,38,0.2)]">
             <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mb-6">
               <ShieldAlert className="w-8 h-8 text-red-500" />
@@ -256,9 +308,9 @@ export default function Profile() {
       )}
 
       {/* NAVBAR */}
-      <nav className="sticky top-0 z-50 border-b border-yellow-500/10 bg-slate-900/80 backdrop-blur-xl">
-        <div className="max-w-[1200px] mx-auto px-6 py-4 flex items-center justify-between">
-          <Link to="/home" className="flex items-center gap-2 text-white hover:text-yellow-500 transition-colors">
+      <nav className="sticky top-0 z-50 border-b border-yellow-500/10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl">
+        <div className="max-w-300 mx-auto px-6 py-4 flex items-center justify-between">
+          <Link to="/home" className="flex items-center gap-2 text-slate-800 dark:text-white hover:text-yellow-500 transition-colors">
             <Home className="w-5 h-5" />
             <span className="font-bold text-sm">Inicio</span>
           </Link>
@@ -268,9 +320,9 @@ export default function Profile() {
       </nav>
 
       {/* HEADER */}
-      <header className="relative z-10 max-w-[1200px] mx-auto px-6 pt-12 pb-10 flex flex-col md:flex-row items-center gap-8">
+      <header className="relative z-10 max-w-300 mx-auto px-6 pt-12 pb-10 flex flex-col md:flex-row items-center gap-8">
         <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
-          <div className="w-32 h-32 md:w-40 md:h-40 rounded-full border-4 border-slate-800 overflow-hidden bg-slate-900 shadow-2xl relative shadow-yellow-500/10">
+          <div className="w-32 h-32 md:w-40 md:h-40 rounded-full border-4 border-slate-200 dark:border-slate-800 overflow-hidden bg-slate-100 dark:bg-slate-900 shadow-2xl relative shadow-yellow-500/10">
             {profile.picture ? (
               <img src={profile.picture} alt="Avatar" className="w-full h-full object-cover" />
             ) : (
@@ -286,13 +338,13 @@ export default function Profile() {
         <div className="flex-1 text-center md:text-left">
           {isEditingAlias ? (
             <div className="flex items-center gap-2 justify-center md:justify-start">
-              <Input value={newAlias} onChange={(e) => setNewAlias(e.target.value)} className="h-10 bg-slate-800 border-yellow-500/50 text-white font-bold max-w-xs" autoFocus />
+              <Input value={newAlias} onChange={(e) => setNewAlias(e.target.value)} className="h-10 bg-white dark:bg-slate-800 border-yellow-500/50 text-slate-900 dark:text-white font-bold max-w-xs" autoFocus />
               <Button onClick={handleUpdateAlias} size="icon" className="bg-green-600"><Check className="w-4 h-4"/></Button>
               <Button onClick={() => setIsEditingAlias(false)} size="icon" variant="outline"><X className="w-4 h-4"/></Button>
             </div>
           ) : (
             <div className="flex items-center justify-center md:justify-start gap-4">
-              <h1 className="text-4xl font-black text-white">{profile.alias}</h1>
+              <h1 className="text-4xl font-black text-slate-900 dark:text-white">{profile.alias}</h1>
               <button onClick={() => setIsEditingAlias(true)} className="p-2 hover:bg-slate-800 rounded-lg text-slate-500 transition-all"><Edit2 className="w-4 h-4" /></button>
             </div>
           )}
@@ -303,26 +355,26 @@ export default function Profile() {
       </header>
 
       {/* CUERPO DEL PERFIL */}
-      <div className="relative z-10 max-w-[1200px] mx-auto px-6 grid grid-cols-1 lg:grid-cols-4 gap-8">
+      <div className="relative z-10 max-w-300 mx-auto px-6 grid grid-cols-1 lg:grid-cols-4 gap-8">
         
         {/* COLUMNA IZQUIERDA: STATS Y LOGROS (Más estrecha) */}
         <aside className="lg:col-span-1 space-y-6">
           
-          <section className="bg-slate-900/80 border border-slate-800 p-5 rounded-3xl shadow-sm backdrop-blur-md">
+          <section className="bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 p-5 rounded-3xl shadow-sm backdrop-blur-md">
             <h2 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mb-4 text-center">Expediente</h2>
             <div className="grid grid-cols-2 gap-3">
-              <div className="bg-slate-950/50 rounded-2xl p-3 text-center border border-slate-800/50">
-                <p className="text-xl font-black text-white">{favorites.length}</p>
+              <div className="bg-slate-100 dark:bg-slate-950/50 rounded-2xl p-3 text-center border border-slate-200 dark:border-slate-800/50">
+                <p className="text-xl font-black text-slate-900 dark:text-white">{favorites.length}</p>
                 <p className="text-[8px] uppercase text-slate-500 font-bold tracking-widest">Favoritos</p>
               </div>
-              <div className="bg-slate-950/50 rounded-2xl p-3 text-center border border-slate-800/50">
-                <p className="text-xl font-black text-white">0</p>
+              <div className="bg-slate-100 dark:bg-slate-950/50 rounded-2xl p-3 text-center border border-slate-200 dark:border-slate-800/50">
+                <p className="text-xl font-black text-slate-900 dark:text-white">0</p>
                 <p className="text-[8px] uppercase text-slate-500 font-bold tracking-widest">Reseñas</p>
               </div>
             </div>
           </section>
 
-          <section className="bg-slate-900/80 border border-slate-800 p-5 rounded-3xl shadow-sm backdrop-blur-md">
+          <section className="bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 p-5 rounded-3xl shadow-sm backdrop-blur-md">
             <h2 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mb-6 flex items-center gap-2"><Award className="w-4 h-4 text-yellow-500" /> Logros Desbloqueados</h2>
             <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
               {badges.map(badge => {
@@ -331,7 +383,7 @@ export default function Profile() {
                 return (
                   <div key={badge.id} title={`${isLockedSecret ? '???' : badge.name}: ${isLockedSecret ? badge.hint : badge.desc}`} 
                     className={`aspect-square rounded-xl flex items-center justify-center border transition-all cursor-help
-                      ${badge.active ? 'bg-yellow-500/10 border-yellow-500/50 text-yellow-500 shadow-[0_0_15px_-3px_rgba(234,179,8,0.2)]' : 'bg-slate-950/50 border-slate-800 text-slate-700 opacity-50'}`}
+                      ${badge.active ? 'bg-yellow-500/10 border-yellow-500/50 text-yellow-500 shadow-[0_0_15px_-3px_rgba(234,179,8,0.2)]' : 'bg-slate-100 dark:bg-slate-950/50 border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-700 opacity-50'}`}
                   >
                     {displayIcon}
                   </div>
@@ -340,15 +392,15 @@ export default function Profile() {
             </div>
           </section>
 
-          <section className="bg-slate-900/80 border border-slate-800 p-5 rounded-3xl shadow-sm backdrop-blur-md">
+          <section className="bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 p-5 rounded-3xl shadow-sm backdrop-blur-md">
             <h2 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mb-6 flex items-center gap-2"><BarChart3 className="w-4 h-4 text-yellow-500" /> Gustos Personales</h2>
             <div className="space-y-4">
               {genreStats.length > 0 ? genreStats.map(([genre, count]) => (
                 <div key={genre}>
-                  <div className="flex justify-between text-[10px] font-bold uppercase mb-1.5 text-slate-400">
+                  <div className="flex justify-between text-[10px] font-bold uppercase mb-1.5 text-slate-500 dark:text-slate-400">
                     <span>{genre}</span><span>{count}</span>
                   </div>
-                  <div className="w-full h-1.5 bg-slate-950 rounded-full overflow-hidden">
+                  <div className="w-full h-1.5 bg-slate-200 dark:bg-slate-950 rounded-full overflow-hidden">
                     <div className="h-full bg-yellow-500" style={{ width: `${(count / favorites.length) * 100}%` }}></div>
                   </div>
                 </div>
@@ -356,15 +408,15 @@ export default function Profile() {
             </div>
           </section>
 
-          <section className="bg-slate-900/80 border border-slate-800 p-5 rounded-3xl shadow-sm backdrop-blur-md">
+          <section className="bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 p-5 rounded-3xl shadow-sm backdrop-blur-md">
             <h2 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mb-5 flex items-center gap-2">
               <Settings className="w-4 h-4 text-yellow-500" /> Ajustes de Cuenta
             </h2>
-            <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center justify-between gap-3 mb-5">
               <div>
                 <div className="flex items-center gap-1.5 mb-0.5">
                   <ShieldCheck className="w-3.5 h-3.5 text-slate-400" />
-                  <p className="text-xs font-bold text-slate-300">Contenido Adulto</p>
+                  <p className="text-xs font-bold text-slate-600 dark:text-slate-300">Contenido Adulto</p>
                 </div>
                 <p className="text-[9px] text-slate-600 leading-tight">Activa para ver contenido Ecchi y +18</p>
               </div>
@@ -378,6 +430,16 @@ export default function Profile() {
                 <span className={`absolute top-1 left-0 w-4 h-4 bg-white rounded-full shadow transition-transform duration-200 ${isAdult ? 'translate-x-6' : 'translate-x-1'}`} />
               </button>
             </div>
+            <div className="border-t border-slate-800 pt-4">
+              <p className="text-[9px] font-black text-red-500/70 uppercase tracking-[0.2em] mb-3">Zona Peligrosa</p>
+              <button
+                onClick={() => setDeleteAccountOpen(true)}
+                className="w-full py-2.5 px-4 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 hover:border-red-500/40 text-red-400 font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Eliminar cuenta
+              </button>
+            </div>
           </section>
 
         </aside>
@@ -388,7 +450,7 @@ export default function Profile() {
           <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
             <div className="flex items-center gap-3">
               <Heart className="w-5 h-5 fill-yellow-500 text-yellow-500" />
-              <h2 className="text-2xl font-black text-white tracking-tight uppercase italic">Mi Biblioteca</h2>
+              <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight uppercase italic">Mi Biblioteca</h2>
             </div>
             
             {/* NUEVO: BARRA DE BÚSQUEDA */}
@@ -399,7 +461,7 @@ export default function Profile() {
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   placeholder="Buscar en mi biblioteca..."
-                  className="pl-9 h-10 bg-slate-900/80 backdrop-blur-md border-slate-800 text-slate-200 focus-visible:ring-yellow-500 placeholder:text-slate-600 rounded-xl"
+                  className="pl-9 h-10 bg-white dark:bg-slate-900/80 backdrop-blur-md border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 focus-visible:ring-yellow-500 placeholder:text-slate-400 dark:placeholder:text-slate-600 rounded-xl"
                 />
               </div>
             )}
@@ -433,8 +495,8 @@ export default function Profile() {
                   'bg-slate-800/50 text-slate-300 border-slate-700';
 
                 return (
-                  <article key={fav.media.id} className="flex flex-col bg-slate-900/80 border border-slate-800 rounded-xl overflow-hidden group backdrop-blur-md hover:border-yellow-500/30 transition-colors">
-                    <div className="relative block aspect-[2/3] bg-slate-950">
+                  <article key={fav.media.id} className="flex flex-col bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden group backdrop-blur-md hover:border-yellow-500/30 transition-colors">
+                    <div className="relative block aspect-2/3 bg-slate-950">
                       <img src={fav.media.image} alt={fav.media.title} className="w-full h-full object-cover" />
                       <div className={`absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-widest border backdrop-blur-sm ${statusStyles}`}>
                         {fav.status === 'watching' ? 'Viendo' : fav.status === 'completed' ? 'Completado' : 'Pendiente'}
@@ -449,13 +511,13 @@ export default function Profile() {
 
                     <div className="p-2 sm:p-3 flex flex-col flex-1 gap-2">
                       <Link to={`/media/${fav.media.id}`}>
-                        <h3 className="font-bold text-[10px] sm:text-xs text-slate-200 line-clamp-2 hover:text-yellow-400 transition-colors leading-tight">{fav.media.title}</h3>
+                        <h3 className="font-bold text-[10px] sm:text-xs text-slate-700 dark:text-slate-200 line-clamp-2 hover:text-yellow-500 dark:hover:text-yellow-400 transition-colors leading-tight">{fav.media.title}</h3>
                       </Link>
                       <div className="relative mt-auto">
                         <select
                           value={fav.status}
                           onChange={(e) => handleStatusChange(fav.media.id, e.target.value)}
-                          className="w-full bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-400 text-[9px] sm:text-[10px] font-semibold rounded-lg pl-2 pr-6 py-1.5 focus:ring-1 focus:ring-yellow-500 appearance-none cursor-pointer"
+                          className="w-full bg-slate-100 dark:bg-slate-950 hover:bg-slate-200 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 text-[9px] sm:text-[10px] font-semibold rounded-lg pl-2 pr-6 py-1.5 focus:ring-1 focus:ring-yellow-500 appearance-none cursor-pointer"
                         >
                           <option value="watching">Viendo</option>
                           <option value="completed">Completado</option>

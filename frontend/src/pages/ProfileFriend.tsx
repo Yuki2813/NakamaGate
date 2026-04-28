@@ -110,13 +110,13 @@ export default function ProfileFriend() {
   };
 
   if (loading) return (
-    <main className="min-h-screen flex items-center justify-center bg-[#020617]">
+    <main className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-[#020617]">
       <div className="w-12 h-12 border-4 border-yellow-500 border-t-transparent rounded-full animate-spin"></div>
     </main>
   );
 
   if (!profile) return (
-    <main className="min-h-screen flex flex-col items-center justify-center bg-[#020617] text-white">
+    <main className="min-h-screen flex flex-col items-center justify-center bg-slate-50 dark:bg-[#020617] text-slate-900 dark:text-white">
       <ShieldAlert className="w-16 h-16 text-red-500 mb-4" />
       <h1 className="text-2xl font-bold text-yellow-500">Expediente no encontrado</h1>
     </main>
@@ -126,31 +126,31 @@ export default function ProfileFriend() {
   const isFriend = socialData?.friends?.some(f => f.id === profile.id);
 
   return (
-    <main className="min-h-screen bg-[#020617] text-slate-200 font-sans selection:bg-yellow-500/30 pb-20">
+    <main className="min-h-screen bg-slate-50 dark:bg-[#020617] text-slate-800 dark:text-slate-200 font-sans selection:bg-yellow-500/30 pb-20">
       
       {/* ================= NAVEGACIÓN SUPERIOR ================= */}
-      <nav className="sticky top-0 z-50 border-b border-yellow-500/20 bg-slate-900/80 backdrop-blur-xl">
-        <div className="max-w-[1200px] mx-auto px-6 md:px-16 py-4 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2 text-white hover:text-yellow-400 transition-colors">
+      <nav className="sticky top-0 z-50 border-b border-yellow-500/20 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl">
+        <div className="max-w-300 mx-auto px-6 md:px-16 py-4 flex items-center justify-between">
+          <Link to="/" className="flex items-center gap-2 text-slate-800 dark:text-white hover:text-yellow-500 dark:hover:text-yellow-400 transition-colors">
             <Home className="w-5 h-5" />
             <span className="font-semibold text-sm">Volver a Home</span>
           </Link>
           <div className="text-center">
-            <h1 className="font-black text-white tracking-tight">NakamaGate</h1>
+            <h1 className="font-black text-slate-900 dark:text-white tracking-tight">NakamaGate</h1>
           </div>
           <div className="w-20"></div>
         </div>
       </nav>
 
       {/* ================= CABECERA DEL PERFIL ================= */}
-      <header className="relative w-full max-w-[1200px] mx-auto px-6 md:px-16 pt-12 pb-10">
+      <header className="relative w-full max-w-300 mx-auto px-6 md:px-16 pt-12 pb-10">
         <div className="flex flex-col md:flex-row items-center md:items-end gap-6 w-full">
           <div className="shrink-0">
-            <div className="w-40 h-40 md:w-48 md:h-48 rounded-2xl border-4 border-[#020617] bg-slate-800 overflow-hidden shadow-[0_0_40px_-5px_rgba(234,179,8,0.4)]">
+            <div className="w-40 h-40 md:w-48 md:h-48 rounded-2xl border-4 border-slate-200 dark:border-[#020617] bg-slate-100 dark:bg-slate-800 overflow-hidden shadow-[0_0_40px_-5px_rgba(234,179,8,0.4)]">
               {getImageUrl(profile.picture) ? (
                 <img src={getImageUrl(profile.picture)!} alt={profile.alias} className="w-full h-full object-cover" />
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-6xl font-black text-yellow-500 bg-slate-900 uppercase">
+                <div className="w-full h-full flex items-center justify-center text-6xl font-black text-yellow-500 bg-slate-100 dark:bg-slate-900 uppercase">
                   {(profile.alias || 'NA').substring(0, 2)}
                 </div>
               )}
@@ -159,7 +159,7 @@ export default function ProfileFriend() {
 
           <div className="flex-1 text-center md:text-left flex flex-col md:flex-row md:items-end justify-between w-full gap-6">
             <div>
-              <h1 className="text-4xl md:text-5xl font-extrabold text-white tracking-tight">
+              <h1 className="text-4xl md:text-5xl font-extrabold text-slate-900 dark:text-white tracking-tight">
                 {profile.alias}
               </h1>
               <p className="text-yellow-400 font-semibold mt-2 flex items-center justify-center md:justify-start gap-2">
@@ -183,13 +183,13 @@ export default function ProfileFriend() {
       </header>
 
       {/* ================= CONTENIDO PRINCIPAL ================= */}
-      <div className="max-w-[1200px] mx-auto px-6 md:px-16 mt-12 grid grid-cols-1 lg:grid-cols-3 gap-10">
+      <div className="max-w-300 mx-auto px-6 md:px-16 mt-12 grid grid-cols-1 lg:grid-cols-3 gap-10">
         
         {/* COLUMNA IZQUIERDA (ESTADÍSTICAS) */}
         <aside className="lg:col-span-1 space-y-8">
-          <section className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl">
+          <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-xl">
             <h2 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-6">Estadísticas</h2>
-            <div className="bg-[#020617] rounded-2xl p-4 text-center border border-slate-800/50">
+            <div className="bg-slate-100 dark:bg-[#020617] rounded-2xl p-4 text-center border border-slate-200 dark:border-slate-800/50">
               <span className="block text-3xl font-black text-yellow-500">{favorites.length}</span>
               <span className="text-xs font-medium text-slate-400">Favoritos</span>
             </div>
@@ -201,7 +201,7 @@ export default function ProfileFriend() {
           <section aria-labelledby="favorites-title">
             <header className="flex items-center gap-3 mb-6">
               <Heart className="w-6 h-6 text-yellow-500 fill-yellow-500" />
-              <h2 id="favorites-title" className="text-2xl font-bold text-white tracking-tight">Santuario de {profile.alias}</h2>
+              <h2 id="favorites-title" className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Santuario de {profile.alias}</h2>
             </header>
 
             {favorites.length > 0 ? (
@@ -230,11 +230,11 @@ export default function ProfileFriend() {
                   return (
                     <article key={media.id} className="group cursor-pointer">
                       <Link to={`/media/${media.id}`} className="block focus:outline-none">
-                        <figure className="relative aspect-[2/3] overflow-hidden rounded-xl bg-slate-900 border border-slate-800 group-hover:border-yellow-500/50 shadow-lg transition-all duration-300 group-hover:-translate-y-1">
+                        <figure className="relative aspect-2/3 overflow-hidden rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 group-hover:border-yellow-500/50 shadow-lg transition-all duration-300 group-hover:-translate-y-1">
                           
                           <img src={media.image} alt={media.title} className="w-full h-full object-cover" loading="lazy" />
                           
-                          <div className="absolute inset-0 bg-gradient-to-t from-[#020617]/95 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-between p-3">
+                          <div className="absolute inset-0 bg-linear-to-t from-[#020617]/95 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-between p-3">
                             <div className={`flex items-center gap-1 px-2 py-1 rounded-lg border w-fit ${statusBadge.color}`}>
                               <StatusIcon className="w-3 h-3" />
                               <span className="text-xs font-bold uppercase">{statusBadge.label}</span>
@@ -251,7 +251,7 @@ export default function ProfileFriend() {
                             <span className="text-xs font-bold uppercase">{statusBadge.label}</span>
                           </div>
                         </figure>
-                        <h3 className="mt-3 text-sm font-semibold leading-tight line-clamp-2 text-slate-300 group-hover:text-yellow-500 transition-colors">
+                        <h3 className="mt-3 text-sm font-semibold leading-tight line-clamp-2 text-slate-600 dark:text-slate-300 group-hover:text-yellow-500 transition-colors">
                           {media.title}
                         </h3>
                       </Link>
@@ -260,9 +260,9 @@ export default function ProfileFriend() {
                 })}
               </div>
             ) : (
-              <div className="bg-slate-900/50 border border-slate-800 border-dashed rounded-3xl p-12 text-center">
-                <Heart className="w-12 h-12 text-slate-700 mx-auto mb-4" />
-                <h3 className="text-lg font-bold text-slate-300 mb-2">Santuario vacío</h3>
+              <div className="bg-slate-100 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 border-dashed rounded-3xl p-12 text-center">
+                <Heart className="w-12 h-12 text-slate-400 dark:text-slate-700 mx-auto mb-4" />
+                <h3 className="text-lg font-bold text-slate-600 dark:text-slate-300 mb-2">Santuario vacío</h3>
                 <p className="text-slate-500 text-sm">{profile.alias} aún no ha añadido obras a sus favoritos.</p>
               </div>
             )}

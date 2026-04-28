@@ -5,7 +5,7 @@ export default function Footer() {
 
   return (
     <footer className="border-t border-slate-800 bg-slate-950/60 backdrop-blur-md mt-16">
-      <div className="max-w-[1200px] mx-auto px-6 py-8 flex flex-col md:flex-row items-center justify-between gap-4">
+      <div className="max-w-300 mx-auto px-6 py-8 flex flex-col md:flex-row items-center justify-between gap-4">
         <div className="flex flex-col items-center md:items-start gap-1">
           <span className="font-black text-yellow-500 tracking-tighter text-base italic uppercase">NAKAMAGATE</span>
           <p className="text-slate-600 text-xs">© {currentYear} NakamaGate. Todos los derechos reservados.</p>

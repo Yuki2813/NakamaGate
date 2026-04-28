@@ -40,7 +40,7 @@ export default function Welcome() {
         {/* Encabezado principal */}
         <h1 className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tighter mb-6 leading-[1.1] text-white">
           Tu comunidad<br />
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-yellow-300 to-yellow-500">
+          <span className="text-transparent bg-clip-text bg-linear-to-r from-yellow-400 via-yellow-300 to-yellow-500">
             de anime sin límites
           </span>
         </h1>

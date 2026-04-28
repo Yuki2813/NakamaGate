@@ -40,6 +40,9 @@ export default function Navbar() {
     if (savedTheme === 'dark') {
       document.documentElement.classList.add('dark');
       setIsDark(true);
+    } else if (savedTheme === 'light') {
+      document.documentElement.classList.remove('dark');
+      setIsDark(false);
     }
 
     apiClient.get('/auth/me')
@@ -99,14 +102,14 @@ export default function Navbar() {
   };
 
   return (
-    <nav className="sticky top-0 z-50 w-full bg-[#020617]/80 backdrop-blur-xl border-b border-yellow-500/20 px-4 md:px-6 py-3 flex items-center justify-between transition-colors">
+    <nav className="sticky top-0 z-50 w-full bg-white/80 dark:bg-[#020617]/80 backdrop-blur-xl border-b border-yellow-500/20 px-4 md:px-6 py-3 flex items-center justify-between transition-colors">
       
       {/* --- LOGO --- */}
       <Link to="/home" className="flex items-center gap-3 hover:scale-105 transition-transform shrink-0 group">
-        <div className="w-9 h-9 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-xl rotate-12 flex items-center justify-center shadow-[0_0_15px_rgba(234,179,8,0.4)] group-hover:rotate-0 transition-all duration-300">
+        <div className="w-9 h-9 bg-linear-to-br from-yellow-400 to-yellow-600 rounded-xl rotate-12 flex items-center justify-center shadow-[0_0_15px_rgba(234,179,8,0.4)] group-hover:rotate-0 transition-all duration-300">
           <span className="text-[#020617] font-black text-xl -rotate-12 group-hover:rotate-0 transition-all duration-300">N</span>
         </div>
-        <span className="text-2xl font-black tracking-tight hidden md:block text-white">
+        <span className="text-2xl font-black tracking-tight hidden md:block text-slate-900 dark:text-white">
           Nakama<span className="text-yellow-500">Gate</span>
         </span>
       </Link>
@@ -116,7 +119,7 @@ export default function Navbar() {
         
         {/* BUSCADOR */}
         <div className="relative w-full flex flex-col">
-          <div className="flex items-stretch bg-black/40 border border-slate-700 focus-within:border-yellow-500/50 focus-within:ring-1 focus-within:ring-yellow-500/20 transition-all rounded-xl overflow-hidden h-11">
+          <div className="flex items-stretch bg-slate-100/80 dark:bg-black/40 border border-slate-300 dark:border-slate-700 focus-within:border-yellow-500/50 focus-within:ring-1 focus-within:ring-yellow-500/20 transition-all rounded-xl overflow-hidden h-11">
             
             <div className="relative flex-grow flex items-center">
               <Search className="absolute left-3 w-5 h-5 text-slate-500" />
@@ -127,20 +130,20 @@ export default function Navbar() {
                 onChange={(e) => setQuery(e.target.value)}
                 onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
                 onFocus={() => query.length >= 3 && setShowDropdown(true)}
-                className="pl-10 h-full border-none rounded-none focus-visible:ring-0 bg-transparent font-medium text-white placeholder:text-slate-500"
+                className="pl-10 h-full border-none rounded-none focus-visible:ring-0 bg-transparent font-medium text-slate-900 dark:text-white placeholder:text-slate-500"
               />
             </div>
 
-            <div className="flex items-center bg-slate-900/50 p-1 m-1 rounded-lg border border-slate-700/50">
+            <div className="flex items-center bg-slate-200 dark:bg-slate-900/50 p-1 m-1 rounded-lg border border-slate-300/50 dark:border-slate-700/50">
               <button
                 onMouseDown={(e) => { e.preventDefault(); setMediaType('ANIME'); }}
-                className={`px-3 py-1 font-bold text-[10px] uppercase rounded-md transition-all ${mediaType === 'ANIME' ? 'bg-yellow-500 text-black shadow-sm' : 'text-slate-400 hover:text-white'}`}
+                className={`px-3 py-1 font-bold text-[10px] uppercase rounded-md transition-all ${mediaType === 'ANIME' ? 'bg-yellow-500 text-black shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'}`}
               >
                 Anime
               </button>
               <button
                 onMouseDown={(e) => { e.preventDefault(); setMediaType('MANGA'); }}
-                className={`px-3 py-1 font-bold text-[10px] uppercase rounded-md transition-all ${mediaType === 'MANGA' ? 'bg-yellow-500 text-black shadow-sm' : 'text-slate-400 hover:text-white'}`}
+                className={`px-3 py-1 font-bold text-[10px] uppercase rounded-md transition-all ${mediaType === 'MANGA' ? 'bg-yellow-500 text-black shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'}`}
               >
                 Manga
               </button>
@@ -149,7 +152,7 @@ export default function Navbar() {
 
           {/* Resultados Desplegables */}
           {showDropdown && (
-            <div className="absolute top-14 left-0 w-full bg-slate-900 border border-slate-700 rounded-xl shadow-[0_20px_40px_-15px_rgba(0,0,0,0.7)] flex flex-col z-50 max-h-80 overflow-y-auto custom-scrollbar overflow-hidden">
+            <div className="absolute top-14 left-0 w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-[0_20px_40px_-15px_rgba(0,0,0,0.3)] flex flex-col z-50 max-h-80 overflow-y-auto custom-scrollbar overflow-hidden">
               
               {/* LÓGICA DE RENDERIZADO MEJORADA */}
               {searchError ? (
@@ -165,13 +168,13 @@ export default function Navbar() {
                     key={item.id} 
                     onMouseDown={(e) => e.preventDefault()}
                     onClick={() => { setShowDropdown(false); setQuery(''); navigate(`/media/${item.id}`); }}
-                    className="flex items-center gap-4 p-3 border-b border-slate-800 last:border-0 hover:bg-slate-800/80 cursor-pointer transition-colors group"
+                    className="flex items-center gap-4 p-3 border-b border-slate-100 dark:border-slate-800 last:border-0 hover:bg-slate-50 dark:hover:bg-slate-800/80 cursor-pointer transition-colors group"
                   >
                     <div className="w-10 h-14 rounded-md overflow-hidden shrink-0 bg-slate-800">
                       <img src={item.image_thumb || item.image} alt={item.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                     </div>
                     <div className="flex flex-col text-left">
-                      <span className="font-bold text-sm text-slate-200 group-hover:text-yellow-400 transition-colors line-clamp-1">{item.title}</span>
+                      <span className="font-bold text-sm text-slate-700 dark:text-slate-200 group-hover:text-yellow-500 dark:group-hover:text-yellow-400 transition-colors line-clamp-1">{item.title}</span>
                       <div className="flex items-center gap-2 mt-0.5">
                         <span className="font-medium text-xs text-slate-500 uppercase">{item.type || mediaType}</span>
                         <span className="w-1 h-1 rounded-full bg-slate-700"></span>
@@ -182,7 +185,7 @@ export default function Navbar() {
                 ))
               ) : (
                 // 3. Si está buscando o si de verdad no hay resultados
-                <div className="p-6 text-center text-slate-400 text-sm">
+                <div className="p-6 text-center text-slate-500 dark:text-slate-400 text-sm">
                   {isSearching ? 'Buscando en el catálogo...' : 'No se encontraron resultados.'}
                 </div>
               )}
@@ -194,14 +197,14 @@ export default function Navbar() {
         {/* BOTONES DE NAVEGACIÓN (Desktop) */}
         <div className="hidden lg:flex items-center gap-1 shrink-0">
           <Link to="/directory">
-            <Button variant="ghost" className="h-11 px-4 rounded-xl text-slate-300 hover:text-yellow-400 hover:bg-yellow-500/10 font-bold transition-all flex items-center gap-2">
+            <Button variant="ghost" className="h-11 px-4 rounded-xl text-slate-600 dark:text-slate-300 hover:text-yellow-500 dark:hover:text-yellow-400 hover:bg-yellow-500/10 font-bold transition-all flex items-center gap-2">
               <Compass className="w-5 h-5" />
               Directorio
             </Button>
           </Link>
-          
+
           <Link to="/community">
-            <Button variant="ghost" className="h-11 px-4 rounded-xl text-slate-300 hover:text-yellow-400 hover:bg-yellow-500/10 font-bold transition-all flex items-center gap-2">
+            <Button variant="ghost" className="h-11 px-4 rounded-xl text-slate-600 dark:text-slate-300 hover:text-yellow-500 dark:hover:text-yellow-400 hover:bg-yellow-500/10 font-bold transition-all flex items-center gap-2">
               <Users className="w-5 h-5" />
               Gremio
             </Button>
@@ -215,22 +218,22 @@ export default function Navbar() {
         {/* Navegación móvil (Iconos) */}
         <div className="flex lg:hidden items-center gap-1">
           <Link to="/directory">
-            <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl text-slate-300 hover:text-yellow-400 hover:bg-yellow-500/10">
+            <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl text-slate-600 dark:text-slate-300 hover:text-yellow-500 dark:hover:text-yellow-400 hover:bg-yellow-500/10">
               <Compass className="w-5 h-5" />
             </Button>
           </Link>
           <Link to="/community">
-            <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl text-slate-300 hover:text-yellow-400 hover:bg-yellow-500/10">
+            <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl text-slate-600 dark:text-slate-300 hover:text-yellow-500 dark:hover:text-yellow-400 hover:bg-yellow-500/10">
               <Users className="w-5 h-5" />
             </Button>
           </Link>
         </div>
 
         {/* Tema */}
-        <Button 
+        <Button
           onClick={toggleDarkMode}
-          variant="outline" 
-          className="h-10 w-10 p-0 rounded-xl border-slate-700 bg-slate-800/50 hover:bg-slate-800 hover:border-yellow-500/50 text-slate-300 transition-all shrink-0"
+          variant="outline"
+          className="h-10 w-10 p-0 rounded-xl border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800/50 hover:bg-slate-200 dark:hover:bg-slate-800 hover:border-yellow-500/50 text-slate-600 dark:text-slate-300 transition-all shrink-0"
           title="Cambiar tema"
         >
           {isDark ? <Sun className="w-4 h-4 text-yellow-500" /> : <Moon className="w-4 h-4" />}
@@ -238,7 +241,7 @@ export default function Navbar() {
 
         {/* Perfil */}
         <Link to="/profile">
-          <Button className="h-10 px-2 md:px-3 rounded-xl border border-slate-700 bg-slate-800/50 hover:bg-slate-800 hover:border-yellow-500/50 text-slate-200 transition-all font-semibold flex items-center gap-2">
+          <Button className="h-10 px-2 md:px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white/80 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 hover:border-yellow-500/50 text-slate-800 dark:text-slate-200 transition-all font-semibold flex items-center gap-2">
             {getImageUrl(userData?.picture) ? (
               <img src={getImageUrl(userData?.picture)!} alt="Avatar" className="w-6 h-6 rounded-full object-cover border border-slate-600 shrink-0" />
             ) : (
@@ -246,7 +249,7 @@ export default function Navbar() {
                 <User className="w-3 h-3" />
               </div>
             )}
-            <span className="max-w-[100px] truncate hidden sm:inline">{userData?.alias || 'Perfil'}</span>
+            <span className="max-w-25 truncate hidden sm:inline">{userData?.alias || 'Perfil'}</span>
           </Button>
         </Link>
 

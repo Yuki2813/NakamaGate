@@ -148,7 +148,7 @@ export default function Home() {
 
   // ❌ BUG 1 (fix): Pantalla de error con botón para reintentar.
   if (fetchState.error) return (
-    <main className="min-h-screen bg-[#020617] flex flex-col items-center justify-center gap-6 text-slate-200">
+    <main className="min-h-screen bg-slate-50 dark:bg-[#020617] flex flex-col items-center justify-center gap-6 text-slate-700 dark:text-slate-200">
       <AlertCircle className="w-12 h-12 text-red-400" />
       <p className="text-lg font-bold text-slate-300">{fetchState.error}</p>
       <button 
@@ -168,11 +168,11 @@ export default function Home() {
   const remainingSections = sections.filter(s => !s.section_title.includes("Continuar"));
 
   return (
-    <main className="min-h-screen bg-[#020617] text-slate-200 pb-20 relative overflow-hidden">
+    <main className="min-h-screen bg-slate-50 dark:bg-[#020617] text-slate-800 dark:text-slate-200 pb-20 relative overflow-hidden">
       
       {/* NOTIFICACIONES */}
       {notification.show && (
-        <div className="fixed inset-0 z-[200] flex items-end justify-center sm:items-center p-4 pointer-events-none">
+        <div className="fixed inset-0 z-200 flex items-end justify-center sm:items-center p-4 pointer-events-none">
           <div className={`pointer-events-auto flex items-center gap-4 px-6 py-4 rounded-2xl border backdrop-blur-xl shadow-2xl animate-in fade-in slide-in-from-bottom-8 duration-300 ${notification.type === 'success' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-red-500/10 border-red-500/20 text-red-400'}`}>
             {notification.type === 'success' ? <CheckCircle2 className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
             <p className="font-bold text-sm">{notification.message}</p>
@@ -189,10 +189,10 @@ export default function Home() {
             className="absolute inset-0 w-full h-full object-cover opacity-30 blur-xl scale-110 transition-transform duration-[20s] animate-pulse"
             alt="blur background"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#020617] via-[#020617]/70 to-transparent"></div>
-          <div className="absolute inset-0 bg-gradient-to-r from-[#020617] via-[#020617]/40 to-transparent"></div>
+          <div className="absolute inset-0 bg-linear-to-t from-[#020617] via-[#020617]/70 to-transparent"></div>
+          <div className="absolute inset-0 bg-linear-to-r from-[#020617] via-[#020617]/40 to-transparent"></div>
 
-          <div className="relative z-10 w-full max-w-[1400px] mx-auto px-6 md:px-16 flex flex-col md:flex-row items-center gap-10">
+          <div className="relative z-10 w-full max-w-350 mx-auto px-6 md:px-16 flex flex-col md:flex-row items-center gap-10">
             <div className="hidden md:block w-56 lg:w-72 shrink-0 rounded-2xl overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.5)] border border-white/10">
                <img src={heroBanner.image} alt={heroBanner.title} className="w-full h-full object-cover" />
             </div>
@@ -230,22 +230,22 @@ export default function Home() {
             El manga quedaba "enterrado" y nadie lo veía.
             FIX: Juntar ambas gemas en una sola sección side-by-side justo después del hero. */}
         {(animeDelDia || mangaDelDia) && (
-          <section className="max-w-[1400px] mx-auto px-6 md:px-16">
-            <h2 className="text-2xl md:text-3xl font-black text-white italic uppercase tracking-tighter mb-8">✨ Gemas del Día</h2>
+          <section className="max-w-350 mx-auto px-6 md:px-16">
+            <h2 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white italic uppercase tracking-tighter mb-8">✨ Gemas del Día</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               
               {/* ANIME DEL DÍA */}
               {animeDelDia && (
-                <div className="group relative overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-indigo-600/20 to-slate-900 border border-indigo-500/20 p-8 flex gap-6 items-center shadow-2xl">
+                <div className="group relative overflow-hidden rounded-[2.5rem] bg-linear-to-br from-indigo-600/20 to-slate-200 dark:to-slate-900 border border-indigo-500/20 p-8 flex gap-6 items-center shadow-2xl">
                   <div className="w-32 md:w-40 shrink-0 rounded-2xl overflow-hidden shadow-2xl transition-transform group-hover:scale-105">
-                    <img src={animeDelDia.image} className="w-full h-full object-cover aspect-[2/3]" alt="anime day" />
+                    <img src={animeDelDia.image} className="w-full h-full object-cover aspect-2/3" alt="anime day" />
                   </div>
                   <div className="flex-1 space-y-3 min-w-0">
                     <div className="flex items-center gap-2">
                       <Tv className="w-3 h-3 text-indigo-400" />
                       <span className="text-indigo-400 text-xs font-bold uppercase">Anime del Día</span>
                     </div>
-                    <h2 className="text-xl md:text-2xl font-black text-white italic line-clamp-2">{animeDelDia.title}</h2>
+                    <h2 className="text-xl md:text-2xl font-black text-slate-900 dark:text-white italic line-clamp-2">{animeDelDia.title}</h2>
                     {animeDelDia.score > 0 && (
                       <div className="flex items-center gap-1">
                         <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />
@@ -261,16 +261,16 @@ export default function Home() {
 
               {/* MANGA DEL DÍA */}
               {mangaDelDia && (
-                <div className="group relative overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-amber-600/10 to-slate-900 border border-amber-500/20 p-8 flex gap-6 items-center shadow-2xl">
+                <div className="group relative overflow-hidden rounded-[2.5rem] bg-linear-to-br from-amber-600/10 to-slate-200 dark:to-slate-900 border border-amber-500/20 p-8 flex gap-6 items-center shadow-2xl">
                   <div className="w-32 md:w-40 shrink-0 rounded-2xl overflow-hidden shadow-2xl transition-transform group-hover:scale-105">
-                    <img src={mangaDelDia.image} className="w-full h-full object-cover aspect-[2/3]" alt="manga day" />
+                    <img src={mangaDelDia.image} className="w-full h-full object-cover aspect-2/3" alt="manga day" />
                   </div>
                   <div className="flex-1 space-y-3 min-w-0">
                     <div className="flex items-center gap-2">
                       <BookOpen className="w-3 h-3 text-amber-400" />
                       <span className="text-amber-400 text-xs font-bold uppercase">Manga del Día</span>
                     </div>
-                    <h2 className="text-xl md:text-2xl font-black text-white italic line-clamp-2">{mangaDelDia.title}</h2>
+                    <h2 className="text-xl md:text-2xl font-black text-slate-900 dark:text-white italic line-clamp-2">{mangaDelDia.title}</h2>
                     {mangaDelDia.score > 0 && (
                       <div className="flex items-center gap-1">
                         <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />
@@ -290,9 +290,9 @@ export default function Home() {
         {/* ❌ BUG 2 (fix): Sección "Continuar Viendo" con CTA si está vacía.
             Antes si el usuario no tenía nada en watching, la sección desaparecía
             sin más. Ahora mostramos un mensaje con link al directorio. */}
-        <section className="max-w-[1400px] mx-auto px-6 md:px-16">
+        <section className="max-w-350 mx-auto px-6 md:px-16">
           <div className="flex items-center justify-between mb-8">
-            <h2 className="text-2xl md:text-3xl font-black text-white italic uppercase tracking-tighter">▶️ Continuar Viendo</h2>
+            <h2 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white italic uppercase tracking-tighter">▶️ Continuar Viendo</h2>
             <Link to="/directory" className="text-xs font-bold text-yellow-500 uppercase tracking-widest hover:underline">Ver todo</Link>
           </div>
 
@@ -306,13 +306,13 @@ export default function Home() {
                   </CarouselItem>
                 ))}
               </CarouselContent>
-              <CarouselPrevious className="hidden md:flex -left-10 bg-slate-900/80 border-slate-700 text-white hover:bg-yellow-500" />
-              <CarouselNext className="hidden md:flex -right-10 bg-slate-900/80 border-slate-700 text-white hover:bg-yellow-500" />
+              <CarouselPrevious className="hidden md:flex -left-10 bg-white/80 dark:bg-slate-900/80 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white hover:bg-yellow-500 hover:text-black hover:border-yellow-500" />
+              <CarouselNext className="hidden md:flex -right-10 bg-white/80 dark:bg-slate-900/80 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white hover:bg-yellow-500 hover:text-black hover:border-yellow-500" />
             </Carousel>
             </div>
           ) : (
             // CTA cuando no hay nada en watching
-            <div className="flex flex-col items-center justify-center py-16 rounded-2xl border border-dashed border-white/10 gap-4">
+            <div className="flex flex-col items-center justify-center py-16 rounded-2xl border border-dashed border-slate-300 dark:border-white/10 gap-4">
               <Play className="w-10 h-10 text-slate-600" />
               <p className="text-slate-500 font-bold">No estás viendo nada todavía</p>
               <Link to="/directory">
@@ -329,9 +329,9 @@ export default function Home() {
           const isTop10 = section.section_title.includes("Top 10");
 
           return (
-            <section key={idx} className="max-w-[1400px] mx-auto group/section">
+            <section key={idx} className="max-w-350 mx-auto group/section">
               <div className="flex items-center justify-between px-6 md:px-16 mb-8">
-                <h2 className="text-2xl md:text-3xl font-black text-white italic uppercase tracking-tighter">{section.section_title}</h2>
+                <h2 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white italic uppercase tracking-tighter">{section.section_title}</h2>
                 <Link to="/directory" className="text-xs font-bold text-yellow-500 uppercase tracking-widest hover:underline">Ver todo</Link>
               </div>
 
@@ -364,7 +364,7 @@ export default function Home() {
                               className="block relative transition-transform hover:scale-105"
                               style={{ marginLeft: '30%', zIndex: 2 }}
                             >
-                              <div className="aspect-[2/3] rounded-xl overflow-hidden border border-white/10 shadow-2xl">
+                              <div className="aspect-2/3 rounded-xl overflow-hidden border border-white/10 shadow-2xl">
                                 <img src={item.image} className="w-full h-full object-cover" alt="top" />
                               </div>
                             </Link>
@@ -375,8 +375,8 @@ export default function Home() {
                       </CarouselItem>
                     ))}
                   </CarouselContent>
-                  <CarouselPrevious className="hidden md:flex -left-10 bg-slate-900/80 border-slate-700 text-white hover:bg-yellow-500" />
-                  <CarouselNext className="hidden md:flex -right-10 bg-slate-900/80 border-slate-700 text-white hover:bg-yellow-500" />
+                  <CarouselPrevious className="hidden md:flex -left-10 bg-white/80 dark:bg-slate-900/80 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white hover:bg-yellow-500 hover:text-black hover:border-yellow-500" />
+                  <CarouselNext className="hidden md:flex -right-10 bg-white/80 dark:bg-slate-900/80 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white hover:bg-yellow-500 hover:text-black hover:border-yellow-500" />
                 </Carousel>
               </div>
             </section>
@@ -403,7 +403,7 @@ function MediaCard({
   return (
     <Card className="bg-transparent border-none group/card">
       <Link to={`/media/${item.id}`}>
-        <figure className="relative aspect-[2/3] rounded-2xl overflow-hidden border border-white/5 bg-slate-900 transition-all duration-300 group-hover/card:border-yellow-500/50 group-hover/card:-translate-y-2 shadow-xl">
+        <figure className="relative aspect-2/3 rounded-2xl overflow-hidden border border-slate-200 dark:border-white/5 bg-slate-100 dark:bg-slate-900 transition-all duration-300 group-hover/card:border-yellow-500/50 group-hover/card:-translate-y-2 shadow-xl">
           <button 
             onClick={(e) => toggleFavorite(e, item)} 
             className={`absolute top-3 right-3 p-2.5 rounded-full backdrop-blur-md z-20 border transition-all ${favoriteIds.has(item.id) ? 'bg-yellow-500 text-black border-yellow-400' : 'bg-black/50 text-white border-transparent opacity-0 group-hover/card:opacity-100 hover:scale-110'}`}
@@ -417,7 +417,7 @@ function MediaCard({
             </div>
           )}
         </figure>
-        <h3 className="mt-4 text-sm font-bold text-slate-300 line-clamp-2 group-hover/card:text-white transition-colors">{item.title}</h3>
+        <h3 className="mt-4 text-sm font-bold text-slate-600 dark:text-slate-300 line-clamp-2 group-hover/card:text-yellow-500 dark:group-hover/card:text-white transition-colors">{item.title}</h3>
       </Link>
     </Card>
   );

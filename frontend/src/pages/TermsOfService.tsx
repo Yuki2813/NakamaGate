@@ -62,7 +62,7 @@ export default function TermsOfService() {
 
       {/* Navbar */}
       <nav className="sticky top-0 z-50 border-b border-yellow-500/10 bg-slate-900/80 backdrop-blur-xl">
-        <div className="max-w-[900px] mx-auto px-6 py-4 flex items-center justify-between">
+        <div className="max-w-225 mx-auto px-6 py-4 flex items-center justify-between">
           <Link to="/home" className="flex items-center gap-2 text-slate-400 hover:text-yellow-500 transition-colors text-sm font-semibold">
             <ArrowLeft className="w-4 h-4" />
             Volver
@@ -73,7 +73,7 @@ export default function TermsOfService() {
       </nav>
 
       {/* Content */}
-      <div className="relative z-10 max-w-[900px] mx-auto px-6 py-16 pb-24">
+      <div className="relative z-10 max-w-225 mx-auto px-6 py-16 pb-24">
 
         <header className="mb-14 text-center">
           <p className="text-yellow-500/80 text-[10px] font-black uppercase tracking-[0.4em] mb-3">Legal</p>

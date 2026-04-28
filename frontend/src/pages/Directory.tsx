@@ -131,40 +131,40 @@ export default function Directory() {
   const availableGenres = isAdult ? ADULT_GENRES : SAFE_GENRES;
 
   return (
-    <main className="min-h-screen bg-[#020617] text-slate-200 pb-20 relative overflow-hidden">
+    <main className="min-h-screen bg-slate-50 dark:bg-[#020617] text-slate-800 dark:text-slate-200 pb-20 relative overflow-hidden">
       <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-yellow-500/5 rounded-full blur-[120px] pointer-events-none"></div>
       <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-blue-500/5 rounded-full blur-[120px] pointer-events-none"></div>
 
-      <header className="max-w-[1400px] mx-auto px-6 md:px-16 pt-12 pb-8 relative z-10">
-        <h1 className="text-4xl md:text-6xl font-black tracking-tighter text-white mb-2 italic">
+      <header className="max-w-350 mx-auto px-6 md:px-16 pt-12 pb-8 relative z-10">
+        <h1 className="text-4xl md:text-6xl font-black tracking-tighter text-slate-900 dark:text-white mb-2 italic">
           Directorio <span className="text-yellow-500">Nakama</span>
         </h1>
         <div className="h-1 w-20 bg-yellow-500 rounded-full mb-4"></div>
       </header>
 
-      <section className="max-w-[1400px] mx-auto px-6 md:px-16 mb-12 relative z-50">
-        <div className="bg-slate-900/40 backdrop-blur-2xl border border-yellow-500/10 p-5 rounded-3xl flex flex-col xl:flex-row gap-6 items-start xl:items-center justify-between shadow-2xl">
+      <section className="max-w-350 mx-auto px-6 md:px-16 mb-12 relative z-50">
+        <div className="bg-white/80 dark:bg-slate-900/40 backdrop-blur-2xl border border-yellow-500/10 p-5 rounded-3xl flex flex-col xl:flex-row gap-6 items-start xl:items-center justify-between shadow-2xl">
           
           <div className="flex flex-col md:flex-row flex-wrap gap-4 items-center w-full xl:w-auto relative">
             
             {/* TIPO: ANIME / MANGA */}
-            <div className="flex bg-black/40 p-1.5 rounded-2xl border border-slate-800 w-full sm:w-auto">
-              <button 
+            <div className="flex bg-slate-100 dark:bg-black/40 p-1.5 rounded-2xl border border-slate-200 dark:border-slate-800 w-full sm:w-auto">
+              <button
                 onClick={() => { setMediaType('ANIME'); setPage(1); setSelectedGenres([]); setSelectedStatus(""); }}
-                className={`flex-1 sm:flex-none px-6 py-2.5 rounded-xl font-black text-xs uppercase transition-all duration-300 ${mediaType === 'ANIME' ? 'bg-yellow-500 text-black shadow-[0_0_20px_rgba(234,179,8,0.3)]' : 'text-slate-500 hover:text-white'}`}
+                className={`flex-1 sm:flex-none px-6 py-2.5 rounded-xl font-black text-xs uppercase transition-all duration-300 ${mediaType === 'ANIME' ? 'bg-yellow-500 text-black shadow-[0_0_20px_rgba(234,179,8,0.3)]' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}
               >
                 Anime
               </button>
-              <button 
+              <button
                 onClick={() => { setMediaType('MANGA'); setPage(1); setSelectedGenres([]); setSelectedStatus(""); }}
-                className={`flex-1 sm:flex-none px-6 py-2.5 rounded-xl font-black text-xs uppercase transition-all duration-300 ${mediaType === 'MANGA' ? 'bg-yellow-500 text-black shadow-[0_0_20px_rgba(234,179,8,0.3)]' : 'text-slate-500 hover:text-white'}`}
+                className={`flex-1 sm:flex-none px-6 py-2.5 rounded-xl font-black text-xs uppercase transition-all duration-300 ${mediaType === 'MANGA' ? 'bg-yellow-500 text-black shadow-[0_0_20px_rgba(234,179,8,0.3)]' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}
               >
                 Manga
               </button>
             </div>
 
             {/* BOTONES DE ESTADO HORIZONTALES */}
-            <div className="flex bg-black/40 p-1.5 rounded-2xl border border-slate-800 w-full sm:w-auto overflow-x-auto custom-scrollbar">
+            <div className="flex bg-slate-100 dark:bg-black/40 p-1.5 rounded-2xl border border-slate-200 dark:border-slate-800 w-full sm:w-auto overflow-x-auto custom-scrollbar">
               {STATUS_OPTIONS.map(opt => {
                 const Icon = opt.icon;
                 const isActive = selectedStatus === opt.id;
@@ -173,7 +173,7 @@ export default function Directory() {
                     key={opt.label}
                     onClick={() => { setSelectedStatus(opt.id); setPage(1); }}
                     className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs uppercase whitespace-nowrap transition-all duration-300 ${
-                      isActive ? 'bg-slate-700 text-white shadow-md' : 'text-slate-500 hover:text-slate-300'
+                      isActive ? 'bg-slate-200 dark:bg-slate-700 text-slate-900 dark:text-white shadow-md' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
                     }`}
                   >
                     <Icon className="w-3.5 h-3.5" />
@@ -188,7 +188,7 @@ export default function Directory() {
               <Button 
                 variant="outline"
                 onClick={() => setShowGenreMenu(!showGenreMenu)}
-                className="w-full sm:w-auto bg-black/40 border-slate-800 hover:bg-slate-800 hover:text-white hover:border-yellow-500/50 text-slate-300 rounded-2xl h-[44px] px-6 font-bold flex items-center justify-between gap-3 transition-all"
+                className="w-full sm:w-auto bg-white dark:bg-black/40 border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white hover:border-yellow-500/50 text-slate-600 dark:text-slate-300 rounded-2xl h-[44px] px-6 font-bold flex items-center justify-between gap-3 transition-all"
               >
                 <div className="flex items-center gap-2 truncate">
                   <Filter className="w-4 h-4 text-yellow-500 shrink-0" />
@@ -204,9 +204,9 @@ export default function Directory() {
               {showGenreMenu && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setShowGenreMenu(false)}></div>
-                  <div className="absolute top-full left-0 mt-3 w-full sm:w-[340px] bg-slate-900/95 backdrop-blur-xl border border-slate-700 rounded-2xl shadow-[0_20px_40px_-15px_rgba(0,0,0,0.7)] p-4 z-50 animate-in fade-in zoom-in-95 duration-200">
-                    <div className="flex justify-between items-center mb-3 pb-2 border-b border-slate-800">
-                      <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Selecciona hasta 4</span>
+                  <div className="absolute top-full left-0 mt-3 w-full sm:w-[340px] bg-white dark:bg-slate-900/95 backdrop-blur-xl border border-slate-200 dark:border-slate-700 rounded-2xl shadow-[0_20px_40px_-15px_rgba(0,0,0,0.3)] p-4 z-50 animate-in fade-in zoom-in-95 duration-200">
+                    <div className="flex justify-between items-center mb-3 pb-2 border-b border-slate-200 dark:border-slate-800">
+                      <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Selecciona hasta 4</span>
                       {selectedGenres.length > 0 && (
                         <button onClick={() => setSelectedGenres([])} className="text-[10px] text-red-400 hover:text-red-300 font-bold uppercase">Limpiar</button>
                       )}
@@ -222,7 +222,7 @@ export default function Directory() {
                             onClick={() => toggleGenre(g)}
                             disabled={isDisabled}
                             className={`flex items-center text-left gap-2 p-2.5 rounded-xl text-xs font-bold transition-all ${
-                              isSelected ? 'bg-yellow-500/10 text-yellow-500 border border-yellow-500/30' : isDisabled ? 'opacity-30 cursor-not-allowed text-slate-500 border border-transparent' : 'hover:bg-slate-800 text-slate-300 border border-transparent hover:border-slate-700'
+                              isSelected ? 'bg-yellow-500/10 text-yellow-500 border border-yellow-500/30' : isDisabled ? 'opacity-30 cursor-not-allowed text-slate-500 border border-transparent' : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 border border-transparent hover:border-slate-200 dark:hover:border-slate-700'
                             }`}
                           >
                             <div className={`w-4 h-4 rounded-md flex items-center justify-center shrink-0 transition-colors ${isSelected ? 'bg-yellow-500 text-black' : 'bg-black/40 border border-slate-600'}`}>
@@ -249,7 +249,7 @@ export default function Directory() {
               placeholder="Ir a pág..." 
               value={jumpPage} 
               onChange={(e) => setJumpPage(e.target.value)}
-              className="bg-transparent text-white text-sm font-black outline-none w-full xl:w-24 placeholder:text-slate-600 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              className="bg-transparent text-slate-900 dark:text-white text-sm font-black outline-none w-full xl:w-24 placeholder:text-slate-400 dark:placeholder:text-slate-600 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
             />
             <Button type="submit" className="bg-transparent hover:bg-white/10 text-yellow-500 font-bold text-xs h-9">
               Ir
@@ -259,7 +259,7 @@ export default function Directory() {
       </section>
 
       {errorMsg && (
-        <div className="max-w-[1400px] mx-auto px-6 md:px-16 mb-8 animate-in fade-in slide-in-from-top-4">
+        <div className="max-w-350 mx-auto px-6 md:px-16 mb-8 animate-in fade-in slide-in-from-top-4">
           <div className="bg-red-900/20 border border-red-500/30 p-8 rounded-3xl flex flex-col items-center text-center">
             <AlertTriangle className="w-16 h-16 text-red-500 mb-4" />
             <h2 className="text-2xl font-black text-white mb-2">Acceso Restringido</h2>
@@ -269,7 +269,7 @@ export default function Directory() {
       )}
 
       {!errorMsg && (
-        <section className="max-w-[1400px] mx-auto px-6 md:px-16 relative z-10">
+        <section className="max-w-350 mx-auto px-6 md:px-16 relative z-10">
           
           {loading && items.length > 0 && (
             <div className="absolute inset-0 z-20 bg-[#020617]/40 backdrop-blur-sm flex justify-center pt-20">
@@ -280,9 +280,9 @@ export default function Directory() {
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6 items-stretch">
             {items.map((item) => (
               <Link key={item.id} to={`/media/${item.id}`} className="group flex flex-col h-full">
-                <figure className="relative aspect-[2/3] overflow-hidden rounded-2xl bg-slate-900 border border-slate-800 transition-all duration-500 group-hover:border-yellow-500/40 group-hover:shadow-[0_0_30px_rgba(234,179,8,0.2)] group-hover:-translate-y-2">
+                <figure className="relative aspect-2/3 overflow-hidden rounded-2xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 transition-all duration-500 group-hover:border-yellow-500/40 group-hover:shadow-[0_0_30px_rgba(234,179,8,0.2)] group-hover:-translate-y-2">
                   <img src={getImageUrl(item.image) || ''} alt={item.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" loading="lazy" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#020617] via-transparent to-transparent opacity-80 group-hover:opacity-40 transition-opacity"></div>
+                  <div className="absolute inset-0 bg-linear-to-t from-[#020617] via-transparent to-transparent opacity-80 group-hover:opacity-40 transition-opacity"></div>
                   
                   {/* LOGICA DE SCORE ACTUALIZADA */}
                   {item.score > 0 ? (
@@ -296,8 +296,8 @@ export default function Directory() {
                     </div>
                   )}
                 </figure>
-                <div className="mt-4 flex-grow min-h-[44px]">
-                  <h3 className="text-sm font-bold text-slate-300 group-hover:text-yellow-400 transition-colors line-clamp-2 leading-tight">{item.title}</h3>
+                <div className="mt-4 flex-grow min-h-11">
+                  <h3 className="text-sm font-bold text-slate-600 dark:text-slate-300 group-hover:text-yellow-500 dark:group-hover:text-yellow-400 transition-colors line-clamp-2 leading-tight">{item.title}</h3>
                 </div>
               </Link>
             ))}
@@ -305,7 +305,7 @@ export default function Directory() {
 
           <div className="mt-20 flex flex-col xl:flex-row items-center justify-center gap-8">
             <div className="flex flex-wrap items-center justify-center gap-2 md:gap-3">
-              <Button disabled={page <= 1} onClick={() => setPage(p => p - 1)} className="bg-slate-900/50 border border-slate-800 hover:border-yellow-500 text-white rounded-2xl w-10 h-10 md:w-12 md:h-12 p-0 transition-all">
+              <Button disabled={page <= 1} onClick={() => setPage(p => p - 1)} className="bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 hover:border-yellow-500 text-slate-800 dark:text-white rounded-2xl w-10 h-10 md:w-12 md:h-12 p-0 transition-all">
                 <ChevronLeft className="w-5 h-5 md:w-6 md:h-6" />
               </Button>
 
@@ -314,14 +314,14 @@ export default function Directory() {
                   <button
                     key={`page-${p}`}
                     onClick={() => setPage(p as number)}
-                    className={`w-10 h-10 md:w-12 md:h-12 rounded-2xl font-black text-xs md:text-sm transition-all border-2 ${page === p ? 'bg-yellow-500 border-yellow-500 text-black shadow-[0_0_20px_rgba(234,179,8,0.4)] md:scale-110' : 'bg-slate-900/50 border-slate-800 text-slate-400 hover:border-yellow-500/40 hover:text-white'}`}
+                    className={`w-10 h-10 md:w-12 md:h-12 rounded-2xl font-black text-xs md:text-sm transition-all border-2 ${page === p ? 'bg-yellow-500 border-yellow-500 text-black shadow-[0_0_20px_rgba(234,179,8,0.4)] md:scale-110' : 'bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-yellow-500/40 hover:text-slate-900 dark:hover:text-white'}`}
                   >
                     {p}
                   </button>
                 ))}
               </div>
 
-              <Button disabled={items.length < 24} onClick={() => setPage(p => p + 1)} className="bg-slate-900/50 border border-slate-800 hover:border-yellow-500 text-white rounded-2xl w-10 h-10 md:w-12 md:h-12 p-0 transition-all disabled:opacity-30">
+              <Button disabled={items.length < 24} onClick={() => setPage(p => p + 1)} className="bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 hover:border-yellow-500 text-slate-800 dark:text-white rounded-2xl w-10 h-10 md:w-12 md:h-12 p-0 transition-all disabled:opacity-30">
                 <ChevronRight className="w-5 h-5 md:w-6 md:h-6" />
               </Button>
             </div>

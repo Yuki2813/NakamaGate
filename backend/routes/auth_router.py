@@ -8,7 +8,7 @@ from backend.database import get_db
 from backend.security import get_current_user_id
 from backend.services.auth_service import get_user_by_email_service, get_user_by_id_service, process_google_login, register_user, login_user
 from backend.services.user_service import search_users_service, update_alias, update_avatar
-from backend.repositories.user_repository import update_user_adult
+from backend.repositories.user_repository import update_user_adult, delete_user
 
 router = APIRouter(
     prefix="/auth",
@@ -115,8 +115,17 @@ async def change_avatar(
 # ==========================================
 @router.post("/logout", summary="Cerrar sesión")
 async def logout(user_id: int = Depends(get_current_user_id)):
-
     return {"message": "Logout exitoso. Recuerda borrar el token en el frontend."}
+
+@router.delete("/me", summary="Eliminar cuenta de usuario")
+async def delete_account(
+    user_id: int = Depends(get_current_user_id),
+    session: Session = Depends(get_db)
+):
+    result = delete_user(id=user_id, session=session)
+    if not result:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    return {"message": "Cuenta eliminada correctamente"}
 
 @router.get("/users/{target_user_id}", summary="Obtener perfil público de un usuario")
 async def get_public_profile(
