@@ -75,6 +75,10 @@
   --radius-lg: 0.75rem;
 }
 
+/* Variable para el stroke del número Top 10 */
+:root  { --top10-stroke: rgba(0,0,0,0.15); }
+.dark  { --top10-stroke: rgba(255,255,255,0.85); }
+
 /* 3. TUS REGLAS GLOBALES */
 @layer base {
   * {

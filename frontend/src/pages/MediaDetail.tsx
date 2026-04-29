@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { apiClient } from '../api/client';
 import {
   Heart, ArrowLeft, Star, Trash2, Edit2, Send,
-  AlertTriangle, BookOpen, Tv, CheckCircle, X, 
+  AlertTriangle, BookOpen, Tv, CheckCircle, X,
   Play, ExternalLink, Users, GitBranch
 } from 'lucide-react';
 
@@ -205,20 +205,20 @@ export default function MediaDetail() {
   if (loading) return (
     <main className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-[#020617]">
       <div className="flex flex-col items-center gap-4">
-        <div className="w-14 h-14 border-4 border-yellow-500/30 border-t-yellow-500 rounded-full animate-spin" />
-        <p className="text-slate-400 text-sm font-bold uppercase tracking-widest animate-pulse">Cargando...</p>
+        <div className="w-12 h-12 border-4 border-slate-300 dark:border-slate-800 border-t-yellow-500 rounded-full animate-spin" />
+        <p className="text-slate-500 dark:text-slate-400 text-sm font-bold uppercase tracking-widest animate-pulse">Cargando...</p>
       </div>
     </main>
   );
 
   if (accessError) return (
     <main className="min-h-screen flex flex-col items-center justify-center bg-slate-50 dark:bg-[#020617] text-slate-900 dark:text-white px-4">
-      <div className="bg-linear-to-br from-red-950/40 to-[#020617] border border-red-500/30 p-10 rounded-3xl flex flex-col items-center text-center max-w-md shadow-2xl">
-        <div className="w-24 h-24 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center mb-6">
-          <AlertTriangle className="w-12 h-12 text-red-400" />
+      <div className="bg-linear-to-br from-red-950/40 to-[#020617] border border-red-500/30 p-8 sm:p-10 rounded-3xl flex flex-col items-center text-center max-w-sm shadow-2xl">
+        <div className="w-20 h-20 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center mb-6">
+          <AlertTriangle className="w-10 h-10 text-red-400" />
         </div>
-        <h2 className="text-3xl font-black text-white mb-3 uppercase italic">Zona Restringida</h2>
-        <p className="text-slate-400 mb-8">{accessError}</p>
+        <h2 className="text-2xl sm:text-3xl font-black text-white mb-3 uppercase italic">Zona Restringida</h2>
+        <p className="text-slate-400 mb-8 text-sm">{accessError}</p>
         <button onClick={() => navigate('/home')} className="bg-yellow-500 hover:bg-yellow-400 text-black font-black py-3 px-8 rounded-xl transition-all hover:scale-105">
           Volver al inicio
         </button>
@@ -227,8 +227,8 @@ export default function MediaDetail() {
   );
 
   if (!media) return (
-    <main className="min-h-screen flex flex-col items-center justify-center bg-slate-50 dark:bg-[#020617] text-slate-900 dark:text-white gap-6">
-      <h2 className="text-3xl font-black italic">Obra no encontrada</h2>
+    <main className="min-h-screen flex flex-col items-center justify-center bg-slate-50 dark:bg-[#020617] text-slate-900 dark:text-white gap-6 px-4">
+      <h2 className="text-2xl sm:text-3xl font-black italic text-center">Obra no encontrada</h2>
       <button onClick={() => navigate('/home')} className="bg-yellow-500 hover:bg-yellow-400 text-black font-black py-3 px-8 rounded-xl transition-all">
         Volver al inicio
       </button>
@@ -239,11 +239,11 @@ export default function MediaDetail() {
   const isAnime = media.type?.toUpperCase() === 'ANIME';
 
   return (
-    <main className="min-h-screen bg-slate-50 dark:bg-[#020617] text-slate-900 dark:text-slate-100 pb-24 relative overflow-x-hidden">
+    <main className="min-h-screen bg-slate-50 dark:bg-[#020617] text-slate-900 dark:text-slate-100 pb-20 relative overflow-x-hidden">
 
       {/* TOAST */}
       {toast && (
-        <div className={`fixed bottom-8 left-1/2 -translate-x-1/2 z-300 flex items-center gap-3 px-6 py-4 rounded-2xl border backdrop-blur-xl shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-300 ${toast.type === 'ok' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-red-500/10 border-red-500/20 text-red-400'}`}>
+        <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-300 flex items-center gap-3 px-5 py-3.5 rounded-2xl border backdrop-blur-xl shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-300 max-w-[90vw] ${toast.type === 'ok' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-red-500/10 border-red-500/20 text-red-400'}`}>
           {toast.type === 'ok'
             ? <CheckCircle className="w-5 h-5 shrink-0" />
             : <AlertTriangle className="w-5 h-5 shrink-0" />
@@ -255,9 +255,9 @@ export default function MediaDetail() {
       {/* MODAL CONFIRMAR BORRADO */}
       {reviewToDelete !== null && (
         <div className="fixed inset-0 z-200 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-700 rounded-3xl p-8 max-w-sm w-full shadow-2xl animate-in zoom-in-95 duration-200">
+          <div className="bg-slate-900 border border-slate-700 rounded-3xl p-6 sm:p-8 max-w-sm w-full shadow-2xl animate-in zoom-in-95 duration-200">
             <h3 className="text-xl font-black text-white mb-2">¿Eliminar reseña?</h3>
-            <p className="text-slate-400 mb-8 text-sm">Esta acción no se puede deshacer.</p>
+            <p className="text-slate-400 mb-6 text-sm">Esta acción no se puede deshacer.</p>
             <div className="flex gap-3">
               <button onClick={() => setReviewToDelete(null)} className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-bold rounded-xl transition-all">
                 Cancelar
@@ -272,7 +272,7 @@ export default function MediaDetail() {
 
       {/* MODAL TRÁILER */}
       {trailerOpen && media.trailer && (
-        <div className="fixed inset-0 z-200 bg-black/90 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setTrailerOpen(false)}>
+        <div className="fixed inset-0 z-200 bg-black/90 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4" onClick={() => setTrailerOpen(false)}>
           <div className="relative w-full max-w-4xl aspect-video rounded-2xl overflow-hidden shadow-2xl" onClick={e => e.stopPropagation()}>
             <button onClick={() => setTrailerOpen(false)} className="absolute top-3 right-3 z-10 p-2 bg-black/60 hover:bg-black rounded-xl transition-all">
               <X className="w-5 h-5 text-white" />
@@ -288,14 +288,14 @@ export default function MediaDetail() {
       )}
 
       {/* ── HERO BANNER ──────────────────────────────────────────────────────── */}
-      <div className="relative h-[55vh] min-h-105 overflow-hidden">
+      <div className="relative h-[40vh] sm:h-[50vh] min-h-[260px] sm:min-h-[340px] overflow-hidden">
         <img src={bgImage} alt="" aria-hidden className="absolute inset-0 w-full h-full object-cover scale-105 opacity-20 blur-md" />
         <img src={bgImage} alt="banner" className="absolute inset-0 w-full h-full object-cover opacity-40" />
         <div className="absolute inset-0 bg-linear-to-t from-slate-50 dark:from-[#020617] via-slate-50/50 dark:via-[#020617]/50 to-transparent" />
         <div className="absolute inset-0 bg-linear-to-r from-slate-50/80 dark:from-[#020617]/80 via-transparent to-transparent" />
         <div className="absolute bottom-0 left-0 right-0 h-px bg-linear-to-r from-transparent via-yellow-500/30 to-transparent" />
-        <div className="absolute top-6 left-6 md:left-16">
-          <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-slate-400 hover:text-yellow-400 transition-colors group">
+        <div className="absolute top-4 sm:top-6 left-4 sm:left-6 md:left-16">
+          <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-slate-500 dark:text-slate-400 hover:text-yellow-500 transition-colors group">
             <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
             <span className="text-sm font-bold">Volver</span>
           </button>
@@ -303,19 +303,19 @@ export default function MediaDetail() {
       </div>
 
       {/* ── CONTENIDO PRINCIPAL ──────────────────────────────────────────────── */}
-      <div className="max-w-300 mx-auto px-6 md:px-16 -mt-48 relative z-10">
+      <div className="max-w-300 mx-auto px-4 sm:px-6 md:px-16 -mt-32 sm:-mt-44 relative z-10">
 
-        <div className="flex flex-col md:flex-row gap-8 md:gap-12 mb-16">
+        <div className="flex flex-col md:flex-row gap-6 md:gap-12 mb-12">
 
           {/* ── COLUMNA IZQUIERDA: Poster + Acciones ────────────────────────── */}
-          <div className="shrink-0 flex flex-col items-center md:items-start gap-6">
-            
+          <div className="shrink-0 flex flex-col items-center md:items-start gap-4 md:gap-6">
+
             {/* Poster */}
-            <div className="relative w-48 md:w-56 group">
+            <div className="relative w-36 sm:w-44 md:w-56 group">
               <div className="absolute -inset-2 bg-yellow-500/20 rounded-3xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
               <div className="relative rounded-2xl overflow-hidden border-2 border-white/10 shadow-2xl shadow-black/50">
                 <img src={media.image} alt={media.title} className="w-full aspect-2/3 object-cover" />
-                <div className="absolute top-3 left-3 flex items-center gap-1.5 bg-black/70 backdrop-blur-md px-2.5 py-1.5 rounded-lg border border-white/10">
+                <div className="absolute top-2.5 left-2.5 flex items-center gap-1 bg-black/70 backdrop-blur-md px-2 py-1 rounded-lg border border-white/10">
                   {isAnime
                     ? <Tv className="w-3 h-3 text-yellow-400" />
                     : <BookOpen className="w-3 h-3 text-yellow-400" />
@@ -323,59 +323,59 @@ export default function MediaDetail() {
                   <span className="text-[10px] font-black text-yellow-400 uppercase">{media.type}</span>
                 </div>
                 {media.is_adult && (
-                  <div className="absolute top-3 right-3 bg-red-600/80 backdrop-blur-md px-2 py-1 rounded-lg">
+                  <div className="absolute top-2.5 right-2.5 bg-red-600/80 backdrop-blur-md px-2 py-1 rounded-lg">
                     <span className="text-[10px] font-black text-white">+18</span>
                   </div>
                 )}
               </div>
             </div>
 
-            {/* BOTÓN ÚNICO DE FAVORITOS (Reemplaza la lista de estados) */}
-            <div className="w-48 md:w-56 mt-2">
+            {/* Botón favoritos */}
+            <div className="w-36 sm:w-44 md:w-56">
               <button
                 onClick={toggleFavorite}
                 disabled={statusLoading}
-                className={`w-full flex items-center justify-center gap-3 px-5 py-3.5 rounded-xl font-black text-sm border transition-all duration-300 disabled:opacity-50 group ${
+                className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-black text-sm border transition-all duration-300 disabled:opacity-50 group ${
                   isFavorite
                     ? 'bg-yellow-500 border-yellow-400 text-black shadow-[0_0_20px_rgba(234,179,8,0.3)]'
                     : 'bg-slate-100 dark:bg-slate-800/60 border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-yellow-500/50 hover:text-yellow-500 dark:hover:text-yellow-400 hover:bg-slate-200 dark:hover:bg-slate-800'
                 }`}
               >
-                <Heart className={`w-5 h-5 transition-transform group-hover:scale-110 ${isFavorite ? 'fill-current' : ''}`} />
-                {isFavorite ? 'En Favoritos' : 'Añadir a Favoritos'}
+                <Heart className={`w-4 h-4 transition-transform group-hover:scale-110 ${isFavorite ? 'fill-current' : ''}`} />
+                {isFavorite ? 'En Favoritos' : 'Añadir'}
               </button>
             </div>
           </div>
 
           {/* ── COLUMNA DERECHA: Info + Sinopsis ────────────────────────────── */}
-          <div className="flex-1 pt-4 md:pt-0 mt-4 md:mt-16">
+          <div className="flex-1 pt-2 md:pt-0 md:mt-16">
 
             {/* Géneros */}
-            <div className="flex flex-wrap gap-2 mb-4">
+            <div className="flex flex-wrap gap-2 mb-3">
               {media.genres.map(g => (
-                <span key={g} className="px-3 py-1 text-xs font-bold rounded-full bg-yellow-500/10 border border-yellow-500/20 text-yellow-400">
+                <span key={g} className="px-3 py-1 text-xs font-bold rounded-full bg-yellow-500/10 border border-yellow-500/20 text-yellow-500 dark:text-yellow-400">
                   {g}
                 </span>
               ))}
             </div>
 
             {/* Título */}
-            <h1 className="text-4xl md:text-6xl font-black italic text-white leading-tight mb-2 drop-shadow-2xl">
+            <h1 className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-black italic text-slate-900 dark:text-white leading-tight mb-2 drop-shadow-2xl">
               {media.title}
             </h1>
             {media.title_en && media.title_en !== media.title && (
-              <p className="text-lg text-slate-500 mb-4">{media.title_en}</p>
+              <p className="text-base text-slate-500 mb-3">{media.title_en}</p>
             )}
 
             {/* Estudio */}
             {media.studios?.length > 0 && (
-              <p className="text-slate-400 text-sm mb-5">
+              <p className="text-slate-500 dark:text-slate-400 text-sm mb-4">
                 Producido por{' '}
                 {media.studios.map((s, i) => (
                   <span key={s.id}>
                     {s.url
-                      ? <a href={s.url} target="_blank" rel="noopener noreferrer" className="text-yellow-400 hover:underline font-bold">{s.name}</a>
-                      : <span className="text-yellow-400 font-bold">{s.name}</span>
+                      ? <a href={s.url} target="_blank" rel="noopener noreferrer" className="text-yellow-500 dark:text-yellow-400 hover:underline font-bold">{s.name}</a>
+                      : <span className="text-yellow-500 dark:text-yellow-400 font-bold">{s.name}</span>
                     }
                     {i < media.studios.length - 1 && ', '}
                   </span>
@@ -384,25 +384,25 @@ export default function MediaDetail() {
             )}
 
             {/* Stats */}
-            <div className="flex flex-wrap items-center gap-3 mb-8">
+            <div className="flex flex-wrap items-center gap-2 mb-6">
               {media.score > 0 && (
-                <div className="flex items-center gap-2 bg-yellow-500/10 border border-yellow-500/30 px-4 py-2 rounded-xl">
+                <div className="flex items-center gap-2 bg-yellow-500/10 border border-yellow-500/30 px-3 py-1.5 rounded-xl">
                   <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-                  <span className="text-yellow-400 font-black">{media.score}</span>
+                  <span className="text-yellow-500 font-black text-sm">{media.score}</span>
                   <span className="text-yellow-600 text-xs">/100</span>
                 </div>
               )}
               {media.year > 0 && (
-                <div className="bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 px-4 py-2 rounded-xl text-slate-600 dark:text-slate-300 text-sm font-bold">
+                <div className="bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-xl text-slate-600 dark:text-slate-300 text-sm font-bold">
                   {media.year}
                 </div>
               )}
               {media.units > 0 && (
-                <div className="bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 px-4 py-2 rounded-xl text-slate-600 dark:text-slate-300 text-sm font-bold">
-                  {media.units} {isAnime ? 'episodios' : 'capítulos'}
+                <div className="bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-xl text-slate-600 dark:text-slate-300 text-sm font-bold">
+                  {media.units} {isAnime ? 'eps.' : 'caps.'}
                 </div>
               )}
-              <div className="bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 px-4 py-2 rounded-xl text-slate-600 dark:text-slate-300 text-sm font-bold">
+              <div className="bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-xl text-slate-600 dark:text-slate-300 text-sm font-bold">
                 {media.status}
               </div>
             </div>
@@ -411,10 +411,10 @@ export default function MediaDetail() {
             {media.trailer && (
               <button
                 onClick={() => setTrailerOpen(true)}
-                className="inline-flex items-center gap-3 bg-white/5 hover:bg-yellow-500/10 border border-white/10 hover:border-yellow-500/30 text-white hover:text-yellow-400 font-bold px-6 py-3 rounded-xl transition-all group"
+                className="inline-flex items-center gap-3 bg-slate-100 dark:bg-white/5 hover:bg-yellow-500/10 border border-slate-200 dark:border-white/10 hover:border-yellow-500/30 text-slate-900 dark:text-white hover:text-yellow-500 dark:hover:text-yellow-400 font-bold px-5 py-2.5 rounded-xl transition-all group"
               >
-                <div className="w-8 h-8 rounded-full bg-yellow-500 flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <Play className="w-4 h-4 text-black fill-black ml-0.5" />
+                <div className="w-7 h-7 rounded-full bg-yellow-500 flex items-center justify-center group-hover:scale-110 transition-transform shrink-0">
+                  <Play className="w-3.5 h-3.5 text-black fill-black ml-0.5" />
                 </div>
                 Ver tráiler
               </button>
@@ -424,20 +424,20 @@ export default function MediaDetail() {
 
         {/* ── DÓNDE VERLO ────────────────────────────────────────────────────── */}
         {media.streaming?.length > 0 && (
-          <section className="mb-12">
+          <section className="mb-10">
             <SectionTitle icon={<Play className="w-5 h-5" />} title="Dónde verlo" />
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap gap-2 sm:gap-3">
               {media.streaming.map(link => (
                 <a
                   key={link.site}
                   href={link.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="group flex items-center gap-3 px-5 py-3 bg-slate-100 dark:bg-slate-900/60 hover:bg-slate-200 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-600 rounded-2xl transition-all hover:scale-105 hover:-translate-y-0.5 shadow-lg"
+                  className="group flex items-center gap-2.5 px-4 py-2.5 bg-slate-100 dark:bg-slate-900/60 hover:bg-slate-200 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-600 rounded-2xl transition-all hover:scale-105 hover:-translate-y-0.5 shadow-lg"
                 >
-                  <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: link.color || '#eab308' }} />
+                  <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: link.color || '#eab308' }} />
                   <span className="font-bold text-slate-700 dark:text-slate-200 group-hover:text-slate-900 dark:group-hover:text-white text-sm">{link.site}</span>
-                  <ExternalLink className="w-3.5 h-3.5 text-slate-600 group-hover:text-slate-400 transition-colors" />
+                  <ExternalLink className="w-3 h-3 text-slate-500 group-hover:text-slate-400 transition-colors" />
                 </a>
               ))}
             </div>
@@ -445,10 +445,10 @@ export default function MediaDetail() {
         )}
 
         {/* ── SINOPSIS ──────────────────────────────────────────────────────── */}
-        <section className="mb-12">
+        <section className="mb-10">
           <SectionTitle title="Sinopsis" />
-          <div className="bg-slate-100 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-2xl p-8">
-            <p className="text-slate-600 dark:text-slate-300 leading-relaxed text-base">
+          <div className="bg-slate-100 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 sm:p-8">
+            <p className="text-slate-600 dark:text-slate-300 leading-relaxed text-sm sm:text-base">
               {media.description || 'No hay sinopsis disponible.'}
             </p>
           </div>
@@ -456,22 +456,22 @@ export default function MediaDetail() {
 
         {/* ── PERSONAJES ────────────────────────────────────────────────────── */}
         {media.characters?.length > 0 && (
-          <section className="mb-12">
+          <section className="mb-10">
             <SectionTitle icon={<Users className="w-5 h-5" />} title="Personajes principales" />
-            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-4">
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 sm:gap-4">
               {media.characters.map(char => (
                 <div key={char.id} className="group flex flex-col items-center gap-2 text-center">
-                  <div className="w-full aspect-square rounded-2xl overflow-hidden border-2 border-slate-200 dark:border-slate-800 group-hover:border-yellow-500/40 transition-colors bg-slate-100 dark:bg-slate-900 shadow-lg">
+                  <div className="w-full aspect-square rounded-xl sm:rounded-2xl overflow-hidden border-2 border-slate-200 dark:border-slate-800 group-hover:border-yellow-500/40 transition-colors bg-slate-100 dark:bg-slate-900 shadow-lg">
                     {char.image
                       ? <img src={char.image} alt={char.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                      : <div className="w-full h-full flex items-center justify-center text-slate-600 text-2xl font-black">{char.name?.[0]}</div>
+                      : <div className="w-full h-full flex items-center justify-center text-slate-600 text-xl font-black">{char.name?.[0]}</div>
                     }
                   </div>
-                  <p className="text-xs font-bold text-slate-600 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-white transition-colors line-clamp-2 leading-tight">
+                  <p className="text-[10px] sm:text-xs font-bold text-slate-600 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-white transition-colors line-clamp-2 leading-tight">
                     {char.name}
                   </p>
                   {char.role === 'MAIN' && (
-                    <span className="text-[9px] font-black text-yellow-500 uppercase tracking-wider bg-yellow-500/10 px-2 py-0.5 rounded-full border border-yellow-500/20">
+                    <span className="text-[9px] font-black text-yellow-500 uppercase tracking-wider bg-yellow-500/10 px-1.5 py-0.5 rounded-full border border-yellow-500/20">
                       Principal
                     </span>
                   )}
@@ -483,12 +483,12 @@ export default function MediaDetail() {
 
         {/* ── EQUIPO CREATIVO ───────────────────────────────────────────────── */}
         {media.staff?.length > 0 && (
-          <section className="mb-12">
+          <section className="mb-10">
             <SectionTitle title="Equipo creativo" />
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
               {media.staff.map(member => (
                 <div key={member.id} className="group flex items-center gap-3 bg-slate-100 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 hover:border-yellow-500/20 rounded-2xl p-3 transition-all hover:bg-slate-200 dark:hover:bg-slate-900">
-                  <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0 bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700">
+                  <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700">
                     {member.image
                       ? <img src={member.image} alt={member.name} className="w-full h-full object-cover" />
                       : <div className="w-full h-full flex items-center justify-center text-slate-500 font-black">{member.name?.[0]}</div>
@@ -506,9 +506,9 @@ export default function MediaDetail() {
 
         {/* ── RELACIONES ──────────────────────────────── */}
         {media.relations?.length > 0 && (
-          <section className="mb-12">
+          <section className="mb-10">
             <SectionTitle icon={<GitBranch className="w-5 h-5" />} title="También te puede interesar" />
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
               {media.relations.map(rel => (
                 <Link key={rel.id} to={`/media/${rel.id}`} className="group flex flex-col gap-2">
                   <div className="relative aspect-2/3 w-full rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 group-hover:border-yellow-500/40 transition-all shadow-lg bg-slate-100 dark:bg-slate-900 shrink-0">
@@ -517,7 +517,7 @@ export default function MediaDetail() {
                       : <div className="absolute inset-0 flex items-center justify-center text-slate-600"><BookOpen className="w-8 h-8" /></div>
                     }
                     <div className="absolute top-2 left-2 z-10">
-                      <span className="text-[9px] font-black uppercase tracking-wider px-2 py-1 rounded-lg bg-black/70 backdrop-blur-sm border border-white/10 text-yellow-400 shadow-md">
+                      <span className="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-black/70 backdrop-blur-sm border border-white/10 text-yellow-400 shadow-md">
                         {RELATION_LABELS[rel.relation] || rel.relation}
                       </span>
                     </div>
@@ -532,15 +532,15 @@ export default function MediaDetail() {
         )}
 
         {/* ── MI RESEÑA ─────────────────────────────────────────────────────── */}
-        <section className="mb-12">
+        <section className="mb-10">
           <SectionTitle title="Mi Reseña" />
 
           {userReview && !isEditingReview ? (
-            <div className="relative bg-linear-to-br from-yellow-500/5 to-slate-900/60 border border-yellow-500/20 rounded-2xl p-8">
+            <div className="relative bg-linear-to-br from-yellow-500/5 to-slate-900/60 border border-yellow-500/20 rounded-2xl p-5 sm:p-8">
               <div className="flex items-start justify-between mb-4">
                 <div className="flex gap-1">
                   {Array.from({ length: 5 }).map((_, i) => (
-                    <Star key={i} className="w-6 h-6" style={{ fill: i < userReview.score ? '#eab308' : 'transparent', color: i < userReview.score ? '#eab308' : '#94a3b8' }} />
+                    <Star key={i} className="w-5 h-5 sm:w-6 sm:h-6" style={{ fill: i < userReview.score ? '#eab308' : 'transparent', color: i < userReview.score ? '#eab308' : '#94a3b8' }} />
                   ))}
                 </div>
                 <div className="flex gap-2">
@@ -552,30 +552,30 @@ export default function MediaDetail() {
                   </button>
                 </div>
               </div>
-              <p className="text-slate-600 dark:text-slate-300 leading-relaxed">{userReview.content}</p>
+              <p className="text-slate-600 dark:text-slate-300 leading-relaxed text-sm sm:text-base">{userReview.content}</p>
             </div>
           ) : (
-            <div className="bg-slate-100 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-2xl p-8 space-y-6">
+            <div className="bg-slate-100 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 sm:p-8 space-y-5">
               <div>
-                <label className="block text-sm font-bold text-slate-400 uppercase tracking-wider mb-3">Puntuación</label>
+                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Puntuación</label>
                 <div className="flex gap-2">
                   {Array.from({ length: 5 }).map((_, i) => (
                     <button key={i} onClick={() => setReviewScore(i + 1)} className="hover:scale-125 transition-transform">
-                      <Star className="w-8 h-8 cursor-pointer" style={{ fill: i < reviewScore ? '#eab308' : 'transparent', color: i < reviewScore ? '#eab308' : '#334155' }} />
+                      <Star className="w-7 h-7 sm:w-8 sm:h-8 cursor-pointer" style={{ fill: i < reviewScore ? '#eab308' : 'transparent', color: i < reviewScore ? '#eab308' : '#334155' }} />
                     </button>
                   ))}
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-bold text-slate-400 uppercase tracking-wider mb-3">Tu opinión</label>
+                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Tu opinión</label>
                 <textarea
                   value={reviewContent}
                   onChange={e => setReviewContent(e.target.value.slice(0, 255))}
                   placeholder="Comparte tu experiencia con esta obra..."
-                  className="w-full bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 focus:border-yellow-500/50 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 rounded-xl p-4 focus:outline-none resize-none transition-colors"
+                  className="w-full bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 focus:border-yellow-500/50 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 rounded-xl p-4 focus:outline-none resize-none transition-colors text-sm"
                   rows={4}
                 />
-                <p className="text-xs text-slate-600 mt-1 text-right">{reviewContent.length}/255</p>
+                <p className="text-xs text-slate-500 mt-1 text-right">{reviewContent.length}/255</p>
               </div>
               <div className="flex gap-3 justify-end">
                 {isEditingReview && (
@@ -584,7 +584,7 @@ export default function MediaDetail() {
                       setIsEditingReview(false);
                       if (userReview) { setReviewScore(userReview.score); setReviewContent(userReview.content); }
                     }}
-                    className="px-5 py-2.5 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-white font-bold rounded-xl transition-all"
+                    className="px-5 py-2.5 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-white font-bold rounded-xl transition-all text-sm"
                   >
                     Cancelar
                   </button>
@@ -592,7 +592,7 @@ export default function MediaDetail() {
                 <button
                   onClick={handleSubmitReview}
                   disabled={submittingReview}
-                  className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 disabled:opacity-50 text-black font-black px-6 py-2.5 rounded-xl transition-all hover:scale-105"
+                  className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 disabled:opacity-50 text-black font-black px-5 py-2.5 rounded-xl transition-all hover:scale-105 text-sm"
                 >
                   <Send className="w-4 h-4" />
                   {isEditingReview ? 'Actualizar' : 'Publicar'}
@@ -607,18 +607,18 @@ export default function MediaDetail() {
           <SectionTitle title="Comunidad" badge={reviews.length} />
 
           {reviews.length > 0 ? (
-            <div className="grid gap-4">
+            <div className="grid gap-3 sm:gap-4">
               {reviews.map(review => {
                 const isOwn = review.user.id === currentUser?.id;
                 const isAdmin = currentUser?.rol === 'admin';
                 return (
                   <div
                     key={review.id}
-                    className={`relative bg-slate-100 dark:bg-slate-900/40 border rounded-2xl p-6 transition-all ${isOwn ? 'border-yellow-500/30 bg-yellow-500/5' : 'border-slate-200 dark:border-slate-800'}`}
+                    className={`relative bg-slate-100 dark:bg-slate-900/40 border rounded-2xl p-4 sm:p-6 transition-all ${isOwn ? 'border-yellow-500/30 bg-yellow-500/5' : 'border-slate-200 dark:border-slate-800'}`}
                   >
-                    <div className="absolute top-4 right-4 flex items-center gap-2">
+                    <div className="absolute top-3 right-3 flex items-center gap-2">
                       {isOwn && (
-                        <span className="text-[10px] font-black text-yellow-500 uppercase tracking-widest bg-yellow-500/10 border border-yellow-500/20 px-2 py-1 rounded-full">
+                        <span className="text-[10px] font-black text-yellow-500 uppercase tracking-widest bg-yellow-500/10 border border-yellow-500/20 px-2 py-0.5 rounded-full">
                           Tu reseña
                         </span>
                       )}
@@ -632,23 +632,23 @@ export default function MediaDetail() {
                         </button>
                       )}
                     </div>
-                    <div className="flex items-center gap-4 mb-4">
+                    <div className="flex items-center gap-3 mb-3">
                       {review.user.picture ? (
                         <img
                           src={getImageUrl(review.user.picture)!}
                           alt={review.user.alias}
-                          className="w-10 h-10 rounded-full object-cover border-2 border-slate-700"
+                          className="w-9 h-9 rounded-full object-cover border-2 border-slate-300 dark:border-slate-700"
                         />
                       ) : (
-                        <div className="w-10 h-10 rounded-full bg-yellow-500/20 border-2 border-yellow-500/30 flex items-center justify-center shrink-0">
+                        <div className="w-9 h-9 rounded-full bg-yellow-500/20 border-2 border-yellow-500/30 flex items-center justify-center shrink-0">
                           <span className="text-sm font-black text-yellow-400">{review.user.alias[0].toUpperCase()}</span>
                         </div>
                       )}
                       <div>
                         <p className="font-bold text-slate-900 dark:text-white text-sm">{review.user.alias}</p>
-                        <div className="flex gap-0.5 mt-1">
+                        <div className="flex gap-0.5 mt-0.5">
                           {Array.from({ length: 5 }).map((_, i) => (
-                            <Star key={i} className="w-3.5 h-3.5" style={{ fill: i < review.score ? '#eab308' : 'transparent', color: i < review.score ? '#eab308' : '#334155' }} />
+                            <Star key={i} className="w-3 h-3" style={{ fill: i < review.score ? '#eab308' : 'transparent', color: i < review.score ? '#eab308' : '#334155' }} />
                           ))}
                         </div>
                       </div>
@@ -659,9 +659,9 @@ export default function MediaDetail() {
               })}
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center py-16 bg-slate-100 dark:bg-slate-900/30 border border-dashed border-slate-300 dark:border-slate-800 rounded-2xl gap-3">
-              <Heart className="w-10 h-10 text-slate-700" />
-              <p className="text-slate-500 font-bold">Sé el primero en opinar</p>
+            <div className="flex flex-col items-center justify-center py-12 bg-slate-100 dark:bg-slate-900/30 border border-dashed border-slate-300 dark:border-slate-800 rounded-2xl gap-3">
+              <Heart className="w-10 h-10 text-slate-400 dark:text-slate-700" />
+              <p className="text-slate-500 font-bold text-sm">Sé el primero en opinar</p>
             </div>
           )}
         </section>
@@ -681,12 +681,12 @@ function SectionTitle({
   badge?: number;
 }) {
   return (
-    <div className="flex items-center gap-3 mb-6">
-      <div className="w-1 h-8 bg-yellow-500 rounded-full shrink-0" />
+    <div className="flex items-center gap-3 mb-5 sm:mb-6">
+      <div className="w-1 h-7 bg-yellow-500 rounded-full shrink-0" />
       {icon && <span className="text-yellow-500">{icon}</span>}
-      <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight italic">{title}</h2>
+      <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight italic">{title}</h2>
       {badge !== undefined && (
-        <span className="text-base font-bold text-slate-500">({badge})</span>
+        <span className="text-sm font-bold text-slate-500">({badge})</span>
       )}
     </div>
   );
