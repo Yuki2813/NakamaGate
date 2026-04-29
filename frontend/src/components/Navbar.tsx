@@ -92,15 +92,8 @@ export default function Navbar() {
   };
 
   return (
-    <nav className="sticky top-0 z-50 w-full bg-white/80 dark:bg-[#020617]/80 backdrop-blur-xl border-b border-yellow-500/20 px-3 sm:px-4 md:px-6 py-2 md:py-3 transition-colors">
-      {/*
-        Layout móvil: dos filas
-          Fila 1: Logo ──── (ml-auto) Iconos nav + Tema + Perfil + Logout
-          Fila 2: Buscador ancho completo
-        Layout desktop (md+): una sola fila
-          Logo ── Buscador + links ── Tema + Perfil + Logout
-      */}
-      <div className="flex flex-wrap md:flex-nowrap items-center gap-x-1.5 gap-y-2">
+    <nav className="sticky top-0 z-50 w-full bg-white/80 dark:bg-[#020617]/80 backdrop-blur-xl border-b border-yellow-500/20 py-2 md:py-3 transition-colors">
+      <div className="max-w-screen-2xl mx-auto px-3 sm:px-4 md:px-6 flex flex-wrap items-center gap-x-1.5 gap-y-2 md:grid md:grid-cols-[auto_1fr_auto] md:gap-x-4">
 
         {/* ── LOGO ───────────────────────────────────────────────────────── */}
         <Link to="/home" className="shrink-0 flex items-center gap-2 hover:scale-105 transition-transform group">
@@ -116,7 +109,7 @@ export default function Navbar() {
             En móvil: ml-auto la empuja a la derecha en la misma fila que el logo.
             En desktop: md:order-last la coloca al final de la fila única.
         ── */}
-        <div className="ml-auto md:ml-0 md:order-last flex items-center gap-0.5 sm:gap-1 md:gap-2 shrink-0">
+        <div className="ml-auto md:ml-0 md:order-3 flex items-center gap-0.5 sm:gap-1 md:gap-2 shrink-0">
 
           {/* Iconos de navegación – visibles solo en < lg (en desktop van dentro del buscador) */}
           <div className="flex lg:hidden items-center">
@@ -170,10 +163,10 @@ export default function Navbar() {
             En móvil: order-last + w-full  → ocupa fila 2 completa.
             En desktop: md:order-none + flex-1 → ocupa el centro de la fila única.
         ── */}
-        <div className="order-last w-full md:order-none md:w-auto md:flex-1 md:mx-4 flex items-center gap-2 md:justify-center md:max-w-2xl">
+        <div className="order-last w-full md:order-2 md:w-auto flex items-center gap-2 md:justify-center">
 
           {/* Buscador */}
-          <div className="relative flex-1 flex flex-col">
+          <div className="relative flex-1 md:max-w-xl flex flex-col">
             <div className="flex items-stretch bg-slate-100/80 dark:bg-black/40 border border-slate-300 dark:border-slate-700 focus-within:border-yellow-500/50 focus-within:ring-1 focus-within:ring-yellow-500/20 transition-all rounded-xl overflow-hidden h-10 md:h-11">
 
               <div className="relative grow flex items-center">

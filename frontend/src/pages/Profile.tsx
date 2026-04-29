@@ -309,7 +309,7 @@ export default function Profile() {
 
       {/* NAVBAR */}
       <nav className="sticky top-0 z-50 border-b border-yellow-500/10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl">
-        <div className="max-w-300 mx-auto px-6 py-4 flex items-center justify-between">
+        <div className="max-w-300 mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
           <Link to="/home" className="flex items-center gap-2 text-slate-800 dark:text-white hover:text-yellow-500 transition-colors">
             <Home className="w-5 h-5" />
             <span className="font-bold text-sm">Inicio</span>
@@ -320,7 +320,7 @@ export default function Profile() {
       </nav>
 
       {/* HEADER */}
-      <header className="relative z-10 max-w-300 mx-auto px-6 pt-12 pb-10 flex flex-col md:flex-row items-center gap-8">
+      <header className="relative z-10 max-w-300 mx-auto px-4 sm:px-6 pt-8 sm:pt-12 pb-8 sm:pb-10 flex flex-col md:flex-row items-center gap-6 sm:gap-8">
         <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
           <div className="w-32 h-32 md:w-40 md:h-40 rounded-full border-4 border-slate-200 dark:border-slate-800 overflow-hidden bg-slate-100 dark:bg-slate-900 shadow-2xl relative shadow-yellow-500/10">
             {profile.picture ? (
@@ -344,7 +344,7 @@ export default function Profile() {
             </div>
           ) : (
             <div className="flex items-center justify-center md:justify-start gap-4">
-              <h1 className="text-4xl font-black text-slate-900 dark:text-white">{profile.alias}</h1>
+              <h1 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white">{profile.alias}</h1>
               <button onClick={() => setIsEditingAlias(true)} className="p-2 hover:bg-slate-800 rounded-lg text-slate-500 transition-all"><Edit2 className="w-4 h-4" /></button>
             </div>
           )}
@@ -355,7 +355,7 @@ export default function Profile() {
       </header>
 
       {/* CUERPO DEL PERFIL */}
-      <div className="relative z-10 max-w-300 mx-auto px-6 grid grid-cols-1 lg:grid-cols-4 gap-8">
+      <div className="relative z-10 max-w-300 mx-auto px-4 sm:px-6 grid grid-cols-1 lg:grid-cols-4 gap-6 sm:gap-8">
         
         {/* COLUMNA IZQUIERDA: STATS Y LOGROS (Más estrecha) */}
         <aside className="lg:col-span-1 space-y-6">

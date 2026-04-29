@@ -30,23 +30,23 @@ export default function Welcome() {
       </nav>
 
       {/* SECCIÓN PRINCIPAL (HERO) */}
-      <main className="relative z-10 flex-grow max-w-6xl mx-auto px-6 py-16 md:py-28 text-center flex flex-col items-center justify-center w-full">
-        
+      <main className="relative z-10 flex-grow max-w-6xl mx-auto px-4 sm:px-6 py-12 sm:py-16 md:py-28 text-center flex flex-col items-center justify-center w-full">
+
         {/* Badge decorativo */}
-        <span className="inline-block bg-yellow-500/20 border border-yellow-500/40 text-yellow-300 px-4 py-2 font-bold text-sm uppercase tracking-widest rounded-full mb-8 shadow-lg shadow-yellow-500/20">
+        <span className="inline-block bg-yellow-500/20 border border-yellow-500/40 text-yellow-300 px-3 sm:px-4 py-1.5 sm:py-2 font-bold text-xs sm:text-sm uppercase tracking-widest rounded-full mb-6 sm:mb-8 shadow-lg shadow-yellow-500/20">
           ✨ Para amantes del anime
         </span>
-        
+
         {/* Encabezado principal */}
-        <h1 className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tighter mb-6 leading-[1.1] text-white">
+        <h1 className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-black tracking-tighter mb-5 sm:mb-6 leading-[1.1] text-white">
           Tu comunidad<br />
           <span className="text-transparent bg-clip-text bg-linear-to-r from-yellow-400 via-yellow-300 to-yellow-500">
             de anime sin límites
           </span>
         </h1>
-        
+
         {/* Descripción */}
-        <p className="text-lg md:text-xl text-slate-300 font-medium max-w-3xl mb-12 leading-relaxed">
+        <p className="text-base sm:text-lg md:text-xl text-slate-300 font-medium max-w-3xl mb-10 sm:mb-12 leading-relaxed">
           Descubre, comparte y conecta. Explora miles de series, crea tu lista personal, lee reseñas sin censura y construye amistades auténticas con otros nakamas de todo el mundo.
         </p>
         
@@ -74,47 +74,47 @@ export default function Welcome() {
       </main>
 
       {/* SECCIÓN DE CARACTERÍSTICAS */}
-      <section aria-labelledby="features-title" className="relative z-10 max-w-6xl mx-auto px-6 pb-24">
-        
+      <section aria-labelledby="features-title" className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 pb-16 sm:pb-24">
+
         <h2 id="features-title" className="sr-only">Características principales</h2>
 
-        <div className="grid md:grid-cols-3 gap-6 lg:gap-8">
-          
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
+
           {/* Característica 1 */}
-          <article className="group bg-slate-900/50 backdrop-blur-md p-8 md:p-10 border-2 border-yellow-500/20 rounded-2xl shadow-lg hover:shadow-[0_0_40px_rgba(234,179,8,0.15)] hover:border-yellow-500/40 transition-all duration-300 hover:-translate-y-2">
-            <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-yellow-500/10 border border-yellow-500/30 mb-6 group-hover:scale-110 transition-transform">
-              <Zap className="w-8 h-8 text-yellow-400" aria-hidden="true" />
+          <article className="group bg-slate-900/50 backdrop-blur-md p-6 sm:p-8 md:p-10 border-2 border-yellow-500/20 rounded-2xl shadow-lg hover:shadow-[0_0_40px_rgba(234,179,8,0.15)] hover:border-yellow-500/40 transition-all duration-300 hover:-translate-y-2">
+            <div className="flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-yellow-500/10 border border-yellow-500/30 mb-5 sm:mb-6 group-hover:scale-110 transition-transform">
+              <Zap className="w-7 h-7 sm:w-8 sm:h-8 text-yellow-400" aria-hidden="true" />
             </div>
-            <h3 className="text-2xl font-black mb-4 text-white">
+            <h3 className="text-xl sm:text-2xl font-black mb-3 sm:mb-4 text-white">
               Base de Datos Completa
             </h3>
-            <p className="text-slate-400 font-medium text-lg leading-relaxed">
+            <p className="text-slate-400 font-medium text-base sm:text-lg leading-relaxed">
               Acceso a información detallada sobre miles de animes. Descubre estrenos, géneros y organiza tu lista de seguimiento de forma inteligente.
             </p>
           </article>
 
           {/* Característica 2 */}
-          <article className="group bg-slate-900/50 backdrop-blur-md p-8 md:p-10 border-2 border-yellow-500/20 rounded-2xl shadow-lg hover:shadow-[0_0_40px_rgba(234,179,8,0.15)] hover:border-yellow-500/40 transition-all duration-300 hover:-translate-y-2">
-            <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-yellow-500/10 border border-yellow-500/30 mb-6 group-hover:scale-110 transition-transform">
-              <PenTool className="w-8 h-8 text-yellow-400" aria-hidden="true" />
+          <article className="group bg-slate-900/50 backdrop-blur-md p-6 sm:p-8 md:p-10 border-2 border-yellow-500/20 rounded-2xl shadow-lg hover:shadow-[0_0_40px_rgba(234,179,8,0.15)] hover:border-yellow-500/40 transition-all duration-300 hover:-translate-y-2">
+            <div className="flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-yellow-500/10 border border-yellow-500/30 mb-5 sm:mb-6 group-hover:scale-110 transition-transform">
+              <PenTool className="w-7 h-7 sm:w-8 sm:h-8 text-yellow-400" aria-hidden="true" />
             </div>
-            <h3 className="text-2xl font-black mb-4 text-white">
+            <h3 className="text-xl sm:text-2xl font-black mb-3 sm:mb-4 text-white">
               Reseñas Auténticas
             </h3>
-            <p className="text-slate-400 font-medium text-lg leading-relaxed">
+            <p className="text-slate-400 font-medium text-base sm:text-lg leading-relaxed">
               Puntúa, critica y desahógate sin filtros. Lee opiniones reales de otros usuarios y construye tu reputación como crítico en la comunidad.
             </p>
           </article>
 
           {/* Característica 3 */}
-          <article className="group bg-slate-900/50 backdrop-blur-md p-8 md:p-10 border-2 border-yellow-500/20 rounded-2xl shadow-lg hover:shadow-[0_0_40px_rgba(234,179,8,0.15)] hover:border-yellow-500/40 transition-all duration-300 hover:-translate-y-2">
-            <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-yellow-500/10 border border-yellow-500/30 mb-6 group-hover:scale-110 transition-transform">
-              <Users className="w-8 h-8 text-yellow-400" aria-hidden="true" />
+          <article className="group bg-slate-900/50 backdrop-blur-md p-6 sm:p-8 md:p-10 border-2 border-yellow-500/20 rounded-2xl shadow-lg hover:shadow-[0_0_40px_rgba(234,179,8,0.15)] hover:border-yellow-500/40 transition-all duration-300 hover:-translate-y-2 sm:col-span-2 lg:col-span-1">
+            <div className="flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-yellow-500/10 border border-yellow-500/30 mb-5 sm:mb-6 group-hover:scale-110 transition-transform">
+              <Users className="w-7 h-7 sm:w-8 sm:h-8 text-yellow-400" aria-hidden="true" />
             </div>
-            <h3 className="text-2xl font-black mb-4 text-white">
+            <h3 className="text-xl sm:text-2xl font-black mb-3 sm:mb-4 text-white">
               Red de Nakamas
             </h3>
-            <p className="text-slate-400 font-medium text-lg leading-relaxed">
+            <p className="text-slate-400 font-medium text-base sm:text-lg leading-relaxed">
               Conecta con otros amantes del anime. Añade amigos, mira qué están viendo y crea tu círculo de confianza personalizado.
             </p>
           </article>

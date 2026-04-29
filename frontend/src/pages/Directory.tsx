@@ -140,7 +140,7 @@ export default function Directory() {
 
       {/* FILTROS */}
       <section className="max-w-350 mx-auto px-4 sm:px-6 md:px-16 mb-8 sm:mb-12 relative z-50">
-        <div className="bg-white/80 dark:bg-slate-900/40 backdrop-blur-2xl border border-yellow-500/10 p-4 sm:p-5 rounded-2xl sm:rounded-3xl flex flex-col xl:flex-row gap-4 sm:gap-6 items-start xl:items-center justify-between shadow-2xl">
+        <div className="bg-white/80 dark:bg-slate-900/40 backdrop-blur-2xl border border-yellow-500/10 p-4 sm:p-5 rounded-2xl sm:rounded-3xl flex flex-col lg:flex-row gap-4 sm:gap-6 items-start lg:items-center justify-between shadow-2xl">
 
           <div className="flex flex-col sm:flex-row flex-wrap gap-3 items-stretch sm:items-center w-full xl:w-auto relative">
 
@@ -174,7 +174,7 @@ export default function Directory() {
                     }`}
                   >
                     <Icon className="w-3.5 h-3.5 shrink-0" />
-                    <span className="hidden xs:inline sm:inline">{opt.label}</span>
+                    <span className="hidden sm:inline">{opt.label}</span>
                   </button>
                 );
               })}
@@ -238,7 +238,7 @@ export default function Directory() {
           </div>
 
           {/* IR A PÁGINA */}
-          <form onSubmit={handleJumpPage} className="flex items-center gap-3 bg-yellow-500/5 hover:bg-yellow-500/10 p-1.5 rounded-2xl border border-yellow-500/20 transition-all w-full xl:w-auto">
+          <form onSubmit={handleJumpPage} className="flex items-center gap-3 bg-yellow-500/5 hover:bg-yellow-500/10 p-1.5 rounded-2xl border border-yellow-500/20 transition-all w-full lg:w-auto">
             <div className="bg-yellow-500 text-black p-2 rounded-xl shrink-0">
               <Hash className="w-4 h-4" />
             </div>

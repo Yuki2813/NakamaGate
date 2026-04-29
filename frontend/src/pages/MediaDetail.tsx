@@ -458,7 +458,7 @@ export default function MediaDetail() {
         {media.characters?.length > 0 && (
           <section className="mb-10">
             <SectionTitle icon={<Users className="w-5 h-5" />} title="Personajes principales" />
-            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 sm:gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
               {media.characters.map(char => (
                 <div key={char.id} className="group flex flex-col items-center gap-2 text-center">
                   <div className="w-full aspect-square rounded-xl sm:rounded-2xl overflow-hidden border-2 border-slate-200 dark:border-slate-800 group-hover:border-yellow-500/40 transition-colors bg-slate-100 dark:bg-slate-900 shadow-lg">
@@ -508,7 +508,7 @@ export default function MediaDetail() {
         {media.relations?.length > 0 && (
           <section className="mb-10">
             <SectionTitle icon={<GitBranch className="w-5 h-5" />} title="También te puede interesar" />
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
               {media.relations.map(rel => (
                 <Link key={rel.id} to={`/media/${rel.id}`} className="group flex flex-col gap-2">
                   <div className="relative aspect-2/3 w-full rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 group-hover:border-yellow-500/40 transition-all shadow-lg bg-slate-100 dark:bg-slate-900 shrink-0">

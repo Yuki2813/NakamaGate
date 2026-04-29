@@ -130,7 +130,7 @@ export default function ProfileFriend() {
       
       {/* ================= NAVEGACIÓN SUPERIOR ================= */}
       <nav className="sticky top-0 z-50 border-b border-yellow-500/20 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl">
-        <div className="max-w-300 mx-auto px-6 md:px-16 py-4 flex items-center justify-between">
+        <div className="max-w-300 mx-auto px-4 sm:px-6 md:px-16 py-4 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2 text-slate-800 dark:text-white hover:text-yellow-500 dark:hover:text-yellow-400 transition-colors">
             <Home className="w-5 h-5" />
             <span className="font-semibold text-sm">Volver a Home</span>
@@ -143,10 +143,10 @@ export default function ProfileFriend() {
       </nav>
 
       {/* ================= CABECERA DEL PERFIL ================= */}
-      <header className="relative w-full max-w-300 mx-auto px-6 md:px-16 pt-12 pb-10">
+      <header className="relative w-full max-w-300 mx-auto px-4 sm:px-6 md:px-16 pt-8 sm:pt-12 pb-8 sm:pb-10">
         <div className="flex flex-col md:flex-row items-center md:items-end gap-6 w-full">
           <div className="shrink-0">
-            <div className="w-40 h-40 md:w-48 md:h-48 rounded-2xl border-4 border-slate-200 dark:border-[#020617] bg-slate-100 dark:bg-slate-800 overflow-hidden shadow-[0_0_40px_-5px_rgba(234,179,8,0.4)]">
+            <div className="w-32 sm:w-40 md:w-48 h-32 sm:h-40 md:h-48 rounded-2xl border-4 border-slate-200 dark:border-[#020617] bg-slate-100 dark:bg-slate-800 overflow-hidden shadow-[0_0_40px_-5px_rgba(234,179,8,0.4)]">
               {getImageUrl(profile.picture) ? (
                 <img src={getImageUrl(profile.picture)!} alt={profile.alias} className="w-full h-full object-cover" />
               ) : (
@@ -159,7 +159,7 @@ export default function ProfileFriend() {
 
           <div className="flex-1 text-center md:text-left flex flex-col md:flex-row md:items-end justify-between w-full gap-6">
             <div>
-              <h1 className="text-4xl md:text-5xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+              <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-slate-900 dark:text-white tracking-tight">
                 {profile.alias}
               </h1>
               <p className="text-yellow-400 font-semibold mt-2 flex items-center justify-center md:justify-start gap-2">
@@ -183,7 +183,7 @@ export default function ProfileFriend() {
       </header>
 
       {/* ================= CONTENIDO PRINCIPAL ================= */}
-      <div className="max-w-300 mx-auto px-6 md:px-16 mt-12 grid grid-cols-1 lg:grid-cols-3 gap-10">
+      <div className="max-w-300 mx-auto px-4 sm:px-6 md:px-16 mt-8 sm:mt-12 grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-10">
         
         {/* COLUMNA IZQUIERDA (ESTADÍSTICAS) */}
         <aside className="lg:col-span-1 space-y-8">

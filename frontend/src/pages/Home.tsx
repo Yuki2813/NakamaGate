@@ -361,7 +361,7 @@ export default function Home() {
                             </span>
 
                             <div className="relative w-[72%] sm:w-[75%]" style={{ zIndex: 2 }}>
-                              <MediaCard item={item} favoriteIds={favoriteIds} toggleFavorite={toggleFavorite} />
+                              <MediaCard item={item} favoriteIds={favoriteIds} toggleFavorite={toggleFavorite} fixedTitleHeight />
                             </div>
                           </div>
                         ) : (
@@ -387,11 +387,13 @@ export default function Home() {
 function MediaCard({
   item,
   favoriteIds,
-  toggleFavorite
+  toggleFavorite,
+  fixedTitleHeight = false,
 }: {
   item: MediaItem;
   favoriteIds: Set<number>;
   toggleFavorite: (e: React.MouseEvent, item: MediaItem) => void;
+  fixedTitleHeight?: boolean;
 }) {
   return (
     <Card className="bg-transparent border-none ring-0 shadow-none group/card h-full">
@@ -411,7 +413,9 @@ function MediaCard({
             </div>
           )}
         </figure>
-        <h3 className="mt-2.5 text-xs sm:text-sm font-bold text-slate-600 dark:text-slate-300 line-clamp-2 group-hover/card:text-yellow-500 dark:group-hover/card:text-white transition-colors">{item.title}</h3>
+        <h3 className={`mt-2.5 text-xs sm:text-sm font-bold text-slate-600 dark:text-slate-300 line-clamp-2 group-hover/card:text-yellow-500 dark:group-hover/card:text-white transition-colors${fixedTitleHeight ? ' min-h-8 sm:min-h-10' : ''}`}>
+          {item.title}
+        </h3>
       </Link>
     </Card>
   );

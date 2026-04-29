@@ -1,4 +1,11 @@
-import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Outlet, useLocation } from 'react-router-dom';
+import { useEffect } from 'react';
+
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
+  return null;
+}
 import { GoogleOAuthProvider } from '@react-oauth/google'; // <-- 1. NUEVO IMPORT
 
 import Welcome from './pages/Welcome';
@@ -33,6 +40,7 @@ function App() {
     // 2. ENVOLVEMOS TODA LA APP CON EL PROVEEDOR DE GOOGLE
     <GoogleOAuthProvider clientId={clientId}>
       <BrowserRouter>
+        <ScrollToTop />
         <Routes>
           {/* Rutas Públicas (Sin Navbar) */}
           <Route path="/" element={<Welcome />} />
