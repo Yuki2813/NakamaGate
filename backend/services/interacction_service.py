@@ -3,12 +3,10 @@ from sqlmodel import Session
 
 from backend.clients.anilist_client import anilist_client
 from backend.models.favorite import Mediatype
-from backend.models.friendship import FriendshipStatus
 from backend.models.review import MediaType
 from backend.models.users import Rol
-from backend.repositories.favorite_repository import delete_user_favorite, get_user_favorites, new_favorite, update_status_favorite
-from backend.repositories.friendship_repository import get_friendship_status
-from backend.repositories.review_repository import create_review, delete_review, get_review_by_id, get_reviews_by_media, get_user_review_for_media, update_review
+from backend.repositories.favorite_repository import delete_user_favorite, get_user_favorites, get_user_favorites_count, new_favorite, update_status_favorite
+from backend.repositories.review_repository import create_review, delete_review, get_review_by_id, get_reviews_by_media, get_reviews_by_user, get_user_review_for_media, update_review
 from backend.repositories.user_repository import get_user_by_id
 
 
@@ -211,8 +209,85 @@ def get_reviews_by_media_service(id_api: int, media_type: MediaType, session: Se
             "alias": user.alias,
             "picture": user.picture
         }
-        review_data.pop("id_user", None)  # Removemos el id_user redundante
-        
+        review_data.pop("id_user", None)
         final_reviews.append(review_data)
-    
+
     return final_reviews
+
+
+async def get_favorite_list_paginated(user_id: int, session: Session, page: int = 1, limit: int = 20):
+    offset = (page - 1) * limit
+    total = get_user_favorites_count(id_user=user_id, session=session)
+    favorite_tuples = get_user_favorites(id_user=user_id, session=session, offset=offset, limit=limit)
+
+    if not favorite_tuples:
+        return {"items": [], "total": total, "page": page, "has_more": False}
+
+    anime_ids = []
+    manga_ids = []
+    for _, fav_data in favorite_tuples:
+        if fav_data.media_type.value == "anime":
+            anime_ids.append(fav_data.id_api)
+        else:
+            manga_ids.append(fav_data.id_api)
+
+    media_dict = {}
+    if anime_ids:
+        anime_results = await anilist_client.get_media_batch(anime_ids, "ANIME")
+        for a in anime_results:
+            media_dict[(a["id"], "anime")] = a
+    if manga_ids:
+        manga_results = await anilist_client.get_media_batch(manga_ids, "MANGA")
+        for m in manga_results:
+            media_dict[(m["id"], "manga")] = m
+
+    items = []
+    for user_fav, fav_data in favorite_tuples:
+        datos = media_dict.get((fav_data.id_api, fav_data.media_type.value))
+        if datos:
+            items.append({"id": fav_data.id, "status": user_fav.status, "media": datos})
+
+    return {"items": items, "total": total, "page": page, "has_more": (offset + limit) < total}
+
+
+async def get_user_reviews_service(user_id: int, session: Session):
+    reviews = get_reviews_by_user(user_id=user_id, session=session)
+    if not reviews:
+        return []
+
+    anime_ids = []
+    manga_ids = []
+    for r in reviews:
+        if r.media_type.value == "anime":
+            anime_ids.append(r.id_api)
+        else:
+            manga_ids.append(r.id_api)
+
+    media_dict = {}
+    if anime_ids:
+        anime_results = await anilist_client.get_media_batch(anime_ids, "ANIME")
+        for a in anime_results:
+            media_dict[(a["id"], "anime")] = a
+    if manga_ids:
+        manga_results = await anilist_client.get_media_batch(manga_ids, "MANGA")
+        for m in manga_results:
+            media_dict[(m["id"], "manga")] = m
+
+    result = []
+    for review in reviews:
+        media = media_dict.get((review.id_api, review.media_type.value))
+        if media:
+            result.append({
+                "id": review.id,
+                "score": review.score,
+                "content": review.content,
+                "created_at": review.created_at,
+                "media": {
+                    "id": media["id"],
+                    "title": media["title"],
+                    "image": media["image"],
+                    "type": media["type"],
+                }
+            })
+
+    return result

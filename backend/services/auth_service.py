@@ -110,18 +110,36 @@ def get_user_by_email_service(email: str, session: Session):
 
 
 def process_google_login(google_token: str, session: Session):
-    # 1. Validar el token con Google
-    google_url = "https://www.googleapis.com/oauth2/v2/userinfo"
-    auth_headers = {"Authorization": f"Bearer {google_token}"}
-    response = requests.get(google_url, headers=auth_headers, timeout=10)
+    google_client_id = os.getenv("GOOGLE_CLIENT_ID")
 
-    if response.status_code != 200:
-        raise HTTPException(
-            status_code=401,
-            detail="Token de Google inválido o expirado"
-        )
+    # 1. Verificar que el token pertenece a esta aplicación
+    tokeninfo_response = requests.get(
+        f"https://www.googleapis.com/oauth2/v1/tokeninfo?access_token={google_token}",
+        timeout=10
+    )
 
-    user_info = response.json()
+    if tokeninfo_response.status_code != 200:
+        raise HTTPException(status_code=401, detail="Token de Google inválido o expirado")
+
+    tokeninfo = tokeninfo_response.json()
+
+    if tokeninfo.get("issued_to") != google_client_id:
+        raise HTTPException(status_code=401, detail="Token no pertenece a esta aplicación")
+
+    if not tokeninfo.get("verified_email"):
+        raise HTTPException(status_code=401, detail="La cuenta de Google no tiene email verificado")
+
+    # 2. Obtener datos del usuario
+    userinfo_response = requests.get(
+        "https://www.googleapis.com/oauth2/v2/userinfo",
+        headers={"Authorization": f"Bearer {google_token}"},
+        timeout=10
+    )
+
+    if userinfo_response.status_code != 200:
+        raise HTTPException(status_code=401, detail="No se pudieron obtener los datos del usuario")
+
+    user_info = userinfo_response.json()
     email = user_info.get("email")
     name = user_info.get("name")
 

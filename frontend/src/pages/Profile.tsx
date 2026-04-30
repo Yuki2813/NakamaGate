@@ -37,6 +37,7 @@ interface UserProfile {
 export default function Profile() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
+  const [reviewCount, setReviewCount] = useState(0);
   const [loading, setLoading] = useState(true);
   
   // NUEVO ESTADO: Buscador local
@@ -44,10 +45,8 @@ export default function Profile() {
 
   const [isEditingAlias, setIsEditingAlias] = useState(false);
   const [newAlias, setNewAlias] = useState("");
-  const [savingAlias, setSavingAlias] = useState(false);
-
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const editorRef = useRef<AvatarEditor>(null);
+  const editorRef = useRef<React.ComponentRef<typeof AvatarEditor>>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [scale, setScale] = useState(1.2);
   const [savingAvatar, setSavingAvatar] = useState(false);
@@ -71,6 +70,9 @@ export default function Profile() {
 
       const favsRes = await apiClient.get('/favorites/');
       setFavorites(favsRes.data);
+
+      const reviewCountRes = await apiClient.get('/reviews/me/count');
+      setReviewCount(reviewCountRes.data.count ?? 0);
     } catch (err) {
       console.error("Error cargando perfil:", err);
     } finally {
@@ -138,13 +140,11 @@ export default function Profile() {
       setIsEditingAlias(false);
       return;
     }
-    setSavingAlias(true);
     try {
       await apiClient.patch('/auth/me/alias', { alias: newAlias });
       window.location.reload();
     } catch (error: any) {
       console.error("Error alias:", error);
-      setSavingAlias(false);
     }
   };
 
@@ -315,7 +315,7 @@ export default function Profile() {
             <span className="font-bold text-sm">Inicio</span>
           </Link>
           <span className="font-black text-yellow-500 tracking-tighter text-xl italic uppercase">NAKAMAGATE</span>
-          <Settings className="w-5 h-5 text-slate-500 cursor-pointer hover:text-white" />
+          <div className="w-5 h-5" />
         </div>
       </nav>
 
@@ -368,7 +368,7 @@ export default function Profile() {
                 <p className="text-[8px] uppercase text-slate-500 font-bold tracking-widest">Favoritos</p>
               </div>
               <div className="bg-slate-100 dark:bg-slate-950/50 rounded-2xl p-3 text-center border border-slate-200 dark:border-slate-800/50">
-                <p className="text-xl font-black text-slate-900 dark:text-white">0</p>
+                <p className="text-xl font-black text-slate-900 dark:text-white">{reviewCount}</p>
                 <p className="text-[8px] uppercase text-slate-500 font-bold tracking-widest">Reseñas</p>
               </div>
             </div>

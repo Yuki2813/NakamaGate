@@ -5,7 +5,6 @@ import {
   Clock, AlertTriangle, CheckCircle2, Swords, ExternalLink
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -51,7 +50,7 @@ export default function Community() {
 
   useEffect(() => { fetchSocialData(); }, []);
 
-  const handleSearch = async (e: React.FormEvent) => {
+  const handleSearch = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!searchQuery.trim()) return;
     setSearching(true);
@@ -289,25 +288,26 @@ export default function Community() {
                         </div>
 
                         {/* Acción */}
-                        {isFriend ? (
+                        <div className="flex items-center gap-2 shrink-0">
                           <Link to={`/friend/${user.id}`}>
                             <Button variant="outline" size="sm" className="rounded-xl border-yellow-500/40 text-yellow-500 hover:bg-yellow-500 hover:text-black gap-1.5 font-bold text-xs">
                               <ExternalLink className="w-3.5 h-3.5" /> Ver perfil
                             </Button>
                           </Link>
-                        ) : hasSent ? (
-                          <span className="px-4 py-2 rounded-xl bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400 text-xs font-bold uppercase">
-                            Enviada
-                          </span>
-                        ) : hasIncoming ? (
-                          <Button onClick={() => acceptRequest(user.id)} size="sm" className="rounded-xl bg-green-600 hover:bg-green-500 text-white font-bold text-xs gap-1.5">
-                            <CheckCircle2 className="w-3.5 h-3.5" /> Aceptar
-                          </Button>
-                        ) : (
-                          <Button onClick={() => sendRequest(user.id)} size="sm" className="rounded-xl bg-yellow-500 hover:bg-yellow-400 text-black font-bold text-xs gap-1.5">
-                            <UserPlus className="w-3.5 h-3.5" /> Reclutar
-                          </Button>
-                        )}
+                          {isFriend ? null : hasSent ? (
+                            <span className="px-4 py-2 rounded-xl bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400 text-xs font-bold uppercase">
+                              Enviada
+                            </span>
+                          ) : hasIncoming ? (
+                            <Button onClick={() => acceptRequest(user.id)} size="sm" className="rounded-xl bg-green-600 hover:bg-green-500 text-white font-bold text-xs gap-1.5">
+                              <CheckCircle2 className="w-3.5 h-3.5" /> Aceptar
+                            </Button>
+                          ) : (
+                            <Button onClick={() => sendRequest(user.id)} size="sm" className="rounded-xl bg-yellow-500 hover:bg-yellow-400 text-black font-bold text-xs gap-1.5">
+                              <UserPlus className="w-3.5 h-3.5" /> Reclutar
+                            </Button>
+                          )}
+                        </div>
                       </div>
                     );
                   })}
@@ -381,7 +381,7 @@ export default function Community() {
                           <Link to={`/friend/${user.id}`}>
                             <p className="font-black text-slate-900 dark:text-white uppercase tracking-tight truncate group-hover:text-yellow-500 transition-colors">{user.alias}</p>
                           </Link>
-                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Aliado · Rango S</span>
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Aliado</span>
                           <div className="mt-2">
                             <Link to={`/friend/${user.id}`}>
                               <Button variant="outline" size="sm" className="h-7 text-[10px] rounded-lg border-slate-200 dark:border-slate-700 text-slate-500 hover:border-yellow-500/50 hover:text-yellow-500 font-bold gap-1 px-2.5">

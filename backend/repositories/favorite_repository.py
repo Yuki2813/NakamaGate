@@ -1,7 +1,7 @@
+from sqlalchemy import func
 from sqlmodel import Session, select
 from backend.models.favorite import Favorite, Mediatype
 from backend.models.userfavorite import UserFavorite, status_favorite
-from sqlalchemy.orm import joinedload
 
 
 def new_favorite(iduser: int, id_fav: int, mediatype: Mediatype, session: Session):
@@ -62,13 +62,18 @@ def delete_user_favorite(id_user: int, media: Mediatype, idapi: int, session: Se
     return True
 
 
-def get_user_favorites(id_user: int, session: Session):
+def get_user_favorites_count(id_user: int, session: Session) -> int:
+    statement = select(func.count()).select_from(UserFavorite).where(UserFavorite.user_id == id_user)
+    return session.exec(statement).one()
+
+
+def get_user_favorites(id_user: int, session: Session, offset: int = 0, limit: int | None = None):
     statement = (
         select(UserFavorite, Favorite)
         .join(Favorite, UserFavorite.favorite_id == Favorite.id)
         .where(UserFavorite.user_id == id_user)
+        .offset(offset)
     )
-
-    favorites = session.exec(statement).all()
-    print(favorites)
-    return favorites
+    if limit is not None:
+        statement = statement.limit(limit)
+    return session.exec(statement).all()

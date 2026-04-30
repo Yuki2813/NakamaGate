@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field
 from sqlmodel import Session
 from backend.database import get_db
 from backend.models.favorite import Mediatype
+from backend.models.userfavorite import status_favorite
 from backend.security import get_current_user_id
 from backend.services.content_service import check_if_favorite
 from backend.services.interacction_service import add_media_to_list, get_favorite_list, remove_media_from_list, update_media_status
@@ -17,7 +18,7 @@ class FavoriteAdd(BaseModel):
     media_id: int = Field(..., example=1, description="ID del anime o manga de AniList")
     media_type: Mediatype = Field(..., example="ANIME", description="Tipo de contenido")
 class StatusUpdate(BaseModel):
-    status: str = Field(..., example="watching", description="Nuevo estado: watching, completed, on_hold, o pending")
+    status: status_favorite
 # ==========================================
 # 1. AÑADIR A FAVORITOS
 # ==========================================

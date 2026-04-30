@@ -6,7 +6,8 @@ from backend.database import get_db
 from backend.models.review import MediaType
 from backend.security import get_current_user_id
 from backend.services import content_service
-from backend.services.interacction_service import create_review_service, delete_review_service, get_reviews_by_media_service, update_review_service
+from backend.repositories.review_repository import get_reviews_by_user
+from backend.services.interacction_service import create_review_service, delete_review_service, get_reviews_by_media_service, get_user_reviews_service, update_review_service
 
 
 router = APIRouter(
@@ -90,6 +91,24 @@ async def delete_review(
 # ==========================================
 # 4. OBTENER RESEÑAS DE UN ANIME/MANGA ESPECÍFICO
 # ==========================================
+@router.get("/me/count", summary="Número de reseñas del usuario actual")
+async def get_my_review_count(
+    user_id: int = Depends(get_current_user_id),
+    session: Session = Depends(get_db)
+):
+    reviews = get_reviews_by_user(user_id=user_id, session=session)
+    return {"count": len(reviews)}
+
+
+@router.get("/user/{user_id}", summary="Reseñas públicas de un usuario")
+async def get_user_reviews(
+    user_id: int,
+    current_user: int = Depends(get_current_user_id),
+    session: Session = Depends(get_db)
+):
+    return await get_user_reviews_service(user_id=user_id, session=session)
+
+
 @router.get("/media/{media_id}", summary="Obtener todas las reseñas de un anime o manga")
 async def get_media_reviews(
     media_id: int,

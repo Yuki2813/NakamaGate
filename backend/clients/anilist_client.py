@@ -170,7 +170,6 @@ class AniListClient:
             variables["genreIn"] = [g.strip() for g in genre.split(",")]
         if status:
             variables["status"] = status.strip().upper()
-        print(f"🔥 PIDIENDO A ANILIST CON ORDEN: {variables['sort']}")    
         async with self._get_fresh_client() as session:
             result = await session.execute(query, variable_values=variables)
             page_data = result.get("Page", {})

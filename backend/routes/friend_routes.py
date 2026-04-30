@@ -1,14 +1,14 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel import Session
 from backend.database import get_db
 from backend.models.users import Users
 from backend.security import get_current_user_id
+from backend.services.interacction_service import get_favorite_list_paginated
 from backend.services.user_service import (
     send_friend_request_service,
     accept_friend_request_service,
     remove_friend,
     get_user_social_data,
-    get_user_favorites_protected,
     get_public_friends_list
 )
 
@@ -79,14 +79,16 @@ def get_user_friends_endpoint(
 
 
 @router.get("/{target_user_id}/favorites")
-async def get_protected_favorites_endpoint(
-    target_user_id: int, 
-    current_user: int = Depends(get_current_user_id), 
+async def get_user_favorites_endpoint(
+    target_user_id: int,
+    page: int = Query(1, ge=1),
+    limit: int = Query(20, ge=1, le=50),
+    current_user: int = Depends(get_current_user_id),
     session: Session = Depends(get_db)
 ):
-
-    return await get_user_favorites_protected(
-        current_user_id=current_user, 
-        target_user_id=target_user_id, 
-        session=session
+    return await get_favorite_list_paginated(
+        user_id=target_user_id,
+        session=session,
+        page=page,
+        limit=limit
     )

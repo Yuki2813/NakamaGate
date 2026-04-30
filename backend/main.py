@@ -7,6 +7,9 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi_cache import FastAPICache
 from fastapi_cache.backends.inmemory import InMemoryBackend
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from backend.limiter import limiter
 import cloudinary
 
 # Importación de modelos y rutas
@@ -43,6 +46,8 @@ async def lifespan(app: FastAPI):
 
 # 4. Crear la aplicación FastAPI INYECTANDO el lifespan desde el principio
 app = FastAPI(title="NakameGate", version="1.0", lifespan=lifespan)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # 5. Configurar CORS
 origenes_permitidos = [

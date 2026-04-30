@@ -1,7 +1,7 @@
-from fastapi import HTTPException, status
+from fastapi import HTTPException
 from sqlmodel import Session
 import random
-from datetime import date  # <-- NUEVA IMPORTACIÓN PARA LA SEMILLA
+from datetime import date
 
 from backend.clients.anilist_client import anilist_client
 from backend.models.favorite import Mediatype

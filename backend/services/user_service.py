@@ -1,16 +1,12 @@
-import os
 import cloudinary
 import cloudinary.uploader
 from fastapi import UploadFile, HTTPException, status
 from sqlmodel import Session
-from backend.models.friendship import FriendshipStatus
-from backend.repositories.friendship_repository import accept_friend_request, get_friends, get_friendship_status, get_pending_requests, remove_friendship, send_friend_request
+from backend.repositories.friendship_repository import accept_friend_request, get_friends, get_pending_requests, remove_friendship, send_friend_request
 from backend.repositories.user_repository import  check_id_exist, delete_user, get_user_by_id, search_users_repo, update_user_alias, update_user_avatar
 from backend.services.auth_service import create_access_token
 from backend.services.interacction_service import get_favorite_list
 
-UPLOAD_DIR = "./static/profile_pics"
-os.makedirs(UPLOAD_DIR, exist_ok=True)
 # ==========================================
 # GESTIÓN DE PERFIL
 # ==========================================
@@ -177,23 +173,7 @@ def get_user_social_data(user_id: int, session: Session):
 
     return {"friends": formatted_friends, "pending": formatted_pending}
 
-async def get_user_favorites_protected(current_user_id: int, target_user_id: int, session: Session):
-    
-
-    if current_user_id == target_user_id:
-        return await get_favorite_list(user_id=target_user_id, session=session)
-
-
-    estado_amistad = get_friendship_status(user_id_A=current_user_id, user_id_B=target_user_id, session=session)
-
-
-    if estado_amistad != FriendshipStatus.friends:
-        raise HTTPException(
-            status_code=403,
-            detail="You must be friends with this user to see their list."
-        )
-
-
+async def get_user_favorites(target_user_id: int, session: Session):
     return await get_favorite_list(user_id=target_user_id, session=session)
 
 
