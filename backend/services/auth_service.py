@@ -1,7 +1,8 @@
 import secrets
 
 from fastapi import HTTPException
-import requests
+from google.oauth2 import id_token as google_id_token
+from google.auth.transport import requests as google_requests
 
 from sqlmodel import Session
 from passlib.context import CryptContext
@@ -112,39 +113,24 @@ def get_user_by_email_service(email: str, session: Session):
 def process_google_login(google_token: str, session: Session):
     google_client_id = os.getenv("GOOGLE_CLIENT_ID")
 
-    # 1. Verificar que el token pertenece a esta aplicación
-    tokeninfo_response = requests.get(
-        f"https://www.googleapis.com/oauth2/v1/tokeninfo?access_token={google_token}",
-        timeout=10
-    )
+    # Verify the ID token signature and audience with google-auth (no extra HTTP call needed)
+    try:
+        idinfo = google_id_token.verify_oauth2_token(
+            google_token,
+            google_requests.Request(),
+            google_client_id
+        )
+    except ValueError:
+        raise HTTPException(status_code=401, detail="Invalid or expired Google token")
 
-    if tokeninfo_response.status_code != 200:
-        raise HTTPException(status_code=401, detail="Token de Google inválido o expirado")
+    if not idinfo.get("email_verified"):
+        raise HTTPException(status_code=401, detail="Google account email not verified")
 
-    tokeninfo = tokeninfo_response.json()
-
-    if tokeninfo.get("issued_to") != google_client_id:
-        raise HTTPException(status_code=401, detail="Token no pertenece a esta aplicación")
-
-    if not tokeninfo.get("verified_email"):
-        raise HTTPException(status_code=401, detail="La cuenta de Google no tiene email verificado")
-
-    # 2. Obtener datos del usuario
-    userinfo_response = requests.get(
-        "https://www.googleapis.com/oauth2/v2/userinfo",
-        headers={"Authorization": f"Bearer {google_token}"},
-        timeout=10
-    )
-
-    if userinfo_response.status_code != 200:
-        raise HTTPException(status_code=401, detail="No se pudieron obtener los datos del usuario")
-
-    user_info = userinfo_response.json()
-    email = user_info.get("email")
-    name = user_info.get("name")
+    email = idinfo.get("email")
+    name = idinfo.get("name")
 
     if not email:
-        raise HTTPException(status_code=400, detail="Google no proporcionó un email válido")
+        raise HTTPException(status_code=400, detail="Google did not provide a valid email")
 
     # 2. TRAMPA 1 CORREGIDA: Usamos el repo directo. Si no existe, devuelve None (no da error).
     user = get_user_by_email(email=email, session=session)

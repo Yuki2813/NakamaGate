@@ -42,7 +42,7 @@ export default function Navbar() {
     }
     apiClient.get('/auth/me')
       .then(res => setUserData(res.data))
-      .catch(err => console.error("Error perfil:", err));
+      .catch(err => console.error("Profile error:", err));
   }, []);
 
   const toggleDarkMode = () => {
@@ -76,7 +76,7 @@ export default function Navbar() {
         if (error.response?.data?.detail) {
           setSearchError(error.response.data.detail);
         } else {
-          setSearchError("Error al conectar con la base de datos.");
+          setSearchError("Error connecting to the database.");
         }
         setResults([]);
       } finally {
@@ -95,7 +95,6 @@ export default function Navbar() {
     <nav className="sticky top-0 z-50 w-full bg-white/80 dark:bg-[#020617]/80 backdrop-blur-xl border-b border-yellow-500/20 py-2 md:py-3 transition-colors">
       <div className="max-w-screen-2xl mx-auto px-3 sm:px-4 md:px-6 flex flex-wrap items-center gap-x-1.5 gap-y-2 md:grid md:grid-cols-[auto_1fr_auto] md:gap-x-4">
 
-        {/* ── LOGO ───────────────────────────────────────────────────────── */}
         <Link to="/home" className="shrink-0 flex items-center gap-2 hover:scale-105 transition-transform group">
           <div className="w-8 h-8 md:w-9 md:h-9 bg-linear-to-br from-yellow-400 to-yellow-600 rounded-xl rotate-12 flex items-center justify-center shadow-[0_0_15px_rgba(234,179,8,0.4)] group-hover:rotate-0 transition-all duration-300">
             <span className="text-[#020617] font-black text-lg md:text-xl -rotate-12 group-hover:rotate-0 transition-all duration-300">N</span>
@@ -105,13 +104,8 @@ export default function Navbar() {
           </span>
         </Link>
 
-        {/* ── ACCIONES DERECHA ────────────────────────────────────────────
-            En móvil: ml-auto la empuja a la derecha en la misma fila que el logo.
-            En desktop: md:order-last la coloca al final de la fila única.
-        ── */}
         <div className="ml-auto md:ml-0 md:order-3 flex items-center gap-0.5 sm:gap-1 md:gap-2 shrink-0">
 
-          {/* Iconos de navegación – visibles solo en < lg (en desktop van dentro del buscador) */}
           <div className="flex lg:hidden items-center">
             <Link to="/directory">
               <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl text-slate-600 dark:text-slate-300 hover:text-yellow-500 dark:hover:text-yellow-400 hover:bg-yellow-500/10">
@@ -125,17 +119,15 @@ export default function Navbar() {
             </Link>
           </div>
 
-          {/* Tema */}
           <Button
             onClick={toggleDarkMode}
             variant="outline"
             className="h-9 w-9 md:h-10 md:w-10 p-0 rounded-xl border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800/50 hover:bg-slate-200 dark:hover:bg-slate-800 hover:border-yellow-500/50 text-slate-600 dark:text-slate-300 transition-all shrink-0"
-            title="Cambiar tema"
+            title="Toggle theme"
           >
             {isDark ? <Sun className="w-4 h-4 text-yellow-500" /> : <Moon className="w-4 h-4" />}
           </Button>
 
-          {/* Perfil */}
           <Link to="/profile">
             <Button className="h-9 md:h-10 px-2 md:px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white/80 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 hover:border-yellow-500/50 text-slate-800 dark:text-slate-200 transition-all font-semibold flex items-center gap-1.5">
               {getImageUrl(userData?.picture) ? (
@@ -145,27 +137,21 @@ export default function Navbar() {
                   <User className="w-3 h-3" />
                 </div>
               )}
-              <span className="max-w-20 truncate hidden sm:inline text-sm">{userData?.alias || 'Perfil'}</span>
+              <span className="max-w-20 truncate hidden sm:inline text-sm">{userData?.alias || 'Profile'}</span>
             </Button>
           </Link>
 
-          {/* Logout */}
           <Button
             onClick={handleLogout}
             className="h-9 w-9 md:h-10 md:w-10 p-0 rounded-xl border border-red-900/30 bg-red-500/10 hover:bg-red-500 hover:text-white text-red-500 transition-all shrink-0"
-            title="Cerrar sesión"
+            title="Log out"
           >
             <LogOut className="w-4 h-4" />
           </Button>
         </div>
 
-        {/* ── BUSCADOR + LINKS DESKTOP ────────────────────────────────────
-            En móvil: order-last + w-full  → ocupa fila 2 completa.
-            En desktop: md:order-none + flex-1 → ocupa el centro de la fila única.
-        ── */}
         <div className="order-last w-full md:order-2 md:w-auto flex items-center gap-2 md:justify-center">
 
-          {/* Buscador */}
           <div className="relative flex-1 md:max-w-xl flex flex-col">
             <div className="flex items-stretch bg-slate-100/80 dark:bg-black/40 border border-slate-300 dark:border-slate-700 focus-within:border-yellow-500/50 focus-within:ring-1 focus-within:ring-yellow-500/20 transition-all rounded-xl overflow-hidden h-10 md:h-11">
 
@@ -173,7 +159,7 @@ export default function Navbar() {
                 <Search className="absolute left-3 w-4 h-4 text-slate-500 pointer-events-none" />
                 <Input
                   type="text"
-                  placeholder="Buscar obras..."
+                  placeholder="Search titles..."
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
@@ -198,7 +184,6 @@ export default function Navbar() {
               </div>
             </div>
 
-            {/* Dropdown de resultados */}
             {showDropdown && (
               <div className="absolute top-12 md:top-14 left-0 w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-[0_20px_40px_-15px_rgba(0,0,0,0.3)] flex flex-col z-50 max-h-72 overflow-y-auto custom-scrollbar overflow-hidden">
                 {searchError ? (
@@ -229,25 +214,24 @@ export default function Navbar() {
                   ))
                 ) : (
                   <div className="p-5 text-center text-slate-500 dark:text-slate-400 text-sm">
-                    {isSearching ? 'Buscando en el catálogo...' : 'No se encontraron resultados.'}
+                    {isSearching ? 'Searching the catalog...' : 'No results found.'}
                   </div>
                 )}
               </div>
             )}
           </div>
 
-          {/* Links de navegación desktop – ocultos en < lg */}
           <div className="hidden lg:flex items-center gap-1 shrink-0">
             <Link to="/directory">
               <Button variant="ghost" className="h-11 px-4 rounded-xl text-slate-600 dark:text-slate-300 hover:text-yellow-500 dark:hover:text-yellow-400 hover:bg-yellow-500/10 font-bold transition-all flex items-center gap-2">
                 <Compass className="w-5 h-5" />
-                Directorio
+                Directory
               </Button>
             </Link>
             <Link to="/community">
               <Button variant="ghost" className="h-11 px-4 rounded-xl text-slate-600 dark:text-slate-300 hover:text-yellow-500 dark:hover:text-yellow-400 hover:bg-yellow-500/10 font-bold transition-all flex items-center gap-2">
                 <Users className="w-5 h-5" />
-                Gremio
+                Guild
               </Button>
             </Link>
           </div>

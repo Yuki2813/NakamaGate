@@ -1,9 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import {
-  Filter, ChevronLeft, ChevronRight, Star, AlertTriangle,
-  Hash, Check, PlayCircle, Clock, LayoutGrid
-} from 'lucide-react';
+import {Filter, ChevronLeft, ChevronRight, Star, AlertTriangle,Hash, Check, PlayCircle, Clock, LayoutGrid} from 'lucide-react';
 import { apiClient } from '../api/client';
 import { getImageUrl } from '../utils/helpers';
 import Loader from '../components/Loader';
@@ -26,34 +23,30 @@ interface MediaItem {
   year: string | number;
 }
 
-const ADULT_GENRES = ["Action", "Adventure", "Comedy", "Drama", "Ecchi", "Fantasy", "Horror", "Mahou Shoujo", "Mecha", "Music", "Mystery", "Psychological", "Romance", "Sci-Fi", "Slice of Life", "Sports", "Supernatural", "Thriller"];
-const SAFE_GENRES  = ["Action", "Adventure", "Comedy", "Fantasy", "Mahou Shoujo", "Mecha", "Music", "Mystery", "Romance", "Sci-Fi", "Slice of Life", "Sports", "Supernatural"];
-
 const STATUS_OPTIONS = [
-  { id: "",                  label: "Todos",      icon: LayoutGrid  },
-  { id: "RELEASING",         label: "En Emisión", icon: PlayCircle  },
-  { id: "FINISHED",          label: "Finalizados",icon: Check       },
-  { id: "NOT_YET_RELEASED",  label: "Próximos",   icon: Clock       },
+  { id: "",                  label: "All",      icon: LayoutGrid  },
+  { id: "RELEASING",         label: "Airing",   icon: PlayCircle  },
+  { id: "FINISHED",          label: "Finished", icon: Check       },
+  { id: "NOT_YET_RELEASED",  label: "Upcoming", icon: Clock       },
 ];
 
 export default function Directory() {
-  const [items,        setItems]        = useState<MediaItem[]>([]);
-  const [pageInfo,     setPageInfo]     = useState<PageInfo | null>(null);
-  const [loading,      setLoading]      = useState(true);
-  const [errorMsg,     setErrorMsg]     = useState<string | null>(null);
-
-  const [isAdult,        setIsAdult]        = useState(false);
-  const [page,           setPage]           = useState(1);
-  const [mediaType,      setMediaType]      = useState<'ANIME' | 'MANGA'>('ANIME');
-  const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
-  const [selectedStatus, setSelectedStatus] = useState<string>("");
-  const [showGenreMenu,  setShowGenreMenu]  = useState(false);
-  const [jumpPage,       setJumpPage]       = useState("");
+  const [items,setItems]= useState<MediaItem[]>([]);
+  const [pageInfo,setPageInfo]= useState<PageInfo | null>(null);
+  const [loading,setLoading]= useState(true);
+  const [errorMsg,setErrorMsg]= useState<string | null>(null);
+  const [availableGenres,setAvailableGenres]= useState<string[]>([]);
+  const [page,setPage]= useState(1);
+  const [mediaType,setMediaType]= useState<'ANIME' | 'MANGA'>('ANIME');
+  const [selectedGenres,setSelectedGenres]= useState<string[]>([]);
+  const [selectedStatus,setSelectedStatus]= useState<string>("");
+  const [showGenreMenu,setShowGenreMenu] = useState(false);
+  const [jumpPage,setJumpPage]= useState("");
 
   useEffect(() => {
-    apiClient.get('/auth/me')
-      .then(res => setIsAdult(res.data.is_adult || res.data.isAdult || false))
-      .catch(err => console.error("Error perfil:", err));
+    apiClient.get('/content/genres')
+      .then(res => setAvailableGenres(res.data.genres || []))
+      .catch(err => console.error("Genres error:", err));
   }, []);
 
   useEffect(() => {
@@ -78,9 +71,9 @@ export default function Directory() {
         window.scrollTo({ top: 0, behavior: 'smooth' });
       } catch (error: any) {
         if (error.response?.status === 403) {
-          setErrorMsg("El Gremio ha restringido este acceso (+18). Revisa tu rango de usuario.");
+          setErrorMsg("The Guild has restricted this access (+18). Check your user rank.");
         } else {
-          setErrorMsg("Error al conectar con la gran biblioteca de Nakama.");
+          setErrorMsg("Error connecting to the Nakama library.");
         }
         setItems([]);
       } finally {
@@ -121,30 +114,25 @@ export default function Directory() {
     return range;
   };
 
-  if (loading && page === 1 && items.length === 0) return <Loader text="Sincronizando archivos..." />;
-
-  const availableGenres = isAdult ? ADULT_GENRES : SAFE_GENRES;
+  if (loading && page === 1 && items.length === 0) return <Loader text="Syncing files..." />;
 
   return (
     <main className="min-h-screen bg-slate-50 dark:bg-[#020617] text-slate-800 dark:text-slate-200 pb-20 relative overflow-hidden">
       <div className="absolute top-0 right-0 w-96 h-96 md:w-150 md:h-150 bg-yellow-500/5 rounded-full blur-[120px] pointer-events-none" />
       <div className="absolute bottom-0 left-0 w-96 h-96 md:w-150 md:h-150 bg-blue-500/5 rounded-full blur-[120px] pointer-events-none" />
 
-      {/* CABECERA */}
       <header className="max-w-350 mx-auto px-4 sm:px-6 md:px-16 pt-8 sm:pt-10 md:pt-12 pb-5 sm:pb-8 relative z-10">
         <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black tracking-tighter text-slate-900 dark:text-white mb-2 italic">
-          Directorio <span className="text-yellow-500">Nakama</span>
+          Nakama <span className="text-yellow-500">Directory</span>
         </h1>
         <div className="h-1 w-16 sm:w-20 bg-yellow-500 rounded-full" />
       </header>
 
-      {/* FILTROS */}
       <section className="max-w-350 mx-auto px-4 sm:px-6 md:px-16 mb-8 sm:mb-12 relative z-50">
         <div className="bg-white/80 dark:bg-slate-900/40 backdrop-blur-2xl border border-yellow-500/10 p-4 sm:p-5 rounded-2xl sm:rounded-3xl flex flex-col lg:flex-row gap-4 sm:gap-6 items-start lg:items-center justify-between shadow-2xl">
 
           <div className="flex flex-col sm:flex-row flex-wrap gap-3 items-stretch sm:items-center w-full xl:w-auto relative">
 
-            {/* TIPO: ANIME / MANGA */}
             <div className="flex bg-slate-100 dark:bg-black/40 p-1.5 rounded-2xl border border-slate-200 dark:border-slate-800 w-full sm:w-auto">
               <button
                 onClick={() => { setMediaType('ANIME'); setPage(1); setSelectedGenres([]); setSelectedStatus(""); }}
@@ -160,7 +148,6 @@ export default function Directory() {
               </button>
             </div>
 
-            {/* ESTADO */}
             <div className="flex bg-slate-100 dark:bg-black/40 p-1.5 rounded-2xl border border-slate-200 dark:border-slate-800 w-full sm:w-auto overflow-x-auto">
               {STATUS_OPTIONS.map(opt => {
                 const Icon = opt.icon;
@@ -180,7 +167,6 @@ export default function Directory() {
               })}
             </div>
 
-            {/* GÉNEROS */}
             <div className="relative w-full sm:w-auto">
               <Button
                 variant="outline"
@@ -189,7 +175,7 @@ export default function Directory() {
               >
                 <div className="flex items-center gap-2 truncate">
                   <Filter className="w-4 h-4 text-yellow-500 shrink-0" />
-                  <span className="truncate">Géneros</span>
+                  <span className="truncate">Genres</span>
                 </div>
                 {selectedGenres.length > 0 && (
                   <Badge className="bg-yellow-500 text-black px-1.5 py-0 font-black shrink-0">
@@ -203,9 +189,9 @@ export default function Directory() {
                   <div className="fixed inset-0 z-40" onClick={() => setShowGenreMenu(false)} />
                   <div className="absolute top-full left-0 mt-2 w-full sm:w-80 bg-white dark:bg-slate-900/95 backdrop-blur-xl border border-slate-200 dark:border-slate-700 rounded-2xl shadow-[0_20px_40px_-15px_rgba(0,0,0,0.3)] p-4 z-50 animate-in fade-in zoom-in-95 duration-200">
                     <div className="flex justify-between items-center mb-3 pb-2 border-b border-slate-200 dark:border-slate-800">
-                      <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Selecciona hasta 4</span>
+                      <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Select up to 4</span>
                       {selectedGenres.length > 0 && (
-                        <button onClick={() => setSelectedGenres([])} className="text-[10px] text-red-400 hover:text-red-300 font-bold uppercase">Limpiar</button>
+                        <button onClick={() => setSelectedGenres([])} className="text-[10px] text-red-400 hover:text-red-300 font-bold uppercase">Clear</button>
                       )}
                     </div>
                     <div className="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto pr-1">
@@ -237,41 +223,37 @@ export default function Directory() {
             </div>
           </div>
 
-          {/* IR A PÁGINA */}
           <form onSubmit={handleJumpPage} className="flex items-center gap-3 bg-yellow-500/5 hover:bg-yellow-500/10 p-1.5 rounded-2xl border border-yellow-500/20 transition-all w-full lg:w-auto">
             <div className="bg-yellow-500 text-black p-2 rounded-xl shrink-0">
               <Hash className="w-4 h-4" />
             </div>
             <input
               type="number"
-              placeholder="Ir a pág..."
+              placeholder="Go to page..."
               value={jumpPage}
               onChange={(e) => setJumpPage(e.target.value)}
               className="bg-transparent text-slate-900 dark:text-white text-sm font-black outline-none w-full xl:w-24 placeholder:text-slate-400 dark:placeholder:text-slate-600 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
             />
             <Button type="submit" className="bg-transparent hover:bg-white/10 text-yellow-500 font-bold text-xs h-9 shrink-0">
-              Ir
+              Go
             </Button>
           </form>
         </div>
       </section>
 
-      {/* ERROR */}
       {errorMsg && (
         <div className="max-w-350 mx-auto px-4 sm:px-6 md:px-16 mb-8 animate-in fade-in slide-in-from-top-4">
           <div className="bg-red-900/20 border border-red-500/30 p-6 sm:p-8 rounded-3xl flex flex-col items-center text-center">
             <AlertTriangle className="w-12 h-12 sm:w-16 sm:h-16 text-red-500 mb-4" />
-            <h2 className="text-xl sm:text-2xl font-black text-white mb-2">Acceso Restringido</h2>
+            <h2 className="text-xl sm:text-2xl font-black text-white mb-2">Restricted Access</h2>
             <p className="text-slate-400 max-w-md text-sm sm:text-base">{errorMsg}</p>
           </div>
         </div>
       )}
 
-      {/* GRID DE CONTENIDO */}
       {!errorMsg && (
         <section className="max-w-350 mx-auto px-4 sm:px-6 md:px-16 relative z-10">
 
-          {/* Overlay de carga durante paginación */}
           {loading && items.length > 0 && (
             <div className="absolute inset-0 z-20 bg-slate-50/60 dark:bg-[#020617]/60 backdrop-blur-sm flex justify-center pt-20">
               <div className="w-11 h-11 border-4 border-slate-300 dark:border-slate-800 border-t-yellow-500 rounded-full animate-spin" />
@@ -297,7 +279,7 @@ export default function Directory() {
                     </div>
                   ) : (
                     <div className="absolute bottom-2 left-2 bg-black/60 backdrop-blur-md px-2 py-1 rounded-lg border border-white/10 opacity-50">
-                      <span className="text-[9px] sm:text-[10px] font-black text-slate-400">SIN NOTA</span>
+                      <span className="text-[9px] sm:text-[10px] font-black text-slate-400">NO SCORE</span>
                     </div>
                   )}
                 </figure>
@@ -310,7 +292,6 @@ export default function Directory() {
             ))}
           </div>
 
-          {/* PAGINACIÓN */}
           <div className="mt-12 sm:mt-16 md:mt-20 flex flex-col items-center justify-center gap-4 sm:gap-6">
             <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 md:gap-3">
               <Button
@@ -348,8 +329,8 @@ export default function Directory() {
 
             <p className="text-[10px] font-black text-slate-500 dark:text-slate-600 uppercase tracking-[0.2em] text-center">
               {items.length < 24
-                ? `Archivo Nakama • Fin de los Registros (Página ${page})`
-                : `Archivo Nakama • Explorando Página ${page}`}
+                ? `Nakama Archive • End of Records (Page ${page})`
+                : `Nakama Archive • Exploring Page ${page}`}
             </p>
           </div>
         </section>

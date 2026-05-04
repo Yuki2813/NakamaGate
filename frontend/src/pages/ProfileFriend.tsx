@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { apiClient } from '../api/client';
+import { BACKEND_URL } from '../config/env';
 import { Button } from "@/components/ui/button";
 import { UserPlus, UserMinus, Heart, Star, ShieldAlert, Home, Play, CheckCircle2, Clock, Trash2, MessageSquare, Loader2 } from 'lucide-react';
-
-const BACKEND_URL = "http://localhost:8000";
 
 interface MediaData {
   id: number;
@@ -97,14 +96,14 @@ export default function ProfileFriend() {
         const socialRes = await apiClient.get('/friends/social-data');
         setSocialData(socialRes.data);
       } catch {
-        // sin datos sociales, los botones de amistad se ocultarán
+        // no social data available
       }
 
       try {
         const meRes = await apiClient.get('/auth/me');
         setIsAdmin(meRes.data.rol === 'admin');
       } catch {
-        // no autenticado o error
+        // not authenticated or error
       }
 
       setLoading(false);
@@ -123,7 +122,7 @@ export default function ProfileFriend() {
       setHasMore(res.data.has_more ?? false);
       setFavPage(nextPage);
     } catch {
-      // no se pudieron cargar más
+      // could not load more
     } finally {
       setLoadingMore(false);
     }
@@ -137,19 +136,19 @@ export default function ProfileFriend() {
   const getStatusBadge = (status: string) => {
     switch (status?.toLowerCase()) {
       case 'watching':
-        return { icon: Play, label: 'Viendo', color: 'bg-blue-500/20 border-blue-500/30 text-blue-300' };
+        return { icon: Play, label: 'Watching', color: 'bg-blue-500/20 border-blue-500/30 text-blue-300' };
       case 'completed':
-        return { icon: CheckCircle2, label: 'Completado', color: 'bg-green-500/20 border-green-500/30 text-green-300' };
+        return { icon: CheckCircle2, label: 'Completed', color: 'bg-green-500/20 border-green-500/30 text-green-300' };
       case 'on_hold':
-        return { icon: Clock, label: 'En Pausa', color: 'bg-yellow-500/20 border-yellow-500/30 text-yellow-300' };
+        return { icon: Clock, label: 'On Hold', color: 'bg-yellow-500/20 border-yellow-500/30 text-yellow-300' };
       default:
-        return { icon: Heart, label: status || 'Favorito', color: 'bg-red-500/20 border-red-500/30 text-red-300' };
+        return { icon: Heart, label: status || 'Favorite', color: 'bg-red-500/20 border-red-500/30 text-red-300' };
     }
   };
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
-    return date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
+    return date.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
   };
 
   const handleSendRequest = async () => {
@@ -157,9 +156,9 @@ export default function ProfileFriend() {
     setActionLoading(true);
     try {
       await apiClient.post(`/friends/request/${profile.id}`);
-      alert("Petición de amistad enviada.");
+      alert("Friend request sent.");
     } catch (error) {
-      console.error("Error al enviar petición:", error);
+      console.error("Error sending request:", error);
     } finally {
       setActionLoading(false);
     }
@@ -170,9 +169,9 @@ export default function ProfileFriend() {
     setActionLoading(true);
     try {
       await apiClient.delete(`/friends/remove/${profile.id}`);
-      alert("Amigo eliminado de tu red.");
+      alert("Friend removed from your network.");
     } catch (error) {
-      console.error("Error al eliminar amigo:", error);
+      console.error("Error removing friend:", error);
     } finally {
       setActionLoading(false);
     }
@@ -186,8 +185,8 @@ export default function ProfileFriend() {
       setShowDeleteModal(false);
       navigate('/community');
     } catch (error) {
-      console.error("Error al eliminar cuenta:", error);
-      alert("No se pudo eliminar la cuenta.");
+      console.error("Error deleting account:", error);
+      alert("Could not delete the account.");
     } finally {
       setActionLoading(false);
     }
@@ -202,7 +201,7 @@ export default function ProfileFriend() {
   if (!profile) return (
     <main className="min-h-screen flex flex-col items-center justify-center bg-slate-50 dark:bg-[#020617] text-slate-900 dark:text-white">
       <ShieldAlert className="w-16 h-16 text-red-500 mb-4" />
-      <h1 className="text-2xl font-bold text-yellow-500">Expediente no encontrado</h1>
+      <h1 className="text-2xl font-bold text-yellow-500">Profile not found</h1>
     </main>
   );
 
@@ -211,45 +210,42 @@ export default function ProfileFriend() {
   return (
     <main className="min-h-screen bg-slate-50 dark:bg-[#020617] text-slate-800 dark:text-slate-200 font-sans selection:bg-yellow-500/30 pb-20">
 
-      {/* MODAL ELIMINACIÓN ADMIN */}
       {showDeleteModal && (
         <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in px-4">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-3xl p-8 max-w-sm w-full shadow-2xl animate-in zoom-in-95">
             <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-4 border border-red-500/20">
               <Trash2 className="w-8 h-8 text-red-500" />
             </div>
-            <h3 className="text-2xl font-black text-slate-900 dark:text-white text-center mb-2">¿Eliminar cuenta?</h3>
+            <h3 className="text-2xl font-black text-slate-900 dark:text-white text-center mb-2">Delete account?</h3>
             <p className="text-slate-500 dark:text-slate-400 text-center mb-1 font-medium text-sm">
-              Vas a eliminar la cuenta de <span className="text-yellow-500 font-bold uppercase">{profile.alias}</span>.
+              You are about to delete the account of <span className="text-yellow-500 font-bold uppercase">{profile.alias}</span>.
             </p>
             <p className="text-slate-400 dark:text-slate-500 text-center mb-8 text-xs">
-              Esta acción es irreversible y eliminará todos sus datos.
+              This action is irreversible and will delete all their data.
             </p>
             <div className="flex gap-3">
               <Button onClick={() => setShowDeleteModal(false)} variant="outline" className="flex-1 border-slate-300 dark:border-slate-700 rounded-xl">
-                Cancelar
+                Cancel
               </Button>
               <Button onClick={handleAdminDelete} disabled={actionLoading} className="flex-1 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl">
-                Eliminar
+                Delete
               </Button>
             </div>
           </div>
         </div>
       )}
 
-      {/* NAVEGACIÓN */}
       <nav className="sticky top-0 z-50 border-b border-yellow-500/20 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl">
         <div className="max-w-300 mx-auto px-4 sm:px-6 md:px-16 py-4 flex items-center justify-between">
           <Link to="/community" className="flex items-center gap-2 text-slate-800 dark:text-white hover:text-yellow-500 dark:hover:text-yellow-400 transition-colors">
             <Home className="w-5 h-5" />
-            <span className="font-semibold text-sm">Volver a Home</span>
+            <span className="font-semibold text-sm">Back to Home</span>
           </Link>
           <h1 className="font-black text-slate-900 dark:text-white tracking-tight">NakamaGate</h1>
           <div className="w-20" />
         </div>
       </nav>
 
-      {/* CABECERA */}
       <header className="relative w-full max-w-300 mx-auto px-4 sm:px-6 md:px-16 pt-8 sm:pt-12 pb-8 sm:pb-10">
         <div className="flex flex-col md:flex-row items-center md:items-end gap-6 w-full">
           <div className="shrink-0">
@@ -270,22 +266,22 @@ export default function ProfileFriend() {
                 {profile.alias}
               </h1>
               <p className="text-yellow-400 font-semibold mt-2 flex items-center justify-center md:justify-start gap-2">
-                <Star className="w-5 h-5 fill-yellow-400" /> Expediente Público
+                <Star className="w-5 h-5 fill-yellow-400" /> Public Profile
               </p>
             </div>
             <div className="flex gap-3">
               {isFriend ? (
                 <Button onClick={handleRemoveFriend} disabled={actionLoading} variant="outline" className="h-12 rounded-xl border-red-500/50 bg-red-500/10 hover:bg-red-500 hover:text-white text-red-500 transition-all font-semibold">
-                  <UserMinus className="w-5 h-5 mr-2" /> Eliminar
+                  <UserMinus className="w-5 h-5 mr-2" /> Remove
                 </Button>
               ) : (
                 <Button onClick={handleSendRequest} disabled={actionLoading} className="h-12 rounded-xl bg-yellow-600 hover:bg-yellow-500 text-black font-bold shadow-lg shadow-yellow-900/20 transition-all">
-                  <UserPlus className="w-5 h-5 mr-2" /> Añadir Amigo
+                  <UserPlus className="w-5 h-5 mr-2" /> Add Friend
                 </Button>
               )}
               {isAdmin && (
                 <Button onClick={() => setShowDeleteModal(true)} variant="outline" className="h-12 rounded-xl border-red-700/50 bg-red-900/10 hover:bg-red-700 hover:text-white text-red-500 transition-all font-semibold">
-                  <Trash2 className="w-5 h-5 mr-2" /> Eliminar cuenta
+                  <Trash2 className="w-5 h-5 mr-2" /> Delete account
                 </Button>
               )}
             </div>
@@ -293,35 +289,31 @@ export default function ProfileFriend() {
         </div>
       </header>
 
-      {/* CONTENIDO */}
       <div className="max-w-300 mx-auto px-4 sm:px-6 md:px-16 mt-8 sm:mt-12 grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-10">
 
-        {/* COLUMNA IZQUIERDA */}
         <aside className="lg:col-span-1 space-y-8">
           <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-xl">
-            <h2 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-6">Estadísticas</h2>
+            <h2 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-6">Stats</h2>
             <div className="grid grid-cols-2 gap-3">
               <div className="bg-slate-100 dark:bg-[#020617] rounded-2xl p-4 text-center border border-slate-200 dark:border-slate-800/50">
                 <span className="block text-3xl font-black text-yellow-500">{favoritesTotal}</span>
-                <span className="text-xs font-medium text-slate-400">Favoritos</span>
+                <span className="text-xs font-medium text-slate-400">Favorites</span>
               </div>
               <div className="bg-slate-100 dark:bg-[#020617] rounded-2xl p-4 text-center border border-slate-200 dark:border-slate-800/50">
                 <span className="block text-3xl font-black text-yellow-500">{reviews.length}</span>
-                <span className="text-xs font-medium text-slate-400">Reseñas</span>
+                <span className="text-xs font-medium text-slate-400">Reviews</span>
               </div>
             </div>
           </section>
         </aside>
 
-        {/* COLUMNA DERECHA */}
         <div className="lg:col-span-2 space-y-12">
 
-          {/* FAVORITOS */}
           <section aria-labelledby="favorites-title">
             <header className="flex items-center gap-3 mb-6">
               <Heart className="w-6 h-6 text-yellow-500 fill-yellow-500" />
               <h2 id="favorites-title" className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
-                Santuario de {profile.alias}
+                {profile.alias}&apos;s Sanctuary
               </h2>
             </header>
 
@@ -371,8 +363,8 @@ export default function ProfileFriend() {
                       className="h-11 px-8 rounded-xl border-yellow-500/40 text-yellow-500 hover:bg-yellow-500 hover:text-black font-bold transition-all"
                     >
                       {loadingMore
-                        ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Cargando...</>
-                        : `Cargar más · ${favoritesTotal - favorites.length} restantes`
+                        ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Loading...</>
+                        : `Load more · ${favoritesTotal - favorites.length} remaining`
                       }
                     </Button>
                   </div>
@@ -381,18 +373,17 @@ export default function ProfileFriend() {
             ) : (
               <div className="bg-slate-100 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 border-dashed rounded-3xl p-12 text-center">
                 <Heart className="w-12 h-12 text-slate-400 dark:text-slate-700 mx-auto mb-4" />
-                <h3 className="text-lg font-bold text-slate-600 dark:text-slate-300 mb-2">Santuario vacío</h3>
-                <p className="text-slate-500 text-sm">{profile.alias} aún no ha añadido obras a sus favoritos.</p>
+                <h3 className="text-lg font-bold text-slate-600 dark:text-slate-300 mb-2">Empty Sanctuary</h3>
+                <p className="text-slate-500 text-sm">{profile.alias} hasn&apos;t added any titles to their favorites yet.</p>
               </div>
             )}
           </section>
 
-          {/* RESEÑAS */}
           <section aria-labelledby="reviews-title">
             <header className="flex items-center gap-3 mb-6">
               <MessageSquare className="w-6 h-6 text-yellow-500" />
               <h2 id="reviews-title" className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
-                Crónicas de {profile.alias}
+                {profile.alias}&apos;s Chronicles
               </h2>
             </header>
 
@@ -438,8 +429,8 @@ export default function ProfileFriend() {
             ) : (
               <div className="bg-slate-100 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 border-dashed rounded-3xl p-12 text-center">
                 <MessageSquare className="w-12 h-12 text-slate-400 dark:text-slate-700 mx-auto mb-4" />
-                <h3 className="text-lg font-bold text-slate-600 dark:text-slate-300 mb-2">Sin crónicas</h3>
-                <p className="text-slate-500 text-sm">{profile.alias} aún no ha escrito ninguna reseña.</p>
+                <h3 className="text-lg font-bold text-slate-600 dark:text-slate-300 mb-2">No chronicles</h3>
+                <p className="text-slate-500 text-sm">{profile.alias} hasn&apos;t written any reviews yet.</p>
               </div>
             )}
           </section>

@@ -1,15 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { apiClient } from '../api/client';
+import { BACKEND_URL } from '../config/env';
 import {
   Heart, ArrowLeft, Star, Trash2, Edit2, Send,
   AlertTriangle, BookOpen, Tv, CheckCircle, X,
   Play, ExternalLink, Users, GitBranch
 } from 'lucide-react';
-
-const BACKEND_URL = "http://localhost:8000";
-
-// ── Tipos ─────────────────────────────────────────────────────────────────────
 
 interface Trailer     { id: string; url: string; thumbnail: string | null }
 interface StreamLink  { site: string; url: string; color: string | null; icon: string | null }
@@ -39,18 +36,14 @@ interface Review {
 
 interface CurrentUser { id: number; alias: string; rol: string }
 
-// ── Constantes ────────────────────────────────────────────────────────────────
-
 const RELATION_LABELS: Record<string, string> = {
-  SEQUEL:      'Secuela',
-  PREQUEL:     'Precuela',
-  SIDE_STORY:  'Historia paralela',
+  SEQUEL:      'Sequel',
+  PREQUEL:     'Prequel',
+  SIDE_STORY:  'Side Story',
   SPIN_OFF:    'Spin-off',
-  PARENT:      'Obra original',
-  ALTERNATIVE: 'Alternativa',
+  PARENT:      'Source Material',
+  ALTERNATIVE: 'Alternative',
 };
-
-// ── Componente principal ──────────────────────────────────────────────────────
 
 export default function MediaDetail() {
   const { id }   = useParams<{ id: string }>();
@@ -124,7 +117,7 @@ export default function MediaDetail() {
         }
       } catch (err: any) {
         if (err.response?.status === 403) {
-          setAccessError(err.response?.data?.detail || "Acceso restringido (+18).");
+          setAccessError(err.response?.data?.detail || "Restricted access (+18).");
         }
       } finally {
         setLoading(false);
@@ -141,14 +134,14 @@ export default function MediaDetail() {
       if (isFavorite) {
         await apiClient.delete(`/favorites/${id}?media_type=${mediaType}`);
         setIsFavorite(false);
-        showToast('Eliminado de favoritos.');
+        showToast('Removed from favorites.');
       } else {
         await apiClient.post('/favorites/', { media_id: id, media_type: mediaType });
         setIsFavorite(true);
-        showToast('¡Añadido a favoritos!');
+        showToast('Added to favorites!');
       }
     } catch {
-      showToast('No se pudo actualizar favoritos.', 'err');
+      showToast('Could not update favorites.', 'err');
     } finally {
       setStatusLoading(false);
     }
@@ -156,7 +149,7 @@ export default function MediaDetail() {
 
   const handleSubmitReview = async () => {
     if (!reviewContent.trim() || reviewScore < 1 || reviewScore > 5) {
-      showToast('Completa la reseña con puntuación y texto.', 'err'); return;
+      showToast('Complete the review with a score and text.', 'err'); return;
     }
     setSubmittingReview(true);
     try {
@@ -167,17 +160,17 @@ export default function MediaDetail() {
         });
         setUserReview({ ...userReview, score: reviewScore, content: reviewContent });
         setIsEditingReview(false);
-        showToast('Reseña actualizada.');
+        showToast('Review updated.');
       } else {
         const res = await apiClient.post('/reviews/', {
           id_api: id, media_type: mediaType, score: reviewScore, content: reviewContent
         });
         setUserReview(res.data);
-        showToast('Reseña publicada.');
+        showToast('Review published.');
       }
       setReviews(await reloadReviews(media?.type?.toLowerCase() || 'anime'));
     } catch {
-      showToast('Error al guardar la reseña.', 'err');
+      showToast('Error saving the review.', 'err');
     } finally {
       setSubmittingReview(false);
     }
@@ -194,19 +187,17 @@ export default function MediaDetail() {
       }
       setReviewToDelete(null);
       setReviews(await reloadReviews(media?.type?.toLowerCase() || 'anime'));
-      showToast('Reseña eliminada.');
+      showToast('Review deleted.');
     } catch {
-      showToast('Error al eliminar la reseña.', 'err');
+      showToast('Error deleting the review.', 'err');
     }
   };
-
-  // ── Estados de carga / error ──────────────────────────────────────────────
 
   if (loading) return (
     <main className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-[#020617]">
       <div className="flex flex-col items-center gap-4">
         <div className="w-12 h-12 border-4 border-slate-300 dark:border-slate-800 border-t-yellow-500 rounded-full animate-spin" />
-        <p className="text-slate-500 dark:text-slate-400 text-sm font-bold uppercase tracking-widest animate-pulse">Cargando...</p>
+        <p className="text-slate-500 dark:text-slate-400 text-sm font-bold uppercase tracking-widest animate-pulse">Loading...</p>
       </div>
     </main>
   );
@@ -217,10 +208,10 @@ export default function MediaDetail() {
         <div className="w-20 h-20 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center mb-6">
           <AlertTriangle className="w-10 h-10 text-red-400" />
         </div>
-        <h2 className="text-2xl sm:text-3xl font-black text-white mb-3 uppercase italic">Zona Restringida</h2>
+        <h2 className="text-2xl sm:text-3xl font-black text-white mb-3 uppercase italic">Restricted Zone</h2>
         <p className="text-slate-400 mb-8 text-sm">{accessError}</p>
         <button onClick={() => navigate('/home')} className="bg-yellow-500 hover:bg-yellow-400 text-black font-black py-3 px-8 rounded-xl transition-all hover:scale-105">
-          Volver al inicio
+          Back to home
         </button>
       </div>
     </main>
@@ -228,9 +219,9 @@ export default function MediaDetail() {
 
   if (!media) return (
     <main className="min-h-screen flex flex-col items-center justify-center bg-slate-50 dark:bg-[#020617] text-slate-900 dark:text-white gap-6 px-4">
-      <h2 className="text-2xl sm:text-3xl font-black italic text-center">Obra no encontrada</h2>
+      <h2 className="text-2xl sm:text-3xl font-black italic text-center">Title not found</h2>
       <button onClick={() => navigate('/home')} className="bg-yellow-500 hover:bg-yellow-400 text-black font-black py-3 px-8 rounded-xl transition-all">
-        Volver al inicio
+        Back to home
       </button>
     </main>
   );
@@ -241,7 +232,6 @@ export default function MediaDetail() {
   return (
     <main className="min-h-screen bg-slate-50 dark:bg-[#020617] text-slate-900 dark:text-slate-100 pb-20 relative overflow-x-hidden">
 
-      {/* TOAST */}
       {toast && (
         <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-300 flex items-center gap-3 px-5 py-3.5 rounded-2xl border backdrop-blur-xl shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-300 max-w-[90vw] ${toast.type === 'ok' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-red-500/10 border-red-500/20 text-red-400'}`}>
           {toast.type === 'ok'
@@ -252,25 +242,23 @@ export default function MediaDetail() {
         </div>
       )}
 
-      {/* MODAL CONFIRMAR BORRADO */}
       {reviewToDelete !== null && (
         <div className="fixed inset-0 z-200 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-700 rounded-3xl p-6 sm:p-8 max-w-sm w-full shadow-2xl animate-in zoom-in-95 duration-200">
-            <h3 className="text-xl font-black text-white mb-2">¿Eliminar reseña?</h3>
-            <p className="text-slate-400 mb-6 text-sm">Esta acción no se puede deshacer.</p>
+            <h3 className="text-xl font-black text-white mb-2">Delete review?</h3>
+            <p className="text-slate-400 mb-6 text-sm">This action cannot be undone.</p>
             <div className="flex gap-3">
               <button onClick={() => setReviewToDelete(null)} className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-bold rounded-xl transition-all">
-                Cancelar
+                Cancel
               </button>
               <button onClick={handleDeleteReview} className="flex-1 py-3 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl transition-all">
-                Eliminar
+                Delete
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* MODAL TRÁILER */}
       {trailerOpen && media.trailer && (
         <div className="fixed inset-0 z-200 bg-black/90 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4" onClick={() => setTrailerOpen(false)}>
           <div className="relative w-full max-w-4xl aspect-video rounded-2xl overflow-hidden shadow-2xl" onClick={e => e.stopPropagation()}>
@@ -287,7 +275,6 @@ export default function MediaDetail() {
         </div>
       )}
 
-      {/* ── HERO BANNER ──────────────────────────────────────────────────────── */}
       <div className="relative h-[40vh] sm:h-[50vh] min-h-[260px] sm:min-h-[340px] overflow-hidden">
         <img src={bgImage} alt="" aria-hidden className="absolute inset-0 w-full h-full object-cover scale-105 opacity-20 blur-md" />
         <img src={bgImage} alt="banner" className="absolute inset-0 w-full h-full object-cover opacity-40" />
@@ -297,20 +284,17 @@ export default function MediaDetail() {
         <div className="absolute top-4 sm:top-6 left-4 sm:left-6 md:left-16">
           <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-slate-500 dark:text-slate-400 hover:text-yellow-500 transition-colors group">
             <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
-            <span className="text-sm font-bold">Volver</span>
+            <span className="text-sm font-bold">Back</span>
           </button>
         </div>
       </div>
 
-      {/* ── CONTENIDO PRINCIPAL ──────────────────────────────────────────────── */}
       <div className="max-w-300 mx-auto px-4 sm:px-6 md:px-16 -mt-32 sm:-mt-44 relative z-10">
 
         <div className="flex flex-col md:flex-row gap-6 md:gap-12 mb-12">
 
-          {/* ── COLUMNA IZQUIERDA: Poster + Acciones ────────────────────────── */}
           <div className="shrink-0 flex flex-col items-center md:items-start gap-4 md:gap-6">
 
-            {/* Poster */}
             <div className="relative w-36 sm:w-44 md:w-56 group">
               <div className="absolute -inset-2 bg-yellow-500/20 rounded-3xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
               <div className="relative rounded-2xl overflow-hidden border-2 border-white/10 shadow-2xl shadow-black/50">
@@ -330,7 +314,6 @@ export default function MediaDetail() {
               </div>
             </div>
 
-            {/* Botón favoritos */}
             <div className="w-36 sm:w-44 md:w-56">
               <button
                 onClick={toggleFavorite}
@@ -342,15 +325,13 @@ export default function MediaDetail() {
                 }`}
               >
                 <Heart className={`w-4 h-4 transition-transform group-hover:scale-110 ${isFavorite ? 'fill-current' : ''}`} />
-                {isFavorite ? 'En Favoritos' : 'Añadir'}
+                {isFavorite ? 'In Favorites' : 'Add'}
               </button>
             </div>
           </div>
 
-          {/* ── COLUMNA DERECHA: Info + Sinopsis ────────────────────────────── */}
           <div className="flex-1 pt-2 md:pt-0 md:mt-16">
 
-            {/* Géneros */}
             <div className="flex flex-wrap gap-2 mb-3">
               {media.genres.map(g => (
                 <span key={g} className="px-3 py-1 text-xs font-bold rounded-full bg-yellow-500/10 border border-yellow-500/20 text-yellow-500 dark:text-yellow-400">
@@ -359,7 +340,6 @@ export default function MediaDetail() {
               ))}
             </div>
 
-            {/* Título */}
             <h1 className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-black italic text-slate-900 dark:text-white leading-tight mb-2 drop-shadow-2xl">
               {media.title}
             </h1>
@@ -367,10 +347,9 @@ export default function MediaDetail() {
               <p className="text-base text-slate-500 mb-3">{media.title_en}</p>
             )}
 
-            {/* Estudio */}
             {media.studios?.length > 0 && (
               <p className="text-slate-500 dark:text-slate-400 text-sm mb-4">
-                Producido por{' '}
+                Produced by{' '}
                 {media.studios.map((s, i) => (
                   <span key={s.id}>
                     {s.url
@@ -383,7 +362,6 @@ export default function MediaDetail() {
               </p>
             )}
 
-            {/* Stats */}
             <div className="flex flex-wrap items-center gap-2 mb-6">
               {media.score > 0 && (
                 <div className="flex items-center gap-2 bg-yellow-500/10 border border-yellow-500/30 px-3 py-1.5 rounded-xl">
@@ -399,7 +377,7 @@ export default function MediaDetail() {
               )}
               {media.units > 0 && (
                 <div className="bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-xl text-slate-600 dark:text-slate-300 text-sm font-bold">
-                  {media.units} {isAnime ? 'eps.' : 'caps.'}
+                  {media.units} {isAnime ? 'eps.' : 'chaps.'}
                 </div>
               )}
               <div className="bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-xl text-slate-600 dark:text-slate-300 text-sm font-bold">
@@ -407,7 +385,6 @@ export default function MediaDetail() {
               </div>
             </div>
 
-            {/* Botón tráiler */}
             {media.trailer && (
               <button
                 onClick={() => setTrailerOpen(true)}
@@ -416,16 +393,15 @@ export default function MediaDetail() {
                 <div className="w-7 h-7 rounded-full bg-yellow-500 flex items-center justify-center group-hover:scale-110 transition-transform shrink-0">
                   <Play className="w-3.5 h-3.5 text-black fill-black ml-0.5" />
                 </div>
-                Ver tráiler
+                Watch trailer
               </button>
             )}
           </div>
         </div>
 
-        {/* ── DÓNDE VERLO ────────────────────────────────────────────────────── */}
         {media.streaming?.length > 0 && (
           <section className="mb-10">
-            <SectionTitle icon={<Play className="w-5 h-5" />} title="Dónde verlo" />
+            <SectionTitle icon={<Play className="w-5 h-5" />} title="Where to Watch" />
             <div className="flex flex-wrap gap-2 sm:gap-3">
               {media.streaming.map(link => (
                 <a
@@ -444,20 +420,18 @@ export default function MediaDetail() {
           </section>
         )}
 
-        {/* ── SINOPSIS ──────────────────────────────────────────────────────── */}
         <section className="mb-10">
-          <SectionTitle title="Sinopsis" />
+          <SectionTitle title="Synopsis" />
           <div className="bg-slate-100 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 sm:p-8">
             <p className="text-slate-600 dark:text-slate-300 leading-relaxed text-sm sm:text-base">
-              {media.description || 'No hay sinopsis disponible.'}
+              {media.description || 'No synopsis available.'}
             </p>
           </div>
         </section>
 
-        {/* ── PERSONAJES ────────────────────────────────────────────────────── */}
         {media.characters?.length > 0 && (
           <section className="mb-10">
-            <SectionTitle icon={<Users className="w-5 h-5" />} title="Personajes principales" />
+            <SectionTitle icon={<Users className="w-5 h-5" />} title="Main Characters" />
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
               {media.characters.map(char => (
                 <div key={char.id} className="group flex flex-col items-center gap-2 text-center">
@@ -472,7 +446,7 @@ export default function MediaDetail() {
                   </p>
                   {char.role === 'MAIN' && (
                     <span className="text-[9px] font-black text-yellow-500 uppercase tracking-wider bg-yellow-500/10 px-1.5 py-0.5 rounded-full border border-yellow-500/20">
-                      Principal
+                      Main
                     </span>
                   )}
                 </div>
@@ -481,10 +455,9 @@ export default function MediaDetail() {
           </section>
         )}
 
-        {/* ── EQUIPO CREATIVO ───────────────────────────────────────────────── */}
         {media.staff?.length > 0 && (
           <section className="mb-10">
-            <SectionTitle title="Equipo creativo" />
+            <SectionTitle title="Creative Staff" />
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
               {media.staff.map(member => (
                 <div key={member.id} className="group flex items-center gap-3 bg-slate-100 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 hover:border-yellow-500/20 rounded-2xl p-3 transition-all hover:bg-slate-200 dark:hover:bg-slate-900">
@@ -504,10 +477,9 @@ export default function MediaDetail() {
           </section>
         )}
 
-        {/* ── RELACIONES ──────────────────────────────── */}
         {media.relations?.length > 0 && (
           <section className="mb-10">
-            <SectionTitle icon={<GitBranch className="w-5 h-5" />} title="También te puede interesar" />
+            <SectionTitle icon={<GitBranch className="w-5 h-5" />} title="You might also like" />
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
               {media.relations.map(rel => (
                 <Link key={rel.id} to={`/media/${rel.id}`} className="group flex flex-col gap-2">
@@ -531,9 +503,8 @@ export default function MediaDetail() {
           </section>
         )}
 
-        {/* ── MI RESEÑA ─────────────────────────────────────────────────────── */}
         <section className="mb-10">
-          <SectionTitle title="Mi Reseña" />
+          <SectionTitle title="My Review" />
 
           {userReview && !isEditingReview ? (
             <div className="relative bg-linear-to-br from-yellow-500/5 to-slate-900/60 border border-yellow-500/20 rounded-2xl p-5 sm:p-8">
@@ -557,7 +528,7 @@ export default function MediaDetail() {
           ) : (
             <div className="bg-slate-100 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 sm:p-8 space-y-5">
               <div>
-                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Puntuación</label>
+                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Score</label>
                 <div className="flex gap-2">
                   {Array.from({ length: 5 }).map((_, i) => (
                     <button key={i} onClick={() => setReviewScore(i + 1)} className="hover:scale-125 transition-transform">
@@ -567,11 +538,11 @@ export default function MediaDetail() {
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Tu opinión</label>
+                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Your opinion</label>
                 <textarea
                   value={reviewContent}
                   onChange={e => setReviewContent(e.target.value.slice(0, 255))}
-                  placeholder="Comparte tu experiencia con esta obra..."
+                  placeholder="Share your experience with this title..."
                   className="w-full bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 focus:border-yellow-500/50 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 rounded-xl p-4 focus:outline-none resize-none transition-colors text-sm"
                   rows={4}
                 />
@@ -586,7 +557,7 @@ export default function MediaDetail() {
                     }}
                     className="px-5 py-2.5 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-white font-bold rounded-xl transition-all text-sm"
                   >
-                    Cancelar
+                    Cancel
                   </button>
                 )}
                 <button
@@ -595,16 +566,15 @@ export default function MediaDetail() {
                   className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 disabled:opacity-50 text-black font-black px-5 py-2.5 rounded-xl transition-all hover:scale-105 text-sm"
                 >
                   <Send className="w-4 h-4" />
-                  {isEditingReview ? 'Actualizar' : 'Publicar'}
+                  {isEditingReview ? 'Update' : 'Publish'}
                 </button>
               </div>
             </div>
           )}
         </section>
 
-        {/* ── RESEÑAS COMUNIDAD ─────────────────────────────────────────────── */}
         <section>
-          <SectionTitle title="Comunidad" badge={reviews.length} />
+          <SectionTitle title="Community" badge={reviews.length} />
 
           {reviews.length > 0 ? (
             <div className="grid gap-3 sm:gap-4">
@@ -619,14 +589,14 @@ export default function MediaDetail() {
                     <div className="absolute top-3 right-3 flex items-center gap-2">
                       {isOwn && (
                         <span className="text-[10px] font-black text-yellow-500 uppercase tracking-widest bg-yellow-500/10 border border-yellow-500/20 px-2 py-0.5 rounded-full">
-                          Tu reseña
+                          Your review
                         </span>
                       )}
                       {isAdmin && !isOwn && (
                         <button
                           onClick={() => setReviewToDelete(review.id)}
                           className="p-1.5 bg-slate-800 hover:bg-red-900/30 border border-slate-700 hover:border-red-500/30 rounded-lg transition-all"
-                          title="Eliminar reseña (admin)"
+                          title="Delete review (admin)"
                         >
                           <Trash2 className="w-3.5 h-3.5 text-slate-500 hover:text-red-400" />
                         </button>
@@ -661,7 +631,7 @@ export default function MediaDetail() {
           ) : (
             <div className="flex flex-col items-center justify-center py-12 bg-slate-100 dark:bg-slate-900/30 border border-dashed border-slate-300 dark:border-slate-800 rounded-2xl gap-3">
               <Heart className="w-10 h-10 text-slate-400 dark:text-slate-700" />
-              <p className="text-slate-500 font-bold text-sm">Sé el primero en opinar</p>
+              <p className="text-slate-500 font-bold text-sm">Be the first to review</p>
             </div>
           )}
         </section>
@@ -670,7 +640,6 @@ export default function MediaDetail() {
   );
 }
 
-// ── Sub-componente reutilizable para títulos de sección ───────────────────────
 function SectionTitle({
   title,
   icon,

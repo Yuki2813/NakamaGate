@@ -8,6 +8,25 @@ from backend.models.favorite import Mediatype
 from backend.repositories.favorite_repository import get_user_favorites
 from backend.repositories.user_repository import get_user_by_id
 
+SAFE_GENRES = [
+    "Action", "Adventure", "Comedy", "Fantasy",
+    "Mahou Shoujo", "Mecha", "Music", "Mystery",
+    "Romance", "Sci-Fi", "Slice of Life", "Sports", "Supernatural",
+]
+
+ADULT_GENRES = SAFE_GENRES + ["Drama", "Ecchi", "Horror", "Psychological", "Thriller"]
+
+
+# ==========================================
+# GÉNEROS DISPONIBLES
+# ==========================================
+
+async def get_genres_service(user_id: int, session: Session):
+    user = get_user_by_id(id=user_id, session=session)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {"genres": sorted(ADULT_GENRES if user.isAdult else SAFE_GENRES)}
+
 
 # ==========================================
 # PÁGINA PRINCIPAL (HOME)
@@ -19,20 +38,8 @@ async def get_home_service(user_id: int, session: Session):
 
     if not user:
         raise HTTPException(status_code=404, detail="You are not logged in, or there was an error with your request")
-    
-    if user.isAdult:
-        posibles_generos = [
-            "Action", "Adventure", "Comedy", "Drama", "Ecchi", 
-            "Fantasy", "Horror", "Mahou Shoujo", "Mecha", "Music", 
-            "Mystery", "Psychological", "Romance", "Sci-Fi", 
-            "Slice of Life", "Sports", "Supernatural", "Thriller"
-        ]
-    else:
-        posibles_generos = [
-            "Action", "Adventure", "Comedy", "Fantasy", 
-            "Mahou Shoujo", "Mecha", "Music", "Mystery", 
-            "Romance", "Sci-Fi", "Slice of Life", "Sports", "Supernatural"
-        ]
+
+    posibles_generos = ADULT_GENRES if user.isAdult else SAFE_GENRES
 
     # Reducimos a 4 carruseles aleatorios para encajar con el nuevo cliente
     recomendaciones = random.sample(posibles_generos, 4)

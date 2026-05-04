@@ -8,16 +8,16 @@ export default function Footer() {
       <div className="max-w-300 mx-auto px-6 py-8 flex flex-col md:flex-row items-center justify-between gap-4">
         <div className="flex flex-col items-center md:items-start gap-1">
           <span className="font-black text-yellow-500 tracking-tighter text-base italic uppercase">NAKAMAGATE</span>
-          <p className="text-slate-500 text-xs">© {currentYear} NakamaGate. Todos los derechos reservados.</p>
+          <p className="text-slate-500 text-xs">© {currentYear} NakamaGate. All rights reserved.</p>
         </div>
 
         <div className="flex items-center gap-5 text-xs text-slate-500">
           <Link to="/terms" className="hover:text-yellow-500 transition-colors">
-            Términos de Servicio
+            Terms of Service
           </Link>
           <span className="text-slate-300 dark:text-slate-700">•</span>
           <span>
-            Creado por <span className="text-slate-600 dark:text-slate-400 font-semibold">Yago Puente</span>
+            Created by <span className="text-slate-600 dark:text-slate-400 font-semibold">Yago Puente</span>
           </span>
         </div>
       </div>

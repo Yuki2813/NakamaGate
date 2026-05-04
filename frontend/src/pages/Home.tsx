@@ -39,8 +39,8 @@ export default function Home() {
   const [fetchState, setFetchState] = useState<FetchState>({ loading: true, error: null });
 
   const [heroBanner, setHeroBanner] = useState<MediaItem | null>(null);
-  const [animeDelDia, setAnimeDelDia] = useState<MediaItem | null>(null);
-  const [mangaDelDia, setMangaDelDia] = useState<MediaItem | null>(null);
+  const [animeOfTheDay, setAnimeOfTheDay] = useState<MediaItem | null>(null);
+  const [mangaOfTheDay, setMangaOfTheDay] = useState<MediaItem | null>(null);
 
   const [notification, setNotification] = useState<{
     show: boolean;
@@ -59,15 +59,15 @@ export default function Home() {
       const data = homeRes.data;
       const userFavorites = favsRes.data;
 
-      if (data.anime_del_dia) setAnimeDelDia(data.anime_del_dia);
-      if (data.manga_del_dia) setMangaDelDia(data.manga_del_dia);
+      if (data.anime_del_dia) setAnimeOfTheDay(data.anime_del_dia);
+      if (data.manga_del_dia) setMangaOfTheDay(data.manga_del_dia);
 
       const formattedSections: HomeSection[] = [];
 
       if (data.trending_anime && data.trending_anime.length > 0) {
         setHeroBanner(data.trending_anime[0]);
         formattedSections.push({
-          section_title: "Top 10 Animes del Día",
+          section_title: "Top 10 Anime of the Day",
           items: data.trending_anime.slice(1, 10)
         });
       }
@@ -76,24 +76,24 @@ export default function Home() {
       const watchingMedia = watchingFavorites.map((fav: any) => fav.media);
 
       if (watchingMedia.length > 0) {
-        formattedSections.push({ section_title: "Continuar Viendo", items: watchingMedia });
+        formattedSections.push({ section_title: "Continue Watching", items: watchingMedia });
       }
 
       if (data.trending_manga && data.trending_manga.length > 0) {
         formattedSections.push({
-          section_title: "Top 10 Mangas del Día",
+          section_title: "Top 10 Manga of the Day",
           items: data.trending_manga.slice(0, 10)
         });
       }
 
       if (data.upcoming && data.upcoming.length > 0) {
-        formattedSections.push({ section_title: "Próximos Estrenos", items: data.upcoming });
+        formattedSections.push({ section_title: "Upcoming Releases", items: data.upcoming });
       }
 
-      if (data.genre1) formattedSections.push({ section_title: `Explora: ${data.genre1.name}`, items: data.genre1.items });
-      if (data.genre2) formattedSections.push({ section_title: `Descubre: ${data.genre2.name}`, items: data.genre2.items });
-      if (data.genre3) formattedSections.push({ section_title: `Joyas de ${data.genre3.name}`, items: data.genre3.items });
-      if (data.genre4) formattedSections.push({ section_title: `Sumérgete en ${data.genre4.name}`, items: data.genre4.items });
+      if (data.genre1) formattedSections.push({ section_title: `Explore: ${data.genre1.name}`, items: data.genre1.items });
+      if (data.genre2) formattedSections.push({ section_title: `Discover: ${data.genre2.name}`, items: data.genre2.items });
+      if (data.genre3) formattedSections.push({ section_title: `Gems of ${data.genre3.name}`, items: data.genre3.items });
+      if (data.genre4) formattedSections.push({ section_title: `Dive into ${data.genre4.name}`, items: data.genre4.items });
 
       setSections(formattedSections);
 
@@ -102,8 +102,8 @@ export default function Home() {
       setFetchState({ loading: false, error: null });
 
     } catch (err) {
-      console.error("Error cargando datos:", err);
-      setFetchState({ loading: false, error: "No se pudieron cargar los contenidos. Intenta de nuevo." });
+      console.error("Error loading data:", err);
+      setFetchState({ loading: false, error: "Content could not be loaded. Please try again." });
     }
   };
 
@@ -130,21 +130,21 @@ export default function Home() {
           next.delete(item.id);
           return next;
         });
-        showStatus('success', `Eliminado de favoritos.`);
+        showStatus('success', `Removed from favorites.`);
       } else {
         await apiClient.post('/favorites/', { media_id: item.id, media_type: safeType });
         setFavoriteIds(prev => new Set(prev).add(item.id));
-        showStatus('success', `¡Añadido a favoritos!`);
+        showStatus('success', `Added to favorites!`);
       }
     } catch (error) {
-      showStatus('error', "No se pudo actualizar favoritos.");
+      showStatus('error', "Could not update favorites.");
     }
   };
 
   const getSectionIcon = (title: string) => {
     if (title.includes("Top 10")) return <Trophy className="w-5 h-5 text-yellow-500" />;
-    if (title.includes("Continuar")) return <PlayCircle className="w-5 h-5 text-yellow-500" />;
-    if (title.includes("Próximos")) return <Calendar className="w-5 h-5 text-yellow-500" />;
+    if (title.includes("Continue")) return <PlayCircle className="w-5 h-5 text-yellow-500" />;
+    if (title.includes("Upcoming")) return <Calendar className="w-5 h-5 text-yellow-500" />;
     return <Compass className="w-5 h-5 text-yellow-500" />;
   };
 
@@ -157,20 +157,19 @@ export default function Home() {
         className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 text-black font-black py-3 px-8 rounded-xl transition-all"
       >
         <RefreshCw className="w-4 h-4" />
-        Reintentar
+        Retry
       </button>
     </main>
   );
 
-  if (fetchState.loading) return <Loader text="Sincronizando Nakamagate..." />;
+  if (fetchState.loading) return <Loader text="Syncing Nakamagate..." />;
 
-  const continuarViendoSection = sections.find(s => s.section_title.includes("Continuar"));
-  const remainingSections = sections.filter(s => !s.section_title.includes("Continuar"));
+  const continueWatchingSection = sections.find(s => s.section_title.includes("Continue"));
+  const remainingSections = sections.filter(s => !s.section_title.includes("Continue"));
 
   return (
     <main className="min-h-screen text-slate-800 dark:text-slate-200 pb-20 relative overflow-hidden">
 
-      {/* NOTIFICACIONES */}
       {notification.show && (
         <div className="fixed inset-0 z-200 flex items-end justify-center sm:items-center p-4 pointer-events-none">
           <div className={`pointer-events-auto flex items-center gap-3 px-5 py-3.5 rounded-2xl border backdrop-blur-xl shadow-2xl animate-in fade-in slide-in-from-bottom-8 duration-300 ${notification.type === 'success' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-red-500/10 border-red-500/20 text-red-400'}`}>
@@ -181,7 +180,6 @@ export default function Home() {
         </div>
       )}
 
-      {/* HERO BANNER */}
       {heroBanner && (
         <section className="relative w-full h-[55vh] min-h-[380px] mb-10 overflow-hidden shadow-2xl flex items-center">
           <img
@@ -199,7 +197,7 @@ export default function Home() {
             <div className="flex-1 text-center md:text-left">
               <div className="flex items-center gap-2 justify-center md:justify-start text-yellow-500 font-black tracking-widest text-xs uppercase mb-3">
                 <Flame className="w-4 h-4" />
-                <span>TENDENCIA MÁXIMA HOY</span>
+                <span>TOP TRENDING TODAY</span>
               </div>
               <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-7xl font-black text-slate-900 dark:text-white leading-tight mb-3 drop-shadow-2xl italic line-clamp-2">{heroBanner.title}</h1>
 
@@ -213,7 +211,7 @@ export default function Home() {
 
               <div className="flex gap-3 justify-center md:justify-start">
                 <Link to={`/media/${heroBanner.id}`}>
-                  <button className="bg-yellow-500 hover:bg-yellow-400 text-black font-black text-base py-3 px-7 rounded-2xl transition-all hover:scale-105 shadow-xl shadow-yellow-500/20">Ver ahora</button>
+                  <button className="bg-yellow-500 hover:bg-yellow-400 text-black font-black text-base py-3 px-7 rounded-2xl transition-all hover:scale-105 shadow-xl shadow-yellow-500/20">Watch now</button>
                 </Link>
                 <button onClick={(e) => toggleFavorite(e, heroBanner)} className={`p-3 rounded-2xl backdrop-blur-md border transition-all ${favoriteIds.has(heroBanner.id) ? 'bg-yellow-500 text-black border-yellow-400' : 'bg-white/50 dark:bg-white/5 text-slate-900 dark:text-white border-slate-300 dark:border-white/10 hover:bg-white/80 dark:hover:bg-white/10'}`}>
                   <Heart className={`w-5 h-5 ${favoriteIds.has(heroBanner.id) ? 'fill-current' : ''}`} />
@@ -226,60 +224,57 @@ export default function Home() {
 
       <div className="relative z-10 space-y-14 md:space-y-20">
 
-        {/* GEMAS DEL DÍA */}
-        {(animeDelDia || mangaDelDia) && (
+        {(animeOfTheDay || mangaOfTheDay) && (
           <section className="max-w-350 mx-auto px-4 sm:px-6 md:px-16">
             <div className="flex items-center gap-3 mb-6">
               <Sparkles className="w-5 h-5 text-yellow-500" />
-              <h2 className="text-xl sm:text-2xl md:text-3xl font-black text-slate-900 dark:text-white italic uppercase tracking-tighter">Gemas del Día</h2>
+              <h2 className="text-xl sm:text-2xl md:text-3xl font-black text-slate-900 dark:text-white italic uppercase tracking-tighter">Gems of the Day</h2>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
 
-              {/* ANIME DEL DÍA */}
-              {animeDelDia && (
+              {animeOfTheDay && (
                 <div className="group relative overflow-hidden rounded-3xl sm:rounded-[2.5rem] bg-linear-to-br from-indigo-600/20 to-slate-200 dark:to-slate-900 border border-indigo-500/20 p-5 sm:p-7 flex gap-5 items-center shadow-2xl">
                   <div className="w-24 sm:w-32 md:w-36 shrink-0 rounded-2xl overflow-hidden shadow-2xl transition-transform group-hover:scale-105">
-                    <img src={animeDelDia.image} className="w-full h-full object-cover aspect-2/3" alt="anime day" />
+                    <img src={animeOfTheDay.image} className="w-full h-full object-cover aspect-2/3" alt="anime day" />
                   </div>
                   <div className="flex-1 space-y-2 min-w-0">
                     <div className="flex items-center gap-2">
                       <Tv className="w-3 h-3 text-indigo-400 shrink-0" />
-                      <span className="text-indigo-400 text-xs font-bold uppercase">Anime del Día</span>
+                      <span className="text-indigo-400 text-xs font-bold uppercase">Anime of the Day</span>
                     </div>
-                    <h2 className="text-lg sm:text-xl md:text-2xl font-black text-slate-900 dark:text-white italic line-clamp-2">{animeDelDia.title}</h2>
-                    {animeDelDia.score > 0 && (
+                    <h2 className="text-lg sm:text-xl md:text-2xl font-black text-slate-900 dark:text-white italic line-clamp-2">{animeOfTheDay.title}</h2>
+                    {animeOfTheDay.score > 0 && (
                       <div className="flex items-center gap-1">
                         <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />
-                        <span className="text-yellow-500 font-bold text-sm">{animeDelDia.score}</span>
+                        <span className="text-yellow-500 font-bold text-sm">{animeOfTheDay.score}</span>
                       </div>
                     )}
-                    <Link to={`/media/${animeDelDia.id}`}>
-                      <button className="bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold py-2 px-5 rounded-xl transition-all text-sm mt-1">Explorar</button>
+                    <Link to={`/media/${animeOfTheDay.id}`}>
+                      <button className="bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold py-2 px-5 rounded-xl transition-all text-sm mt-1">Explore</button>
                     </Link>
                   </div>
                 </div>
               )}
 
-              {/* MANGA DEL DÍA */}
-              {mangaDelDia && (
+              {mangaOfTheDay && (
                 <div className="group relative overflow-hidden rounded-3xl sm:rounded-[2.5rem] bg-linear-to-br from-amber-600/10 to-slate-200 dark:to-slate-900 border border-amber-500/20 p-5 sm:p-7 flex gap-5 items-center shadow-2xl">
                   <div className="w-24 sm:w-32 md:w-36 shrink-0 rounded-2xl overflow-hidden shadow-2xl transition-transform group-hover:scale-105">
-                    <img src={mangaDelDia.image} className="w-full h-full object-cover aspect-2/3" alt="manga day" />
+                    <img src={mangaOfTheDay.image} className="w-full h-full object-cover aspect-2/3" alt="manga day" />
                   </div>
                   <div className="flex-1 space-y-2 min-w-0">
                     <div className="flex items-center gap-2">
                       <BookOpen className="w-3 h-3 text-amber-400 shrink-0" />
-                      <span className="text-amber-400 text-xs font-bold uppercase">Manga del Día</span>
+                      <span className="text-amber-400 text-xs font-bold uppercase">Manga of the Day</span>
                     </div>
-                    <h2 className="text-lg sm:text-xl md:text-2xl font-black text-slate-900 dark:text-white italic line-clamp-2">{mangaDelDia.title}</h2>
-                    {mangaDelDia.score > 0 && (
+                    <h2 className="text-lg sm:text-xl md:text-2xl font-black text-slate-900 dark:text-white italic line-clamp-2">{mangaOfTheDay.title}</h2>
+                    {mangaOfTheDay.score > 0 && (
                       <div className="flex items-center gap-1">
                         <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />
-                        <span className="text-yellow-500 font-bold text-sm">{mangaDelDia.score}</span>
+                        <span className="text-yellow-500 font-bold text-sm">{mangaOfTheDay.score}</span>
                       </div>
                     )}
-                    <Link to={`/media/${mangaDelDia.id}`}>
-                      <button className="bg-amber-600 hover:bg-amber-500 text-white font-extrabold py-2 px-5 rounded-xl transition-all text-sm mt-1">Leer Detalles</button>
+                    <Link to={`/media/${mangaOfTheDay.id}`}>
+                      <button className="bg-amber-600 hover:bg-amber-500 text-white font-extrabold py-2 px-5 rounded-xl transition-all text-sm mt-1">Read Details</button>
                     </Link>
                   </div>
                 </div>
@@ -288,21 +283,20 @@ export default function Home() {
           </section>
         )}
 
-        {/* CONTINUAR VIENDO */}
         <section className="max-w-350 mx-auto px-4 sm:px-6 md:px-16">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
               <PlayCircle className="w-5 h-5 text-yellow-500" />
-              <h2 className="text-xl sm:text-2xl md:text-3xl font-black text-slate-900 dark:text-white italic uppercase tracking-tighter">Continuar Viendo</h2>
+              <h2 className="text-xl sm:text-2xl md:text-3xl font-black text-slate-900 dark:text-white italic uppercase tracking-tighter">Continue Watching</h2>
             </div>
-            <Link to="/directory" className="text-xs font-bold text-yellow-500 uppercase tracking-widest hover:underline">Ver todo</Link>
+            <Link to="/directory" className="text-xs font-bold text-yellow-500 uppercase tracking-widest hover:underline">View all</Link>
           </div>
 
-          {continuarViendoSection && continuarViendoSection.items.length > 0 ? (
+          {continueWatchingSection && continueWatchingSection.items.length > 0 ? (
             <div className="px-3 sm:px-4 md:px-8">
             <Carousel opts={{ align: "start", loop: true }} className="w-full">
               <CarouselContent className="-ml-3 sm:-ml-4">
-                {continuarViendoSection.items.map((item) => (
+                {continueWatchingSection.items.map((item) => (
                   <CarouselItem key={item.id} className="pl-3 sm:pl-4 basis-[48%] sm:basis-1/3 md:basis-1/4 lg:basis-1/5 xl:basis-1/6">
                     <MediaCard item={item} favoriteIds={favoriteIds} toggleFavorite={toggleFavorite} />
                   </CarouselItem>
@@ -315,17 +309,16 @@ export default function Home() {
           ) : (
             <div className="flex flex-col items-center justify-center py-12 rounded-2xl border border-dashed border-slate-300 dark:border-white/10 gap-4">
               <Play className="w-10 h-10 text-slate-400 dark:text-slate-600" />
-              <p className="text-slate-500 font-bold">No estás viendo nada todavía</p>
+              <p className="text-slate-500 font-bold">You&apos;re not watching anything yet</p>
               <Link to="/directory">
                 <button className="bg-yellow-500 hover:bg-yellow-400 text-black font-black py-2 px-6 rounded-xl transition-all text-sm">
-                  Explorar el directorio
+                  Explore the directory
                 </button>
               </Link>
             </div>
           )}
         </section>
 
-        {/* CARRUSELES DINÁMICOS (Top 10s y géneros) */}
         {remainingSections.map((section, idx) => {
           const isTop10 = section.section_title.includes("Top 10");
 
@@ -336,7 +329,7 @@ export default function Home() {
                   {getSectionIcon(section.section_title)}
                   <h2 className="text-xl sm:text-2xl md:text-3xl font-black text-slate-900 dark:text-white italic uppercase tracking-tighter">{section.section_title}</h2>
                 </div>
-                <Link to="/directory" className="text-xs font-bold text-yellow-500 uppercase tracking-widest hover:underline shrink-0">Ver todo</Link>
+                <Link to="/directory" className="text-xs font-bold text-yellow-500 uppercase tracking-widest hover:underline shrink-0">View all</Link>
               </div>
 
               <div className="px-6 sm:px-10 md:px-20">
@@ -346,7 +339,6 @@ export default function Home() {
                       <CarouselItem key={item.id} className={`pl-3 sm:pl-4 ${isTop10 ? 'basis-[60%] sm:basis-[42%] md:basis-[30%] lg:basis-[25%] xl:basis-[20%] overflow-visible' : 'basis-[48%] sm:basis-1/3 md:basis-1/4 lg:basis-1/5 xl:basis-1/6'}`}>
                         {isTop10 ? (
                           <div className="relative h-full py-4 flex items-end justify-end">
-                            {/* NÚMERO GIGANTE ESTILO NETFLIX */}
                             <span
                               className="absolute -left-3.75 sm:-left-2.5 bottom-1 font-black leading-none select-none pointer-events-none"
                               style={{
@@ -383,7 +375,6 @@ export default function Home() {
   );
 }
 
-// Componente MediaCard unificado
 function MediaCard({
   item,
   favoriteIds,

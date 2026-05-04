@@ -1,13 +1,13 @@
 import axios from 'axios';
 
 export const apiClient = axios.create({
-  baseURL: 'http://localhost:8000', 
+  baseURL: import.meta.env.VITE_API_URL,
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-// Interceptor para agregar token a las peticiones
+// Attach auth token to every request
 apiClient.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
   if (token) {
@@ -18,7 +18,7 @@ apiClient.interceptors.request.use((config) => {
   return Promise.reject(error);
 });
 
-// Interceptor para manejar errores
+// Handle 401 globally
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {

@@ -3,7 +3,7 @@ from sqlmodel import Session
 from backend.database import get_db
 from backend.models.favorite import Mediatype
 from backend.security import get_current_user_id
-from backend.services.content_service import get_directory_service, get_home_service, get_media_details_service, search_media_service
+from backend.services.content_service import get_directory_service, get_genres_service, get_home_service, get_media_details_service, search_media_service
 from fastapi_cache.decorator import cache
 
 router = APIRouter(
@@ -11,11 +11,17 @@ router = APIRouter(
     tags=["Content"]
 )
 
+
+def home_key_builder(func, namespace="", *, request=None, response=None, args=(), kwargs={}):
+    user_id = kwargs.get("user_id", "anon")
+    return f"home:user:{user_id}"
+
+
 # ==========================================
 # 1. PÁGINA PRINCIPAL (HOME)
 # ==========================================
 @router.get("/home")
-@cache(expire=3600)
+@cache(expire=3600, key_builder=home_key_builder)
 async def get_home(
     user_id: int = Depends(get_current_user_id),
     session: Session = Depends(get_db)
@@ -25,7 +31,18 @@ async def get_home(
 
 
 # ==========================================
-# 2. DIRECTORIO (EXPLORAR)
+# 2. GÉNEROS DISPONIBLES
+# ==========================================
+@router.get("/genres")
+async def get_genres(
+    user_id: int = Depends(get_current_user_id),
+    session: Session = Depends(get_db)
+):
+    return await get_genres_service(user_id=user_id, session=session)
+
+
+# ==========================================
+# 3. DIRECTORIO (EXPLORAR)
 # ==========================================
 @router.get("/directory")
 # @cache(expire=3600)
