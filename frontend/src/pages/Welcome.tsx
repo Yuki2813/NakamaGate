@@ -12,8 +12,12 @@ export default function Welcome() {
       </div>
 
       <nav className="relative z-10 flex items-center justify-between px-6 py-6 border-b border-yellow-500/20 bg-slate-900/40 backdrop-blur-xl">
-        <header className="text-3xl font-black tracking-tighter text-white">
-          <span className="text-yellow-500">Nakama</span>Gate
+        <header>
+          <img
+            src="https://res.cloudinary.com/dlalpfup4/image/upload/v1777901507/1000091271_cyfjfk.png"
+            alt="NakamaGate"
+            className="h-10 w-auto object-contain"
+          />
         </header>
         <div className="flex gap-4">
           <Link to="/login">

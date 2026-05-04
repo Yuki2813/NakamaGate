@@ -8,8 +8,7 @@ from backend.database import get_db
 from backend.limiter import limiter
 from backend.security import get_current_user_id, get_current_admin_id
 from backend.services.auth_service import get_user_by_email_service, get_user_by_id_service, process_google_login, register_user, login_user
-from backend.services.user_service import search_users_service, update_alias, update_avatar
-from backend.repositories.user_repository import update_user_adult, delete_user
+from backend.services.user_service import delete_account, search_users_service, update_adult_service, update_alias, update_avatar
 
 router = APIRouter(
     prefix="/auth",
@@ -104,10 +103,7 @@ async def delete_account(
     user_id: int = Depends(get_current_user_id),
     session: Session = Depends(get_db)
 ):
-    result = delete_user(id=user_id, session=session)
-    if not result:
-        raise HTTPException(status_code=404, detail="Usuario no encontrado")
-    return {"message": "Cuenta eliminada correctamente"}
+    return delete_account(user_id=user_id, session=session)
 
 @router.delete("/users/{target_user_id}", summary="Eliminar cuenta de usuario (solo admin)")
 async def admin_delete_account(
@@ -117,10 +113,7 @@ async def admin_delete_account(
 ):
     if target_user_id == admin_id:
         raise HTTPException(status_code=400, detail="No puedes eliminar tu propia cuenta desde aquí")
-    result = delete_user(id=target_user_id, session=session)
-    if not result:
-        raise HTTPException(status_code=404, detail="Usuario no encontrado")
-    return {"message": "Cuenta eliminada por administrador"}
+    return delete_account(user_id=target_user_id, session=session)
 
 @router.get("/users/{target_user_id}", summary="Obtener perfil público de un usuario")
 async def get_public_profile(
@@ -157,10 +150,7 @@ async def change_adult_preference(
     user_id: int = Depends(get_current_user_id),
     session: Session = Depends(get_db)
 ):
-    updated = update_user_adult(user_id=user_id, is_adult=data.is_adult, session=session)
-    if not updated:
-        raise HTTPException(status_code=404, detail="User not found")
-    return {"message": "Content preference updated", "is_adult": data.is_adult}
+    return update_adult_service(user_id=user_id, is_adult=data.is_adult, session=session)
 
 class GoogleTokenRequest(BaseModel):
     token: str

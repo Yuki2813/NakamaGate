@@ -3,7 +3,7 @@ import cloudinary.uploader
 from fastapi import UploadFile, HTTPException, status
 from sqlmodel import Session
 from backend.repositories.friendship_repository import accept_friend_request, get_friends, get_pending_requests, remove_friendship, send_friend_request
-from backend.repositories.user_repository import  check_id_exist, delete_user, get_user_by_id, search_users_repo, update_user_alias, update_user_avatar
+from backend.repositories.user_repository import check_id_exist, delete_user, get_user_by_id, search_users_repo, update_user_adult, update_user_alias, update_user_avatar
 from backend.services.auth_service import create_access_token
 from backend.services.interacction_service import get_favorite_list
 
@@ -93,9 +93,16 @@ def update_avatar(user_id: int, file: UploadFile, session: Session):
 
 def delete_account(user_id: int, session: Session):
     deletion_result = delete_user(id=user_id, session=session)
+    if not deletion_result:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {"message": "Account deleted successfully"}
 
-    if deletion_result is None:
-        raise HTTPException(status_code=404, detail="User doesn't exist")
+
+def update_adult_service(user_id: int, is_adult: bool, session: Session):
+    updated = update_user_adult(user_id=user_id, is_adult=is_adult, session=session)
+    if not updated:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {"message": "Content preference updated", "is_adult": is_adult}
     
 # ==========================================
 # SISTEMA DE AMIGOS

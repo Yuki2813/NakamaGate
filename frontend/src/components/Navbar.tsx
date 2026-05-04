@@ -95,13 +95,14 @@ export default function Navbar() {
     <nav className="sticky top-0 z-50 w-full bg-white/80 dark:bg-[#020617]/80 backdrop-blur-xl border-b border-yellow-500/20 py-2 md:py-3 transition-colors">
       <div className="max-w-screen-2xl mx-auto px-3 sm:px-4 md:px-6 flex flex-wrap items-center gap-x-1.5 gap-y-2 md:grid md:grid-cols-[auto_1fr_auto] md:gap-x-4">
 
-        <Link to="/home" className="shrink-0 flex items-center gap-2 hover:scale-105 transition-transform group">
-          <div className="w-8 h-8 md:w-9 md:h-9 bg-linear-to-br from-yellow-400 to-yellow-600 rounded-xl rotate-12 flex items-center justify-center shadow-[0_0_15px_rgba(234,179,8,0.4)] group-hover:rotate-0 transition-all duration-300">
-            <span className="text-[#020617] font-black text-lg md:text-xl -rotate-12 group-hover:rotate-0 transition-all duration-300">N</span>
-          </div>
-          <span className="text-xl md:text-2xl font-black tracking-tight hidden md:block text-slate-900 dark:text-white">
-            Nakama<span className="text-yellow-500">Gate</span>
-          </span>
+        <Link to="/home" className="shrink-0 hover:scale-105 transition-transform">
+          <img
+            src={isDark
+              ? 'https://res.cloudinary.com/dlalpfup4/image/upload/v1777901507/1000091271_cyfjfk.png'
+              : 'https://res.cloudinary.com/dlalpfup4/image/upload/v1777901506/1000091274_wegamg.png'}
+            alt="NakamaGate"
+            className="h-8 md:h-10 w-auto object-contain"
+          />
         </Link>
 
         <div className="ml-auto md:ml-0 md:order-3 flex items-center gap-0.5 sm:gap-1 md:gap-2 shrink-0">

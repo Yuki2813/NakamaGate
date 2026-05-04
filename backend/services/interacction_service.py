@@ -291,3 +291,8 @@ async def get_user_reviews_service(user_id: int, session: Session):
             })
 
     return result
+
+
+def get_review_count_service(user_id: int, session: Session):
+    reviews = get_reviews_by_user(user_id=user_id, session=session)
+    return {"count": len(reviews)}

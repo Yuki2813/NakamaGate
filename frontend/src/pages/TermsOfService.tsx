@@ -65,7 +65,11 @@ export default function TermsOfService() {
             <ArrowLeft className="w-4 h-4" />
             Back
           </Link>
-          <span className="font-black text-yellow-500 tracking-tighter text-xl italic uppercase">NAKAMAGATE</span>
+          <img
+            src="https://res.cloudinary.com/dlalpfup4/image/upload/v1777901507/1000091271_cyfjfk.png"
+            alt="NakamaGate"
+            className="h-8 w-auto object-contain"
+          />
           <div className="w-16" />
         </div>
       </nav>

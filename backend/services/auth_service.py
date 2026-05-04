@@ -1,8 +1,7 @@
 import secrets
+import requests
 
 from fastapi import HTTPException
-from google.oauth2 import id_token as google_id_token
-from google.auth.transport import requests as google_requests
 
 from sqlmodel import Session
 from passlib.context import CryptContext
@@ -113,17 +112,21 @@ def get_user_by_email_service(email: str, session: Session):
 def process_google_login(google_token: str, session: Session):
     google_client_id = os.getenv("GOOGLE_CLIENT_ID")
 
-    # Verify the ID token signature and audience with google-auth (no extra HTTP call needed)
-    try:
-        idinfo = google_id_token.verify_oauth2_token(
-            google_token,
-            google_requests.Request(),
-            google_client_id
-        )
-    except ValueError:
+    # Validate the ID token via Google's tokeninfo endpoint
+    resp = requests.get(
+        f"https://oauth2.googleapis.com/tokeninfo?id_token={google_token}",
+        timeout=10
+    )
+
+    if resp.status_code != 200:
         raise HTTPException(status_code=401, detail="Invalid or expired Google token")
 
-    if not idinfo.get("email_verified"):
+    idinfo = resp.json()
+
+    if idinfo.get("aud") != google_client_id:
+        raise HTTPException(status_code=401, detail="Token not intended for this application")
+
+    if idinfo.get("email_verified") != "true":
         raise HTTPException(status_code=401, detail="Google account email not verified")
 
     email = idinfo.get("email")
