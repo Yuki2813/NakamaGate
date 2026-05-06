@@ -51,13 +51,15 @@ export default function Home() {
   const fetchData = async () => {
     setFetchState({ loading: true, error: null });
     try {
-      const [homeRes, favsRes] = await Promise.all([
+      const [homeRes, idsRes, watchingRes] = await Promise.all([
         apiClient.get('content/home'),
-        apiClient.get('/favorites/')
+        apiClient.get('/favorites/ids'),
+        apiClient.get('/favorites/watching')
       ]);
 
       const data = homeRes.data;
-      const userFavorites = favsRes.data;
+      const userFavoriteIds = idsRes.data;
+      const userFavorites = watchingRes.data;
 
       if (data.anime_del_dia) setAnimeOfTheDay(data.anime_del_dia);
       if (data.manga_del_dia) setMangaOfTheDay(data.manga_del_dia);
@@ -97,7 +99,10 @@ export default function Home() {
 
       setSections(formattedSections);
 
-      const ids = new Set<number>(userFavorites.map((f: any) => f.media.id));
+      const ids = new Set<number>();
+      for (const f of userFavoriteIds) {
+        ids.add(f.id_api);
+      }
       setFavoriteIds(ids);
       setFetchState({ loading: false, error: null });
 

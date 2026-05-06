@@ -20,6 +20,7 @@ import ProfileFriend from './pages/ProfileFriend';
 import Directory from './pages/Directory';
 import Community from './pages/Community';
 import TermsOfService from './pages/TermsOfService';
+import { ProtectedRoute } from './components/ProtectedRoute';
 
 const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
@@ -42,16 +43,18 @@ function App() {
       <BrowserRouter>
         <ScrollToTop />
         <Routes>
-          {/* Rutas Públicas (Sin Navbar) */}
+          {/* Rutas públicas */}
           <Route path="/" element={<Welcome />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/friend/:id" element={<ProfileFriend />} />
-          <Route path="/terms" element={<TermsOfService />} />
-          
-          {/* Rutas con Navbar */}
-          <Route element={<LayoutWithNavbar />}>
+
+          {/* Rutas privadas sin Navbar */}
+          <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+          <Route path="/friend/:id" element={<ProtectedRoute><ProfileFriend /></ProtectedRoute>} />
+          <Route path="/terms" element={<ProtectedRoute><TermsOfService /></ProtectedRoute>} />
+
+          {/* Rutas privadas con Navbar */}
+          <Route element={<ProtectedRoute><LayoutWithNavbar /></ProtectedRoute>}>
             <Route path="/community" element={<Community />} />
             <Route path="/directory" element={<Directory />} />
             <Route path="/home" element={<Home />} />

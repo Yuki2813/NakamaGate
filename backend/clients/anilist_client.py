@@ -136,16 +136,17 @@ class AniListClient:
     async def get_media_batch(self, ids: list[int], media_type: str = None):
         if not ids:
             return []
+        per_page = min(len(ids), 50)
         query = gql("""
-            query ($ids: [Int], $type: MediaType) {
-              Page(perPage: 50) {
+            query ($ids: [Int], $type: MediaType, $perPage: Int) {
+              Page(perPage: $perPage) {
                 media(id_in: $ids, type: $type) {
                   id type title { romaji } coverImage { large } averageScore genres
                 }
               }
             }
         """)
-        variables = {"ids": ids, "type": media_type}
+        variables = {"ids": ids, "type": media_type, "perPage": per_page}
         async with self._get_fresh_client() as session:
             result = await session.execute(query, variable_values=variables)
             return MediaAdapter.list_to_standar_format(result.get("Page", {}).get("media", []))

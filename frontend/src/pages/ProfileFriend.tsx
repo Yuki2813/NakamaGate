@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { apiClient } from '../api/client';
-import { BACKEND_URL } from '../config/env';
+import { useAuth } from '../context/AuthContext';
+import { getImageUrl } from '../utils/helpers';
 import { Button } from "@/components/ui/button";
 import { UserPlus, UserMinus, Heart, Star, ShieldAlert, Home, Play, CheckCircle2, Clock, Trash2, MessageSquare, Loader2 } from 'lucide-react';
 
@@ -57,7 +58,9 @@ export default function ProfileFriend() {
   const [reviews, setReviews] = useState<ReviewItem[]>([]);
 
   const [socialData, setSocialData] = useState<SocialData | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
+
+  const { user } = useAuth();
+  const isAdmin = user?.rol === 'admin';
 
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
@@ -99,13 +102,6 @@ export default function ProfileFriend() {
         // no social data available
       }
 
-      try {
-        const meRes = await apiClient.get('/auth/me');
-        setIsAdmin(meRes.data.rol === 'admin');
-      } catch {
-        // not authenticated or error
-      }
-
       setLoading(false);
     };
 
@@ -126,11 +122,6 @@ export default function ProfileFriend() {
     } finally {
       setLoadingMore(false);
     }
-  };
-
-  const getImageUrl = (path: string | null | undefined) => {
-    if (!path || path === "null" || path.trim() === "") return null;
-    return path.startsWith('http') ? path : `${BACKEND_URL}${path}`;
   };
 
   const getStatusBadge = (status: string) => {
@@ -337,7 +328,7 @@ export default function ProfileFriend() {
                               </div>
                               <div>
                                 <span className="text-xs font-bold text-yellow-500 uppercase block">{media.type}</span>
-                                <span className="text-xs text-slate-300">★ {media.score.toFixed(1)}</span>
+                                <span className="text-xs text-slate-300">★ {(media.score ?? 0).toFixed(1)}</span>
                               </div>
                             </div>
                             <div className={`absolute top-2 right-2 flex items-center gap-1 px-2 py-1 rounded-lg border ${statusBadge.color} group-hover:hidden`}>

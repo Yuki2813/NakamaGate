@@ -77,3 +77,21 @@ def get_user_favorites(id_user: int, session: Session, offset: int = 0, limit: i
     if limit is not None:
         statement = statement.limit(limit)
     return session.exec(statement).all()
+
+
+def get_user_favorite_ids(id_user: int, session: Session):
+    statement = (
+        select(Favorite.id_api, Favorite.media_type, UserFavorite.status)
+        .join(UserFavorite, UserFavorite.favorite_id == Favorite.id)
+        .where(UserFavorite.user_id == id_user)
+    )
+    return session.exec(statement).all()
+
+
+def get_user_favorites_by_status(id_user: int, status: str, session: Session):
+    statement = (
+        select(UserFavorite, Favorite)
+        .join(Favorite, UserFavorite.favorite_id == Favorite.id)
+        .where(UserFavorite.user_id == id_user, UserFavorite.status == status)
+    )
+    return session.exec(statement).all()

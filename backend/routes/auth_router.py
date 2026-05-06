@@ -99,7 +99,7 @@ async def logout(user_id: int = Depends(get_current_user_id)):
     return {"message": "Logout exitoso. Recuerda borrar el token en el frontend."}
 
 @router.delete("/me", summary="Eliminar cuenta de usuario")
-async def delete_account(
+async def delete_my_account(
     user_id: int = Depends(get_current_user_id),
     session: Session = Depends(get_db)
 ):

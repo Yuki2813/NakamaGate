@@ -95,7 +95,8 @@ export default function Directory() {
   const handleJumpPage = (e: React.FormEvent) => {
     e.preventDefault();
     const targetPage = parseInt(jumpPage);
-    if (!isNaN(targetPage) && targetPage >= 1) {
+    const max = pageInfo?.lastPage ?? 1;
+    if (!isNaN(targetPage) && targetPage >= 1 && targetPage <= max) {
       setPage(targetPage);
       setJumpPage("");
     }

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import { apiClient } from '../api/client';
 import { BACKEND_URL } from '../config/env';
 import {
@@ -34,7 +35,6 @@ interface Review {
   score: number; content: string; created_at: string;
 }
 
-interface CurrentUser { id: number; alias: string; rol: string }
 
 const RELATION_LABELS: Record<string, string> = {
   SEQUEL:      'Sequel',
@@ -58,7 +58,7 @@ export default function MediaDetail() {
   const [reviews,      setReviews]      = useState<Review[]>([]);
   const [loading,      setLoading]      = useState(true);
   const [accessError,  setAccessError]  = useState<string | null>(null);
-  const [currentUser,  setCurrentUser]  = useState<CurrentUser | null>(null);
+  const { user } = useAuth();
 
   const [isFavorite,    setIsFavorite]    = useState(false);
   const [statusLoading, setStatusLoading] = useState(false);
@@ -86,13 +86,8 @@ export default function MediaDetail() {
   useEffect(() => {
     const load = async () => {
       try {
-        const [meRes, mediaRes] = await Promise.all([
-          apiClient.get('/auth/me'),
-          apiClient.get(`/content/${id}`),
-        ]);
-        const loggedInUser: CurrentUser    = meRes.data;
-        const mediaData: MediaDetailData   = mediaRes.data;
-        setCurrentUser(loggedInUser);
+        const mediaRes = await apiClient.get(`/content/${id}`);
+        const mediaData: MediaDetailData = mediaRes.data;
         setMedia(mediaData);
 
         const mediaType = mediaData.type?.toLowerCase() || 'anime';
@@ -105,7 +100,7 @@ export default function MediaDetail() {
         if (reviewsRes.status === 'fulfilled') {
           const allReviews: Review[] = Array.isArray(reviewsRes.value.data) ? reviewsRes.value.data : [];
           setReviews(allReviews);
-          const myExistingReview = allReviews.find(r => r.user.id === loggedInUser.id) || null;
+          const myExistingReview = allReviews.find(r => r.user.id === user?.id) || null;
           setUserReview(myExistingReview);
           if (myExistingReview) {
             setReviewScore(myExistingReview.score);
@@ -579,8 +574,8 @@ export default function MediaDetail() {
           {reviews.length > 0 ? (
             <div className="grid gap-3 sm:gap-4">
               {reviews.map(review => {
-                const isOwn = review.user.id === currentUser?.id;
-                const isAdmin = currentUser?.rol === 'admin';
+                const isOwn = review.user.id === user?.id;
+                const isAdmin = user?.rol === 'admin';
                 return (
                   <div
                     key={review.id}

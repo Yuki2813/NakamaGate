@@ -5,9 +5,20 @@ from backend.clients.anilist_client import anilist_client
 from backend.models.favorite import Mediatype
 from backend.models.review import MediaType
 from backend.models.users import Rol
-from backend.repositories.favorite_repository import delete_user_favorite, get_user_favorites, get_user_favorites_count, new_favorite, update_status_favorite
+from backend.repositories.favorite_repository import delete_user_favorite, get_user_favorite_ids, get_user_favorites, get_user_favorites_by_status, get_user_favorites_count, new_favorite, update_status_favorite
 from backend.repositories.review_repository import create_review, delete_review, get_review_by_id, get_reviews_by_media, get_reviews_by_user, get_user_review_for_media, update_review
 from backend.repositories.user_repository import get_user_by_id
+
+
+async def _fetch_media_in_chunks(ids: list[int], media_type: str) -> list:
+    """AniList limita a 50 elementos por petición. Partimos los ids en trozos de 50."""
+    chunk_size = 50
+    all_results = []
+    for i in range(0, len(ids), chunk_size):
+        chunk = ids[i:i + chunk_size]
+        results = await anilist_client.get_media_batch(chunk, media_type)
+        all_results.extend(results)
+    return all_results
 
 
 # ==========================================
@@ -128,8 +139,8 @@ async def get_favorite_list(user_id: int, session: Session):
 async def create_review_service(user_id: int, id_api: int, media_type: MediaType, score: int, content: str, session: Session):
     
     # 1. Validaciones básicas de formato
-    if score < 0 or score > 5:
-        raise HTTPException(status_code=400, detail="The score must be between 0 and 5.")
+    if score < 1 or score > 5:
+        raise HTTPException(status_code=400, detail="The score must be between 1 and 5.")
     
     if len(content) < 1 or len(content) > 255:
         raise HTTPException(status_code=400, detail="The review content must be between 1 and 255 characters.")
@@ -163,8 +174,8 @@ async def create_review_service(user_id: int, id_api: int, media_type: MediaType
 
 
 def update_review_service(review_id: int, user_id: int, score: int, content: str, session: Session):
-    if score < 0 or score > 5:
-        raise HTTPException(status_code=400, detail="The score must be between 0 and 5")
+    if score < 1 or score > 5:
+        raise HTTPException(status_code=400, detail="The score must be between 1 and 5")
 
     if len(content) < 1 or len(content) > 255:
         raise HTTPException(status_code=400, detail="The review content must be between 1 and 255 characters.")
@@ -265,11 +276,11 @@ async def get_user_reviews_service(user_id: int, session: Session):
 
     media_dict = {}
     if anime_ids:
-        anime_results = await anilist_client.get_media_batch(anime_ids, "ANIME")
+        anime_results = await _fetch_media_in_chunks(anime_ids, "ANIME")
         for a in anime_results:
             media_dict[(a["id"], "anime")] = a
     if manga_ids:
-        manga_results = await anilist_client.get_media_batch(manga_ids, "MANGA")
+        manga_results = await _fetch_media_in_chunks(manga_ids, "MANGA")
         for m in manga_results:
             media_dict[(m["id"], "manga")] = m
 
@@ -296,3 +307,55 @@ async def get_user_reviews_service(user_id: int, session: Session):
 def get_review_count_service(user_id: int, session: Session):
     reviews = get_reviews_by_user(user_id=user_id, session=session)
     return {"count": len(reviews)}
+
+
+def get_favorite_ids_service(user_id: int, session: Session):
+    rows = get_user_favorite_ids(id_user=user_id, session=session)
+    result = []
+    for row in rows:
+        item = {
+            "id_api": row.id_api,
+            "media_type": row.media_type.value,
+            "status": row.status.value
+        }
+        result.append(item)
+    return result
+
+
+async def get_watching_favorites_service(user_id: int, session: Session):
+    favorite_tuples = get_user_favorites_by_status(id_user=user_id, status="watching", session=session)
+
+    if not favorite_tuples:
+        return []
+
+    anime_ids = []
+    manga_ids = []
+    for user_fav, fav_data in favorite_tuples:
+        if fav_data.media_type.value == "anime":
+            anime_ids.append(fav_data.id_api)
+        else:
+            manga_ids.append(fav_data.id_api)
+
+    media_dict = {}
+    if anime_ids:
+        anime_results = await _fetch_media_in_chunks(anime_ids, "ANIME")
+        for item in anime_results:
+            media_dict[(item["id"], "anime")] = item
+    if manga_ids:
+        manga_results = await _fetch_media_in_chunks(manga_ids, "MANGA")
+        for item in manga_results:
+            media_dict[(item["id"], "manga")] = item
+
+    final = []
+    for user_fav, fav_data in favorite_tuples:
+        llave = (fav_data.id_api, fav_data.media_type.value)
+        media = media_dict.get(llave)
+        if media:
+            entry = {
+                "id": fav_data.id,
+                "status": user_fav.status,
+                "media": media
+            }
+            final.append(entry)
+
+    return final

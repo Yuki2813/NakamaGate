@@ -14,20 +14,16 @@ import { apiClient } from '../api/client';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { getImageUrl } from '../utils/helpers';
-
-interface UserData {
-  alias: string;
-  picture: string;
-}
+import { useAuth } from '../context/AuthContext';
 
 export default function Navbar() {
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
   const [query, setQuery] = useState('');
   const [mediaType, setMediaType] = useState<'ANIME' | 'MANGA'>('ANIME');
   const [results, setResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
-  const [userData, setUserData] = useState<UserData | null>(null);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains('dark'));
 
@@ -40,9 +36,6 @@ export default function Navbar() {
       document.documentElement.classList.remove('dark');
       setIsDark(false);
     }
-    apiClient.get('/auth/me')
-      .then(res => setUserData(res.data))
-      .catch(err => console.error("Profile error:", err));
   }, []);
 
   const toggleDarkMode = () => {
@@ -70,7 +63,7 @@ export default function Navbar() {
       setShowDropdown(true);
       setSearchError(null);
       try {
-        const res = await apiClient.get(`/content/search?search_text=${query}&media_type=${mediaType.toLowerCase()}`);
+        const res = await apiClient.get('/content/search', { params: { search_text: query, media_type: mediaType.toLowerCase() } });
         setResults(res.data.items || res.data);
       } catch (error: any) {
         if (error.response?.data?.detail) {
@@ -87,7 +80,7 @@ export default function Navbar() {
   }, [query, mediaType]);
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
+    logout();
     navigate('/login');
   };
 
@@ -131,14 +124,14 @@ export default function Navbar() {
 
           <Link to="/profile">
             <Button className="h-9 md:h-10 px-2 md:px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white/80 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 hover:border-yellow-500/50 text-slate-800 dark:text-slate-200 transition-all font-semibold flex items-center gap-1.5">
-              {getImageUrl(userData?.picture) ? (
-                <img src={getImageUrl(userData?.picture)!} alt="Avatar" className="w-5 h-5 md:w-6 md:h-6 rounded-full object-cover border border-slate-300 dark:border-slate-600 shrink-0" />
+              {getImageUrl(user?.picture) ? (
+                <img src={getImageUrl(user?.picture)!} alt="Avatar" className="w-5 h-5 md:w-6 md:h-6 rounded-full object-cover border border-slate-300 dark:border-slate-600 shrink-0" />
               ) : (
                 <div className="w-5 h-5 md:w-6 md:h-6 rounded-full bg-yellow-500/20 text-yellow-500 flex items-center justify-center shrink-0">
                   <User className="w-3 h-3" />
                 </div>
               )}
-              <span className="max-w-20 truncate hidden sm:inline text-sm">{userData?.alias || 'Profile'}</span>
+              <span className="max-w-20 truncate hidden sm:inline text-sm">{user?.alias || 'Profile'}</span>
             </Button>
           </Link>
 

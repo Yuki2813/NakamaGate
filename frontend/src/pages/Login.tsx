@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { apiClient } from '../api/client';
 import { Button } from "@/components/ui/button";
 import { Eye, EyeOff, Mail, Lock } from 'lucide-react';
 import { GoogleLogin } from '@react-oauth/google';
+import { useAuth } from '../context/AuthContext';
 
 export default function Login() {
   const navigate = useNavigate();
+  const { login, loginWithGoogle } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -19,8 +20,7 @@ export default function Login() {
     setLoading(true);
 
     try {
-      const res = await apiClient.post('/auth/login', { email, password });
-      localStorage.setItem('token', res.data.access_token || res.data.token);
+      await login(email, password);
       navigate('/home');
     } catch (err) {
       setError('Incorrect credentials. Please try again.');
@@ -33,8 +33,7 @@ export default function Login() {
     setError('');
     setLoading(true);
     try {
-      const res = await apiClient.post('/auth/google', { token: credentialResponse.credential });
-      localStorage.setItem('token', res.data.access_token || res.data.token);
+      await loginWithGoogle(credentialResponse.credential);
       navigate('/home');
     } catch {
       setError('Could not sign in with Google.');

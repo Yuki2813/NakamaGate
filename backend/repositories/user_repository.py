@@ -108,6 +108,13 @@ def update_user_adult(user_id: int, is_adult: bool, session: Session):
     return True
 
 
+def get_users_by_ids(ids: list[int], session: Session) -> list[Users]:
+    if not ids:
+        return []
+    statement = select(Users).where(Users.id.in_(ids))
+    return session.exec(statement).all()
+
+
 def search_users_repo(alias: str, current_user_id: int, session: Session):
     statement = select(Users).where(
         Users.alias.ilike(f"%{alias}%"),

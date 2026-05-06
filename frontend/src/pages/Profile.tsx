@@ -7,7 +7,7 @@ import {
   Heart, Star, ShieldAlert, Settings, Home,
   Edit2, Camera, Check, X, ChevronDown, Trash2, Award, BarChart3,
   Flame, Trophy, PlayCircle, Swords, Brain, Clock, Sparkles, Lock,
-  Compass, Search, ShieldCheck
+  Compass, Search, ShieldCheck, Loader2
 } from 'lucide-react';
 import Loader from '../components/Loader';
 import AvatarEditor from 'react-avatar-editor';
@@ -36,6 +36,11 @@ interface UserProfile {
 export default function Profile() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
+  const [favoritesTotal, setFavoritesTotal] = useState(0);
+  const [favPage, setFavPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [allFavIds, setAllFavIds] = useState<{id_api: number, media_type: string, status: string}[]>([]);
   const [reviewCount, setReviewCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
@@ -66,10 +71,15 @@ export default function Profile() {
       setNewAlias(profileRes.data.alias);
       setIsAdult(profileRes.data.is_adult ?? false);
 
-      const favsRes = await apiClient.get('/favorites/');
-      setFavorites(favsRes.data);
-
-      const reviewCountRes = await apiClient.get('/reviews/me/count');
+      const [pagsRes, idsRes, reviewCountRes] = await Promise.all([
+        apiClient.get('/favorites/?page=1&limit=20'),
+        apiClient.get('/favorites/ids'),
+        apiClient.get('/reviews/me/count')
+      ]);
+      setFavorites(pagsRes.data.items ?? []);
+      setFavoritesTotal(pagsRes.data.total ?? 0);
+      setHasMore(pagsRes.data.has_more ?? false);
+      setAllFavIds(idsRes.data ?? []);
       setReviewCount(reviewCountRes.data.count ?? 0);
     } catch (err) {
       console.error("Error loading profile:", err);
@@ -78,9 +88,31 @@ export default function Profile() {
     }
   };
 
+  const fetchMoreFavorites = async () => {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    try {
+      const nextPage = favPage + 1;
+      const res = await apiClient.get(`/favorites/?page=${nextPage}&limit=20`);
+      setFavorites(prev => [...prev, ...(res.data.items ?? [])]);
+      setHasMore(res.data.has_more ?? false);
+      setFavPage(nextPage);
+    } catch {
+      // silent
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
   useEffect(() => {
     fetchProfileData();
   }, []);
+
+  useEffect(() => {
+    if (!searchTerm.trim()) return;
+    if (loadingMore || !hasMore) return;
+    fetchMoreFavorites();
+  }, [searchTerm, hasMore, loadingMore]);
 
   const filteredFavorites = useMemo(() => {
     if (!searchTerm.trim()) return favorites;
@@ -102,9 +134,9 @@ export default function Profile() {
   }, [favorites]);
 
   const badges = useMemo(() => {
-    const completedCount = favorites.filter(f => f.status === 'completed').length;
-    const watchingCount = favorites.filter(f => f.status === 'watching').length;
-    const pendingCount = favorites.filter(f => f.status === 'pending').length;
+    const completedCount = allFavIds.filter(f => f.status === 'completed').length;
+    const watchingCount = allFavIds.filter(f => f.status === 'watching').length;
+    const pendingCount = allFavIds.filter(f => f.status === 'pending').length;
 
     const hasAction = favorites.some(f => f.media.genres?.includes('Action'));
     const hasRomance = favorites.some(f => f.media.genres?.includes('Romance'));
@@ -114,9 +146,9 @@ export default function Profile() {
     favorites.forEach(f => f.media.genres?.forEach(g => uniqueGenres.add(g)));
 
     return [
-      { id: 1, name: 'Beginner', desc: 'First title added', icon: <Star className="w-4 h-4"/>, active: favorites.length > 0 },
-      { id: 2, name: 'Collector', desc: 'More than 10 favorites', icon: <Heart className="w-4 h-4"/>, active: favorites.length >= 10 },
-      { id: 3, name: 'Otaku Master', desc: 'More than 50 favorites', icon: <Flame className="w-4 h-4"/>, active: favorites.length >= 50 },
+      { id: 1, name: 'Beginner', desc: 'First title added', icon: <Star className="w-4 h-4"/>, active: favoritesTotal > 0 },
+      { id: 2, name: 'Collector', desc: 'More than 10 favorites', icon: <Heart className="w-4 h-4"/>, active: favoritesTotal >= 10 },
+      { id: 3, name: 'Otaku Master', desc: 'More than 50 favorites', icon: <Flame className="w-4 h-4"/>, active: favoritesTotal >= 50 },
       { id: 4, name: 'Finisher', desc: 'One title completed', icon: <Check className="w-4 h-4"/>, active: completedCount >= 1 },
       { id: 5, name: 'Pillar', desc: '5 titles completed', icon: <Trophy className="w-4 h-4"/>, active: completedCount >= 5 },
       { id: 6, name: 'Up to Date', desc: 'Watching 3 titles at once', icon: <PlayCircle className="w-4 h-4"/>, active: watchingCount >= 3 },
@@ -127,7 +159,7 @@ export default function Profile() {
       { id: 11, name: 'Procrastinator', desc: 'You have 10 titles in "Pending"', icon: <Clock className="w-4 h-4"/>, active: pendingCount >= 10, isSecret: true, hint: 'Hint: You leave too much for tomorrow...' },
       { id: 12, name: 'Eclectic', desc: "You've explored 5 different genres", icon: <Sparkles className="w-4 h-4"/>, active: uniqueGenres.size >= 5, isSecret: true, hint: 'Hint: Variety is the spice of life.' },
     ];
-  }, [favorites]);
+  }, [favorites, favoritesTotal, allFavIds]);
 
   const handleUpdateAlias = async () => {
     if (!newAlias.trim() || newAlias === profile?.alias) {
@@ -162,8 +194,11 @@ export default function Profile() {
   const confirmDelete = async () => {
     if (!mediaToDelete) return;
     try {
-      await apiClient.delete(`/favorites/${mediaToDelete}?media_type=${mediaTypeToDelete.toLowerCase()}`);
+      const typeLower = mediaTypeToDelete.toLowerCase();
+      await apiClient.delete(`/favorites/${mediaToDelete}?media_type=${typeLower}`);
       setFavorites(prev => prev.filter(fav => fav.media.id !== mediaToDelete));
+      setAllFavIds(prev => prev.filter(f => !(f.id_api === mediaToDelete && f.media_type === typeLower)));
+      setFavoritesTotal(prev => Math.max(0, prev - 1));
       setDeleteModalOpen(false);
       setMediaToDelete(null);
     } catch (error) {
@@ -350,7 +385,7 @@ export default function Profile() {
             <h2 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mb-4 text-center">Record</h2>
             <div className="grid grid-cols-2 gap-3">
               <div className="bg-slate-100 dark:bg-slate-950/50 rounded-2xl p-3 text-center border border-slate-200 dark:border-slate-800/50">
-                <p className="text-xl font-black text-slate-900 dark:text-white">{favorites.length}</p>
+                <p className="text-xl font-black text-slate-900 dark:text-white">{favoritesTotal}</p>
                 <p className="text-[8px] uppercase text-slate-500 font-bold tracking-widest">Favorites</p>
               </div>
               <div className="bg-slate-100 dark:bg-slate-950/50 rounded-2xl p-3 text-center border border-slate-200 dark:border-slate-800/50">
@@ -438,7 +473,7 @@ export default function Profile() {
               <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight uppercase italic">My Library</h2>
             </div>
 
-            {favorites.length > 0 && (
+            {favoritesTotal > 0 && (
               <div className="relative w-full sm:w-64">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
                 <Input
@@ -479,18 +514,18 @@ export default function Profile() {
 
                 return (
                   <article key={fav.media.id} className="flex flex-col bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden group backdrop-blur-md hover:border-yellow-500/30 transition-colors">
-                    <div className="relative block aspect-2/3 bg-slate-950">
+                    <Link to={`/media/${fav.media.id}`} className="relative block aspect-2/3 bg-slate-950">
                       <img src={fav.media.image} alt={fav.media.title} className="w-full h-full object-cover" />
                       <div className={`absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-widest border backdrop-blur-sm ${statusStyles}`}>
                         {fav.status === 'watching' ? 'Watching' : fav.status === 'completed' ? 'Completed' : 'Pending'}
                       </div>
                       <button
-                        onClick={() => triggerDeleteModal(fav.media.id, fav.media.type)}
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); triggerDeleteModal(fav.media.id, fav.media.type); }}
                         className="absolute top-1.5 right-1.5 p-1.5 bg-red-600/80 hover:bg-red-600 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-all"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
-                    </div>
+                    </Link>
 
                     <div className="p-2 sm:p-3 flex flex-col flex-1 gap-2">
                       <Link to={`/media/${fav.media.id}`}>
@@ -514,6 +549,22 @@ export default function Profile() {
               })
             )}
           </div>
+
+          {hasMore && !searchTerm && (
+            <div className="mt-8 flex justify-center">
+              <Button
+                onClick={fetchMoreFavorites}
+                disabled={loadingMore}
+                variant="outline"
+                className="h-11 px-8 rounded-xl border-yellow-500/40 text-yellow-500 hover:bg-yellow-500 hover:text-black font-bold transition-all"
+              >
+                {loadingMore
+                  ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Loading...</>
+                  : `Load more · ${favoritesTotal - favorites.length} remaining`
+                }
+              </Button>
+            </div>
+          )}
         </section>
       </div>
     </main>

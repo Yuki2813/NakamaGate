@@ -105,7 +105,7 @@ class MediaAdapter:
                            or (anilist_item.get("coverImage") or {}).get("large"),
             "image_thumb": (anilist_item.get("coverImage") or {}).get("medium"),
             "banner":      anilist_item.get("bannerImage"),
-            "score":       anilist_item.get("averageScore", 0),
+            "score":       anilist_item.get("averageScore") or 0,
             "status":      anilist_item.get("status"),
             "description": MediaAdapter._clean_html(anilist_item.get("description", "")),
             "units":       units if units else 0,

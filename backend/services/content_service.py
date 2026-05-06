@@ -1,6 +1,7 @@
 from fastapi import HTTPException
 from sqlmodel import Session
 import random
+from random import Random
 from datetime import date
 
 from backend.clients.anilist_client import anilist_client
@@ -51,18 +52,14 @@ async def get_home_service(user_id: int, session: Session):
     data = await anilist_client.get_home_data(genres=recomendaciones, pages=paginas_random)
     
     # --- LÓGICA GEMA DEL DÍA ---
-    today_seed = date.today().toordinal()
-    random.seed(today_seed)
+    # Instancia local: no toca el random global, safe en concurrencia
+    daily_rng = Random(date.today().toordinal())
 
-    # Anime del Día (de un género aleatorio, así garantizamos que sea algo novedoso)
     pool_anime = data.get("genre1", {}).get("items", [])
-    anime_del_dia = random.choice(pool_anime) if pool_anime else None
+    anime_del_dia = daily_rng.choice(pool_anime) if pool_anime else None
 
-    # Manga del Día (Sacado de las tendencias actuales de Manga)
     pool_manga = data.get("trending_manga", [])
-    manga_del_dia = random.choice(pool_manga) if pool_manga else None
-
-    random.seed() # Reseteamos la semilla inmediatamente
+    manga_del_dia = daily_rng.choice(pool_manga) if pool_manga else None
     
     # --- MEZCLA DE CARRUSELES ---
     for key in ["genre1", "genre2", "genre3", "genre4"]:

@@ -17,10 +17,10 @@ router = APIRouter(
 # ==========================================
 class ReviewBase(BaseModel):
     score: int = Field(
-        ..., 
-        ge=0, 
-        le=5, 
-        description="Puntuación del 0 al 5"
+        ...,
+        ge=1,
+        le=5,
+        description="Score from 1 to 5"
     )
     content: str = Field(
         ..., 

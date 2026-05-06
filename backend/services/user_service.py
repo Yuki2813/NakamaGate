@@ -3,7 +3,7 @@ import cloudinary.uploader
 from fastapi import UploadFile, HTTPException, status
 from sqlmodel import Session
 from backend.repositories.friendship_repository import accept_friend_request, get_friends, get_pending_requests, remove_friendship, send_friend_request
-from backend.repositories.user_repository import check_id_exist, delete_user, get_user_by_id, search_users_repo, update_user_adult, update_user_alias, update_user_avatar
+from backend.repositories.user_repository import check_id_exist, delete_user, get_user_by_id, get_users_by_ids, search_users_repo, update_user_adult, update_user_alias, update_user_avatar
 from backend.services.auth_service import create_access_token
 from backend.services.interacction_service import get_favorite_list
 
@@ -143,40 +143,41 @@ def get_user_social_data(user_id: int, session: Session):
     raw_friends = get_friends(user_id=user_id, session=session)
     raw_pending = get_pending_requests(user_id=user_id, session=session)
 
-    formatted_friends = []
-    formatted_pending = []
-    
-    # NUEVO: Creamos un "set" para recordar qué amigos ya hemos añadido
-    processed_friend_ids = set()
-
+    # Recoge IDs únicos de amigos (el amigo puede ser requester o receiver)
+    friend_ids_set = set()
     for rel in raw_friends:
         if rel.requester_id == user_id:
-            friend_id = rel.receiver_id
+            friend_ids_set.add(rel.receiver_id)
         else:
-            friend_id = rel.requester_id
+            friend_ids_set.add(rel.requester_id)
 
-        if friend_id not in processed_friend_ids:
-            friend_user = get_user_by_id(id=friend_id, session=session)
-            if friend_user:
-                formatted_friends.append({
-                    "id": friend_user.id,
-                    "alias": friend_user.alias,
-                    "picture": friend_user.picture
-                })
-            # Lo marcamos como procesado para no volver a añadirlo
-            processed_friend_ids.add(friend_id)
-
-    # Las peticiones pendientes se quedan igual
+    # Recoge IDs de quien envió solicitud pendiente
+    pending_ids_set = set()
     for rel in raw_pending:
-        requester_id = rel.requester_id 
-        requester_user = get_user_by_id(id=requester_id, session=session)
-        
-        if requester_user:
-            formatted_pending.append({
-                "id": requester_user.id,
-                "alias": requester_user.alias,
-                "picture": requester_user.picture
-            })
+        pending_ids_set.add(rel.requester_id)
+
+    # Una sola query para obtener todos los usuarios necesarios
+    all_ids = list(friend_ids_set) + list(pending_ids_set)
+    users_list = get_users_by_ids(all_ids, session)
+
+    # Diccionario para buscar por ID en O(1)
+    users_map = {}
+    for user in users_list:
+        users_map[user.id] = user
+
+    # Formatea lista de amigos
+    formatted_friends = []
+    for fid in friend_ids_set:
+        if fid in users_map:
+            u = users_map[fid]
+            formatted_friends.append({"id": u.id, "alias": u.alias, "picture": u.picture})
+
+    # Formatea lista de solicitudes pendientes
+    formatted_pending = []
+    for pid in pending_ids_set:
+        if pid in users_map:
+            u = users_map[pid]
+            formatted_pending.append({"id": u.id, "alias": u.alias, "picture": u.picture})
 
     return {"friends": formatted_friends, "pending": formatted_pending}
 
@@ -187,24 +188,28 @@ async def get_user_favorites(target_user_id: int, session: Session):
 def get_public_friends_list(target_user_id: int, session: Session):
     raw_friends = get_friends(user_id=target_user_id, session=session)
 
-    processed_friend_ids = set()
-    formatted_friends = []
-
+    # Recoge IDs únicos de amigos
+    friend_ids_set = set()
     for rel in raw_friends:
         if rel.requester_id == target_user_id:
-            friend_id = rel.receiver_id
+            friend_ids_set.add(rel.receiver_id)
         else:
-            friend_id = rel.requester_id
+            friend_ids_set.add(rel.requester_id)
 
-        if friend_id not in processed_friend_ids:
-            friend_user = get_user_by_id(id=friend_id, session=session)
-            if friend_user:
-                formatted_friends.append({
-                    "id": friend_user.id,
-                    "alias": friend_user.alias,
-                    "picture": friend_user.picture
-                })
-            processed_friend_ids.add(friend_id)
+    # Una sola query para todos los amigos
+    users_list = get_users_by_ids(list(friend_ids_set), session)
+
+    # Diccionario para buscar por ID en O(1)
+    users_map = {}
+    for user in users_list:
+        users_map[user.id] = user
+
+    # Formatea la lista
+    formatted_friends = []
+    for fid in friend_ids_set:
+        if fid in users_map:
+            u = users_map[fid]
+            formatted_friends.append({"id": u.id, "alias": u.alias, "picture": u.picture})
 
     return formatted_friends
 

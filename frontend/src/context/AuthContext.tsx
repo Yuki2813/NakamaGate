@@ -4,7 +4,10 @@ import { apiClient } from '@/api/client'
 interface User {
   id: number
   email: string
-  username?: string
+  alias: string
+  picture: string | null
+  rol: string
+  is_adult: boolean
 }
 
 interface AuthContextType {
@@ -12,6 +15,7 @@ interface AuthContextType {
   isAuthenticated: boolean
   loading: boolean
   login: (email: string, password: string) => Promise<void>
+  loginWithGoogle: (credential: string) => Promise<void>
   register: (email: string, username: string, password: string) => Promise<void>
   logout: () => void
 }
@@ -22,24 +26,52 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
 
-  // Verificar si hay una sesión activa
+  const fetchUser = async () => {
+    const res = await apiClient.get('/auth/me')
+    setUser({
+      id: res.data.id,
+      email: res.data.email,
+      alias: res.data.alias,
+      picture: res.data.picture ?? null,
+      rol: res.data.rol,
+      is_adult: res.data.is_adult ?? false,
+    })
+  }
+
   useEffect(() => {
     const token = localStorage.getItem('token')
-    if (token) {
-      // Aquí puedes hacer una petición para obtener los datos del usuario
-      // De momento asumimos que el token es válido
-      setUser({ id: 0, email: '' }) // Esto puede ser mejorado
+    if (!token) {
+      setLoading(false)
+      return
     }
-    setLoading(false)
+    fetchUser()
+      .catch(() => {
+        localStorage.removeItem('token')
+        setUser(null)
+      })
+      .finally(() => setLoading(false))
   }, [])
 
   const login = async (email: string, password: string) => {
     try {
       const response = await apiClient.post('/auth/login', { email, password })
       localStorage.setItem('token', response.data.access_token)
-      setUser(response.data.user || { id: 0, email })
+      await fetchUser()
     } catch (error) {
       localStorage.removeItem('token')
+      setUser(null)
+      throw error
+    }
+  }
+
+  const loginWithGoogle = async (credential: string) => {
+    try {
+      const response = await apiClient.post('/auth/google', { token: credential })
+      localStorage.setItem('token', response.data.access_token)
+      await fetchUser()
+    } catch (error) {
+      localStorage.removeItem('token')
+      setUser(null)
       throw error
     }
   }
@@ -48,9 +80,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const response = await apiClient.post('/auth/register', { email, username, password })
       localStorage.setItem('token', response.data.access_token)
-      setUser(response.data.user || { id: 0, email, username })
+      await fetchUser()
     } catch (error) {
       localStorage.removeItem('token')
+      setUser(null)
       throw error
     }
   }
@@ -67,6 +100,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isAuthenticated: !!user,
         loading,
         login,
+        loginWithGoogle,
         register,
         logout,
       }}
