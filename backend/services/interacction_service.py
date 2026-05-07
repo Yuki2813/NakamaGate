@@ -1,4 +1,5 @@
 from fastapi import HTTPException, status
+from fastapi_cache import FastAPICache
 from sqlmodel import Session
 
 from backend.clients.anilist_client import anilist_client
@@ -19,6 +20,24 @@ async def _fetch_media_in_chunks(ids: list[int], media_type: str) -> list:
         results = await anilist_client.get_media_batch(chunk, media_type)
         all_results.extend(results)
     return all_results
+
+
+async def invalidate_stats_cache(user_id: int):
+    """Borra la caché de stats del usuario tras un cambio en favoritos."""
+    try:
+        backend = FastAPICache.get_backend()
+        await backend.clear(key=f"stats:user:{user_id}")
+    except Exception:
+        pass
+
+
+async def invalidate_home_cache(user_id: int):
+    """Borra la caché del home del usuario tras un cambio en su preferencia adulta."""
+    try:
+        backend = FastAPICache.get_backend()
+        await backend.clear(key=f"home:user:{user_id}")
+    except Exception:
+        pass
 
 
 # ==========================================
@@ -49,10 +68,11 @@ async def add_media_to_list(user_id: int, id_api: int, media_type: MediaType, se
 
     # 2. GUARDADO: Si pasamos las validaciones, procedemos a guardar en la base de datos
     if new_favorite(iduser=user_id, id_fav=id_api, mediatype=media_type, session=session):
+        await invalidate_stats_cache(user_id)
         return {"message": "The media is now in your favorites"}
     else:
         raise HTTPException(
-            status_code=400, 
+            status_code=400,
             detail="You already have this media in your favorites"
         )
 
@@ -67,10 +87,11 @@ def update_media_status(user_id: int, favorite_id: int, new_status: str, session
         raise HTTPException(status_code=404, detail="The anime/manga could not be found")
 
 
-def remove_media_from_list(user_id: int, id_api: int, media_type: Mediatype, session: Session):
+async def remove_media_from_list(user_id: int, id_api: int, media_type: Mediatype, session: Session):
     removal_successful = delete_user_favorite(id_user=user_id, idapi=id_api, session=session, media=media_type)
 
     if removal_successful:
+        await invalidate_stats_cache(user_id)
         return {"message": "The anime/manga was properly removed"}
     else:
         raise HTTPException(status_code=404, detail="At this time, we are unable to remove the manga/anime you requested")
@@ -226,10 +247,10 @@ def get_reviews_by_media_service(id_api: int, media_type: MediaType, session: Se
     return final_reviews
 
 
-async def get_favorite_list_paginated(user_id: int, session: Session, page: int = 1, limit: int = 20):
+async def get_favorite_list_paginated(user_id: int, session: Session, page: int = 1, limit: int = 20, status: str | None = None):
     offset = (page - 1) * limit
-    total = get_user_favorites_count(id_user=user_id, session=session)
-    favorite_tuples = get_user_favorites(id_user=user_id, session=session, offset=offset, limit=limit)
+    total = get_user_favorites_count(id_user=user_id, session=session, status=status)
+    favorite_tuples = get_user_favorites(id_user=user_id, session=session, offset=offset, limit=limit, status=status)
 
     if not favorite_tuples:
         return {"items": [], "total": total, "page": page, "has_more": False}
@@ -359,3 +380,58 @@ async def get_watching_favorites_service(user_id: int, session: Session):
             final.append(entry)
 
     return final
+
+
+async def get_favorite_stats_service(user_id: int, session: Session):
+    """Calcula estadísticas de géneros sobre TODOS los favoritos del usuario."""
+    rows = get_user_favorite_ids(id_user=user_id, session=session)
+    if not rows:
+        return {
+            "top_genres": [],
+            "unique_genres_count": 0,
+            "has_action": False,
+            "has_romance": False,
+            "has_mystery": False,
+        }
+
+    anime_ids = []
+    manga_ids = []
+    for row in rows:
+        if row.media_type.value == "anime":
+            anime_ids.append(row.id_api)
+        else:
+            manga_ids.append(row.id_api)
+
+    media_list = []
+    if anime_ids:
+        anime_results = await _fetch_media_in_chunks(anime_ids, "ANIME")
+        media_list.extend(anime_results)
+    if manga_ids:
+        manga_results = await _fetch_media_in_chunks(manga_ids, "MANGA")
+        media_list.extend(manga_results)
+
+    genre_counts = {}
+    has_action = False
+    has_romance = False
+    has_mystery = False
+
+    for media in media_list:
+        for g in (media.get("genres") or []):
+            genre_counts[g] = genre_counts.get(g, 0) + 1
+            if g == "Action":
+                has_action = True
+            elif g == "Romance":
+                has_romance = True
+            elif g == "Mystery" or g == "Psychological":
+                has_mystery = True
+
+    sorted_genres = sorted(genre_counts.items(), key=lambda x: x[1], reverse=True)
+    top_genres = [[name, count] for name, count in sorted_genres[:5]]
+
+    return {
+        "top_genres": top_genres,
+        "unique_genres_count": len(genre_counts),
+        "has_action": has_action,
+        "has_romance": has_romance,
+        "has_mystery": has_mystery,
+    }

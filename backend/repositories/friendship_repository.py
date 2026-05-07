@@ -65,8 +65,16 @@ def get_friends(user_id:int,session:Session):
 def get_pending_requests(user_id:int,session:Session):
     statement=select(Friendship).where(Friendship.receiver_id==user_id,Friendship.status==FriendshipStatus.pending)
     friend_request_pending=session.exec(statement=statement).all()
-    
+
     return friend_request_pending
+
+
+def get_sent_pending_requests(user_id: int, session: Session):
+    statement = select(Friendship).where(
+        Friendship.requester_id == user_id,
+        Friendship.status == FriendshipStatus.pending
+    )
+    return session.exec(statement).all()
     
 def get_friendship_status(user_id_A:int, user_id_B:int, session:Session):
     statement = select(Friendship).where(

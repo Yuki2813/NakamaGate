@@ -36,6 +36,8 @@ interface ReviewItem {
 
 interface SocialData {
   friends: { id: number }[];
+  sent_pending?: { id: number }[];
+  pending?: { id: number }[];
 }
 
 interface UserProfile {
@@ -65,6 +67,7 @@ export default function ProfileFriend() {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showRemoveFriendModal, setShowRemoveFriendModal] = useState(false);
 
   useEffect(() => {
     const fetchProfileData = async () => {
@@ -142,14 +145,36 @@ export default function ProfileFriend() {
     return date.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
   };
 
+  const refreshSocialData = async () => {
+    try {
+      const res = await apiClient.get('/friends/social-data');
+      setSocialData(res.data);
+    } catch {
+      // ignore
+    }
+  };
+
   const handleSendRequest = async () => {
     if (!profile) return;
     setActionLoading(true);
     try {
       await apiClient.post(`/friends/request/${profile.id}`);
-      alert("Friend request sent.");
+      await refreshSocialData();
     } catch (error) {
       console.error("Error sending request:", error);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleAcceptRequest = async () => {
+    if (!profile) return;
+    setActionLoading(true);
+    try {
+      await apiClient.put(`/friends/accept/${profile.id}`);
+      await refreshSocialData();
+    } catch (error) {
+      console.error("Error accepting request:", error);
     } finally {
       setActionLoading(false);
     }
@@ -160,7 +185,8 @@ export default function ProfileFriend() {
     setActionLoading(true);
     try {
       await apiClient.delete(`/friends/remove/${profile.id}`);
-      alert("Friend removed from your network.");
+      await refreshSocialData();
+      setShowRemoveFriendModal(false);
     } catch (error) {
       console.error("Error removing friend:", error);
     } finally {
@@ -197,6 +223,8 @@ export default function ProfileFriend() {
   );
 
   const isFriend = socialData?.friends?.some(f => f.id === profile.id);
+  const hasSentRequest = socialData?.sent_pending?.some(s => s.id === profile.id);
+  const hasIncomingRequest = socialData?.pending?.some(p => p.id === profile.id);
 
   return (
     <main className="min-h-screen bg-slate-50 dark:bg-[#020617] text-slate-800 dark:text-slate-200 font-sans selection:bg-yellow-500/30 pb-20">
@@ -220,6 +248,28 @@ export default function ProfileFriend() {
               </Button>
               <Button onClick={handleAdminDelete} disabled={actionLoading} className="flex-1 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl">
                 Delete
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showRemoveFriendModal && (
+        <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in px-4">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-3xl p-8 max-w-sm w-full shadow-2xl animate-in zoom-in-95">
+            <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-4 border border-red-500/20">
+              <UserMinus className="w-8 h-8 text-red-500" />
+            </div>
+            <h3 className="text-2xl font-black text-slate-900 dark:text-white text-center mb-2">Remove friend?</h3>
+            <p className="text-slate-500 dark:text-slate-400 text-center mb-8 font-medium text-sm">
+              You will no longer be friends with <span className="text-yellow-500 font-bold uppercase">{profile.alias}</span>. You can send a new request later.
+            </p>
+            <div className="flex gap-3">
+              <Button onClick={() => setShowRemoveFriendModal(false)} variant="outline" className="flex-1 border-slate-300 dark:border-slate-700 rounded-xl">
+                Cancel
+              </Button>
+              <Button onClick={handleRemoveFriend} disabled={actionLoading} className="flex-1 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl">
+                Remove
               </Button>
             </div>
           </div>
@@ -262,12 +312,20 @@ export default function ProfileFriend() {
             </div>
             <div className="flex gap-3">
               {isFriend ? (
-                <Button onClick={handleRemoveFriend} disabled={actionLoading} variant="outline" className="h-12 rounded-xl border-red-500/50 bg-red-500/10 hover:bg-red-500 hover:text-white text-red-500 transition-all font-semibold">
+                <Button onClick={() => setShowRemoveFriendModal(true)} disabled={actionLoading} variant="outline" className="h-12 rounded-xl border-red-500/50 bg-red-500/10 hover:bg-red-500 hover:text-white text-red-500 transition-all font-semibold">
                   <UserMinus className="w-5 h-5 mr-2" /> Remove
+                </Button>
+              ) : hasSentRequest ? (
+                <Button disabled variant="outline" className="h-12 rounded-xl border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 font-semibold cursor-not-allowed">
+                  <Clock className="w-5 h-5 mr-2" /> Request sent
+                </Button>
+              ) : hasIncomingRequest ? (
+                <Button onClick={handleAcceptRequest} disabled={actionLoading} className="h-12 rounded-xl bg-green-600 hover:bg-green-500 text-white font-bold shadow-lg transition-all">
+                  <CheckCircle2 className="w-5 h-5 mr-2" /> Accept request
                 </Button>
               ) : (
                 <Button onClick={handleSendRequest} disabled={actionLoading} className="h-12 rounded-xl bg-yellow-600 hover:bg-yellow-500 text-black font-bold shadow-lg shadow-yellow-900/20 transition-all">
-                  <UserPlus className="w-5 h-5 mr-2" /> Add Friend
+                  <UserPlus className="w-5 h-5 mr-2" /> Add
                 </Button>
               )}
               {isAdmin && (

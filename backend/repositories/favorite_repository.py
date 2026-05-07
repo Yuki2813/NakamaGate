@@ -62,18 +62,22 @@ def delete_user_favorite(id_user: int, media: Mediatype, idapi: int, session: Se
     return True
 
 
-def get_user_favorites_count(id_user: int, session: Session) -> int:
+def get_user_favorites_count(id_user: int, session: Session, status: str | None = None) -> int:
     statement = select(func.count()).select_from(UserFavorite).where(UserFavorite.user_id == id_user)
+    if status is not None:
+        statement = statement.where(UserFavorite.status == status)
     return session.exec(statement).one()
 
 
-def get_user_favorites(id_user: int, session: Session, offset: int = 0, limit: int | None = None):
+def get_user_favorites(id_user: int, session: Session, offset: int = 0, limit: int | None = None, status: str | None = None):
     statement = (
         select(UserFavorite, Favorite)
         .join(Favorite, UserFavorite.favorite_id == Favorite.id)
         .where(UserFavorite.user_id == id_user)
-        .offset(offset)
     )
+    if status is not None:
+        statement = statement.where(UserFavorite.status == status)
+    statement = statement.offset(offset)
     if limit is not None:
         statement = statement.limit(limit)
     return session.exec(statement).all()

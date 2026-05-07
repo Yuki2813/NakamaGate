@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Eye, EyeOff, Mail, Lock } from 'lucide-react';
 import { GoogleLogin } from '@react-oauth/google';
 import { useAuth } from '../context/AuthContext';
+import GoogleOnboardingModal from '../components/GoogleOnboardingModal';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -13,6 +14,7 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [onboarding, setOnboarding] = useState<{ token: string; email: string; suggestedAlias: string } | null>(null);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,8 +35,17 @@ export default function Login() {
     setError('');
     setLoading(true);
     try {
-      await loginWithGoogle(credentialResponse.credential);
-      navigate('/home');
+      const result = await loginWithGoogle(credentialResponse.credential);
+      if (result.status === 'existing') {
+        navigate('/home');
+      } else {
+        setOnboarding({
+          token: credentialResponse.credential,
+          email: result.email ?? '',
+          suggestedAlias: result.suggested_alias ?? '',
+        });
+        setLoading(false);
+      }
     } catch {
       setError('Could not sign in with Google.');
       setLoading(false);
@@ -43,6 +54,19 @@ export default function Login() {
 
   return (
     <main className="min-h-screen flex items-center justify-center bg-[#020617] relative px-4 transition-colors duration-500 overflow-hidden">
+
+      {onboarding && (
+        <GoogleOnboardingModal
+          googleToken={onboarding.token}
+          email={onboarding.email}
+          suggestedAlias={onboarding.suggestedAlias}
+          onSuccess={() => {
+            setOnboarding(null);
+            navigate('/home');
+          }}
+          onCancel={() => setOnboarding(null)}
+        />
+      )}
 
       <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
         <div className="w-[800px] h-[800px] bg-purple-600/10 rounded-full blur-[120px] absolute -top-40 -left-40"></div>

@@ -10,12 +10,19 @@ interface User {
   is_adult: boolean
 }
 
+interface GoogleCheckResult {
+  status: 'existing' | 'new'
+  email?: string
+  suggested_alias?: string
+}
+
 interface AuthContextType {
   user: User | null
   isAuthenticated: boolean
   loading: boolean
   login: (email: string, password: string) => Promise<void>
-  loginWithGoogle: (credential: string) => Promise<void>
+  loginWithGoogle: (credential: string) => Promise<GoogleCheckResult>
+  completeGoogleSignup: (googleToken: string, alias: string, isAdult: boolean, acceptTerms: boolean) => Promise<void>
   register: (email: string, username: string, password: string) => Promise<void>
   logout: () => void
 }
@@ -64,9 +71,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }
 
-  const loginWithGoogle = async (credential: string) => {
+  const loginWithGoogle = async (credential: string): Promise<GoogleCheckResult> => {
+    const response = await apiClient.post('/auth/google', { token: credential })
+    if (response.data.status === 'existing') {
+      try {
+        localStorage.setItem('token', response.data.access_token)
+        await fetchUser()
+      } catch (error) {
+        localStorage.removeItem('token')
+        setUser(null)
+        throw error
+      }
+      return { status: 'existing' }
+    }
+    return {
+      status: 'new',
+      email: response.data.email,
+      suggested_alias: response.data.suggested_alias,
+    }
+  }
+
+  const completeGoogleSignup = async (
+    googleToken: string,
+    alias: string,
+    isAdult: boolean,
+    acceptTerms: boolean,
+  ) => {
     try {
-      const response = await apiClient.post('/auth/google', { token: credential })
+      const response = await apiClient.post('/auth/google/complete', {
+        google_token: googleToken,
+        alias,
+        is_adult: isAdult,
+        accept_terms: acceptTerms,
+      })
       localStorage.setItem('token', response.data.access_token)
       await fetchUser()
     } catch (error) {
@@ -101,6 +138,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         loading,
         login,
         loginWithGoogle,
+        completeGoogleSignup,
         register,
         logout,
       }}

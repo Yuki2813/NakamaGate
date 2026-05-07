@@ -70,7 +70,7 @@ export default function Home() {
         setHeroBanner(data.trending_anime[0]);
         formattedSections.push({
           section_title: "Top 10 Anime of the Day",
-          items: data.trending_anime.slice(1, 10)
+          items: data.trending_anime.slice(0, 10)
         });
       }
 
@@ -354,7 +354,7 @@ export default function Home() {
                                 letterSpacing: '-0.08em',
                               }}
                             >
-                              {itemIdx + (section.section_title.includes("Anime") ? 2 : 1)}
+                              {itemIdx + 1}
                             </span>
 
                             <div className="relative w-[72%] sm:w-[75%]" style={{ zIndex: 2 }}>

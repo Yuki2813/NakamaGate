@@ -110,13 +110,14 @@ async def get_user_reviews(
 async def get_media_reviews(
     media_id: int,
     media_type: MediaType = Query(..., description="ANIME o MANGA"),
+    current_user: int = Depends(get_current_user_id),
     session: Session = Depends(get_db)
 ):
 
     reviews = get_reviews_by_media_service(
-        id_api=media_id, 
-        media_type=media_type, 
+        id_api=media_id,
+        media_type=media_type,
         session=session
     )
-    
+
     return reviews

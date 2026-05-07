@@ -2,7 +2,7 @@ import os
 from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi_cache import FastAPICache
@@ -64,6 +64,22 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# 5b. Bloquear caché de navegador en endpoints específicos por usuario.
+# El decorador @cache de fastapi-cache añade Cache-Control: max-age=...,
+# que provoca que el navegador sirva la misma respuesta para distintos usuarios.
+# Este middleware corre DESPUÉS del decorador y sobreescribe el header
+# para que la caché viva solo en el servidor.
+NO_BROWSER_CACHE_PREFIXES = ("/content/home", "/favorites/stats")
+
+@app.middleware("http")
+async def disable_browser_cache_for_user_endpoints(request: Request, call_next):
+    response = await call_next(request)
+    if any(request.url.path.startswith(p) for p in NO_BROWSER_CACHE_PREFIXES):
+        response.headers["Cache-Control"] = "no-store"
+    return response
+
 
 # 6. Incluir Rutas
 app.include_router(auth_router.router)

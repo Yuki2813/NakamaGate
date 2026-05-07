@@ -61,6 +61,7 @@ export default function MediaDetail() {
   const { user } = useAuth();
 
   const [isFavorite,    setIsFavorite]    = useState(false);
+  const [favoriteStatus, setFavoriteStatus] = useState<'watching' | 'completed' | 'pending'>('pending');
   const [statusLoading, setStatusLoading] = useState(false);
 
   const [reviewScore,      setReviewScore]      = useState(3);
@@ -109,6 +110,9 @@ export default function MediaDetail() {
         }
         if (favRes.status === 'fulfilled') {
           setIsFavorite(favRes.value.data.is_favorite);
+          if (favRes.value.data.status) {
+            setFavoriteStatus(favRes.value.data.status);
+          }
         }
       } catch (err: any) {
         if (err.response?.status === 403) {
@@ -129,14 +133,32 @@ export default function MediaDetail() {
       if (isFavorite) {
         await apiClient.delete(`/favorites/${id}?media_type=${mediaType}`);
         setIsFavorite(false);
+        setFavoriteStatus('pending');
         showToast('Removed from favorites.');
       } else {
         await apiClient.post('/favorites/', { media_id: id, media_type: mediaType });
         setIsFavorite(true);
+        setFavoriteStatus('pending');
         showToast('Added to favorites!');
       }
     } catch {
       showToast('Could not update favorites.', 'err');
+    } finally {
+      setStatusLoading(false);
+    }
+  };
+
+  const changeStatus = async (newStatus: 'watching' | 'completed' | 'pending') => {
+    if (statusLoading || newStatus === favoriteStatus) return;
+    const previous = favoriteStatus;
+    setFavoriteStatus(newStatus);
+    setStatusLoading(true);
+    try {
+      await apiClient.put(`/favorites/${id}/status`, { status: newStatus });
+      showToast('Status updated.');
+    } catch {
+      setFavoriteStatus(previous);
+      showToast('Could not update status.', 'err');
     } finally {
       setStatusLoading(false);
     }
@@ -309,7 +331,7 @@ export default function MediaDetail() {
               </div>
             </div>
 
-            <div className="w-36 sm:w-44 md:w-56">
+            <div className="w-36 sm:w-44 md:w-56 space-y-2">
               <button
                 onClick={toggleFavorite}
                 disabled={statusLoading}
@@ -322,6 +344,20 @@ export default function MediaDetail() {
                 <Heart className={`w-4 h-4 transition-transform group-hover:scale-110 ${isFavorite ? 'fill-current' : ''}`} />
                 {isFavorite ? 'In Favorites' : 'Add'}
               </button>
+
+              {isFavorite && (
+                <select
+                  value={favoriteStatus}
+                  onChange={(e) => changeStatus(e.target.value as 'watching' | 'completed' | 'pending')}
+                  disabled={statusLoading}
+                  aria-label="Change status"
+                  className="w-full px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold uppercase tracking-wider hover:border-yellow-500/50 focus:outline-none focus:ring-1 focus:ring-yellow-500/30 cursor-pointer disabled:opacity-50"
+                >
+                  <option value="watching">Watching</option>
+                  <option value="completed">Completed</option>
+                  <option value="pending">Pending</option>
+                </select>
+              )}
             </div>
           </div>
 

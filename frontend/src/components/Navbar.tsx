@@ -58,14 +58,19 @@ export default function Navbar() {
       setSearchError(null);
       return;
     }
+    const controller = new AbortController();
     const delayDebounceFn = setTimeout(async () => {
       setIsSearching(true);
       setShowDropdown(true);
       setSearchError(null);
       try {
-        const res = await apiClient.get('/content/search', { params: { search_text: query, media_type: mediaType.toLowerCase() } });
+        const res = await apiClient.get('/content/search', {
+          params: { search_text: query, media_type: mediaType.toLowerCase() },
+          signal: controller.signal,
+        });
         setResults(res.data.items || res.data);
       } catch (error: any) {
+        if (error.code === 'ERR_CANCELED' || error.name === 'CanceledError') return;
         if (error.response?.data?.detail) {
           setSearchError(error.response.data.detail);
         } else {
@@ -73,10 +78,13 @@ export default function Navbar() {
         }
         setResults([]);
       } finally {
-        setIsSearching(false);
+        if (!controller.signal.aborted) setIsSearching(false);
       }
-    }, 300);
-    return () => clearTimeout(delayDebounceFn);
+    }, 500);
+    return () => {
+      clearTimeout(delayDebounceFn);
+      controller.abort();
+    };
   }, [query, mediaType]);
 
   const handleLogout = () => {
@@ -225,7 +233,7 @@ export default function Navbar() {
             <Link to="/community">
               <Button variant="ghost" className="h-11 px-4 rounded-xl text-slate-600 dark:text-slate-300 hover:text-yellow-500 dark:hover:text-yellow-400 hover:bg-yellow-500/10 font-bold transition-all flex items-center gap-2">
                 <Users className="w-5 h-5" />
-                Guild
+                Friends
               </Button>
             </Link>
           </div>

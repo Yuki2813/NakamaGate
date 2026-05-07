@@ -2,10 +2,12 @@ import cloudinary
 import cloudinary.uploader
 from fastapi import UploadFile, HTTPException, status
 from sqlmodel import Session
-from backend.repositories.friendship_repository import accept_friend_request, get_friends, get_pending_requests, remove_friendship, send_friend_request
+from backend.repositories.favorite_repository import delete_user_favorite, get_user_favorites as get_user_favorites_repo
+from backend.repositories.friendship_repository import accept_friend_request, get_friends, get_pending_requests, get_sent_pending_requests, remove_friendship, send_friend_request
 from backend.repositories.user_repository import check_id_exist, delete_user, get_user_by_id, get_users_by_ids, search_users_repo, update_user_adult, update_user_alias, update_user_avatar
 from backend.services.auth_service import create_access_token
-from backend.services.interacction_service import get_favorite_list
+from backend.services.content_service import SAFE_GENRES
+from backend.services.interacction_service import _fetch_media_in_chunks, get_favorite_list, invalidate_home_cache, invalidate_stats_cache
 
 # ==========================================
 # GESTIÓN DE PERFIL
@@ -98,11 +100,65 @@ def delete_account(user_id: int, session: Session):
     return {"message": "Account deleted successfully"}
 
 
-def update_adult_service(user_id: int, is_adult: bool, session: Session):
+async def update_adult_service(user_id: int, is_adult: bool, session: Session):
+    user = get_user_by_id(id=user_id, session=session)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    preference_changed = user.isAdult != is_adult
+    removed_count = 0
+
+    # Si el usuario está desactivando contenido adulto, limpiamos sus favoritos no permitidos
+    if user.isAdult and not is_adult:
+        favorite_tuples = get_user_favorites_repo(id_user=user_id, session=session)
+
+        anime_ids = []
+        manga_ids = []
+        for _, fav_data in favorite_tuples:
+            if fav_data.media_type.value == "anime":
+                anime_ids.append(fav_data.id_api)
+            else:
+                manga_ids.append(fav_data.id_api)
+
+        media_dict = {}
+        if anime_ids:
+            anime_results = await _fetch_media_in_chunks(anime_ids, "ANIME")
+            for item in anime_results:
+                media_dict[(item["id"], "anime")] = item
+        if manga_ids:
+            manga_results = await _fetch_media_in_chunks(manga_ids, "MANGA")
+            for item in manga_results:
+                media_dict[(item["id"], "manga")] = item
+
+        safe_set = set(SAFE_GENRES)
+        for _, fav_data in favorite_tuples:
+            media = media_dict.get((fav_data.id_api, fav_data.media_type.value))
+            if not media:
+                continue
+            genres = media.get("genres") or []
+            is_adult_content = media.get("is_adult") is True or any(g not in safe_set for g in genres)
+            if is_adult_content:
+                deleted = delete_user_favorite(
+                    id_user=user_id,
+                    media=fav_data.media_type,
+                    idapi=fav_data.id_api,
+                    session=session
+                )
+                if deleted:
+                    removed_count += 1
+
+        if removed_count > 0:
+            await invalidate_stats_cache(user_id)
+
     updated = update_user_adult(user_id=user_id, is_adult=is_adult, session=session)
     if not updated:
         raise HTTPException(status_code=404, detail="User not found")
-    return {"message": "Content preference updated", "is_adult": is_adult}
+
+    # Si la preferencia cambió, las recomendaciones del home dependen de ella → invalidar
+    if preference_changed:
+        await invalidate_home_cache(user_id)
+
+    return {"message": "Content preference updated", "is_adult": is_adult, "removed_favorites": removed_count}
     
 # ==========================================
 # SISTEMA DE AMIGOS
@@ -142,6 +198,7 @@ def remove_friend(user_id_a: int, user_id_b: int, session: Session):
 def get_user_social_data(user_id: int, session: Session):
     raw_friends = get_friends(user_id=user_id, session=session)
     raw_pending = get_pending_requests(user_id=user_id, session=session)
+    raw_sent = get_sent_pending_requests(user_id=user_id, session=session)
 
     # Recoge IDs únicos de amigos (el amigo puede ser requester o receiver)
     friend_ids_set = set()
@@ -151,13 +208,18 @@ def get_user_social_data(user_id: int, session: Session):
         else:
             friend_ids_set.add(rel.requester_id)
 
-    # Recoge IDs de quien envió solicitud pendiente
+    # Recoge IDs de quien envió solicitud pendiente (otros me han mandado solicitud)
     pending_ids_set = set()
     for rel in raw_pending:
         pending_ids_set.add(rel.requester_id)
 
+    # Recoge IDs a quien yo he mandado solicitud y aún está pendiente
+    sent_ids_set = set()
+    for rel in raw_sent:
+        sent_ids_set.add(rel.receiver_id)
+
     # Una sola query para obtener todos los usuarios necesarios
-    all_ids = list(friend_ids_set) + list(pending_ids_set)
+    all_ids = list(friend_ids_set) + list(pending_ids_set) + list(sent_ids_set)
     users_list = get_users_by_ids(all_ids, session)
 
     # Diccionario para buscar por ID en O(1)
@@ -172,14 +234,21 @@ def get_user_social_data(user_id: int, session: Session):
             u = users_map[fid]
             formatted_friends.append({"id": u.id, "alias": u.alias, "picture": u.picture})
 
-    # Formatea lista de solicitudes pendientes
+    # Formatea lista de solicitudes pendientes recibidas
     formatted_pending = []
     for pid in pending_ids_set:
         if pid in users_map:
             u = users_map[pid]
             formatted_pending.append({"id": u.id, "alias": u.alias, "picture": u.picture})
 
-    return {"friends": formatted_friends, "pending": formatted_pending}
+    # Formatea lista de solicitudes pendientes enviadas
+    formatted_sent = []
+    for sid in sent_ids_set:
+        if sid in users_map:
+            u = users_map[sid]
+            formatted_sent.append({"id": u.id, "alias": u.alias, "picture": u.picture})
+
+    return {"friends": formatted_friends, "pending": formatted_pending, "sent_pending": formatted_sent}
 
 async def get_user_favorites(target_user_id: int, session: Session):
     return await get_favorite_list(user_id=target_user_id, session=session)

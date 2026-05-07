@@ -7,7 +7,7 @@ from pydantic import BaseModel, EmailStr, Field
 from backend.database import get_db
 from backend.limiter import limiter
 from backend.security import get_current_user_id, get_current_admin_id
-from backend.services.auth_service import get_user_by_email_service, get_user_by_id_service, process_google_login, register_user, login_user
+from backend.services.auth_service import check_google_user, complete_google_signup, get_user_by_email_service, get_user_by_id_service, register_user, login_user
 from backend.services.user_service import delete_account, search_users_service, update_adult_service, update_alias, update_avatar
 
 router = APIRouter(
@@ -118,6 +118,7 @@ async def admin_delete_account(
 @router.get("/users/{target_user_id}", summary="Obtener perfil público de un usuario")
 async def get_public_profile(
     target_user_id: int,
+    current_user: int = Depends(get_current_user_id),
     session: Session = Depends(get_db)
 ):
     user = get_user_by_id_service(id_user=target_user_id, session=session)
@@ -150,12 +151,29 @@ async def change_adult_preference(
     user_id: int = Depends(get_current_user_id),
     session: Session = Depends(get_db)
 ):
-    return update_adult_service(user_id=user_id, is_adult=data.is_adult, session=session)
+    return await update_adult_service(user_id=user_id, is_adult=data.is_adult, session=session)
 
 class GoogleTokenRequest(BaseModel):
     token: str
 
+class GoogleCompleteRequest(BaseModel):
+    google_token: str
+    alias: str = Field(..., min_length=3, max_length=20)
+    is_adult: bool
+    accept_terms: bool
+
 @router.post("/google")
 @limiter.limit("10/minute")
 async def google_auth(request: Request, data: GoogleTokenRequest, session: Session = Depends(get_db)):
-    return process_google_login(google_token=data.token, session=session)
+    return check_google_user(google_token=data.token, session=session)
+
+@router.post("/google/complete")
+@limiter.limit("5/minute")
+async def google_signup_complete(request: Request, data: GoogleCompleteRequest, session: Session = Depends(get_db)):
+    return complete_google_signup(
+        google_token=data.google_token,
+        alias=data.alias,
+        is_adult=data.is_adult,
+        accept_terms=data.accept_terms,
+        session=session
+    )

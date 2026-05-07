@@ -109,10 +109,10 @@ def get_user_by_email_service(email: str, session: Session):
     return user
 
 
-def process_google_login(google_token: str, session: Session):
+def _validate_google_token(google_token: str) -> dict:
+    """Valida el ID token de Google contra el endpoint tokeninfo y devuelve el payload."""
     google_client_id = os.getenv("GOOGLE_CLIENT_ID")
 
-    # Validate the ID token via Google's tokeninfo endpoint
     resp = requests.get(
         f"https://oauth2.googleapis.com/tokeninfo?id_token={google_token}",
         timeout=10
@@ -129,39 +129,79 @@ def process_google_login(google_token: str, session: Session):
     if idinfo.get("email_verified") != "true":
         raise HTTPException(status_code=401, detail="Google account email not verified")
 
-    email = idinfo.get("email")
-    name = idinfo.get("name")
-
-    if not email:
+    if not idinfo.get("email"):
         raise HTTPException(status_code=400, detail="Google did not provide a valid email")
 
-    # 2. TRAMPA 1 CORREGIDA: Usamos el repo directo. Si no existe, devuelve None (no da error).
+    return idinfo
+
+
+def _build_token_response(user) -> dict:
+    """Construye el access_token a partir de un usuario."""
+    token_data = {
+        "sub": user.email,
+        "user_id": user.id,
+        "alias": user.alias,
+        "is_adult": user.isAdult,
+        "rol": user.rol
+    }
+    access_token = create_access_token(data=token_data)
+    return {"access_token": access_token, "token_type": "bearer"}
+
+
+def check_google_user(google_token: str, session: Session):
+    """
+    Primer paso del login con Google.
+    Si el email existe, devuelve un access_token.
+    Si no existe, devuelve datos para que el frontend muestre el formulario de onboarding.
+    No crea ningún usuario.
+    """
+    idinfo = _validate_google_token(google_token)
+    email = idinfo.get("email")
+    name = idinfo.get("name", "")
+
     user = get_user_by_email(email=email, session=session)
 
-    # 3. Registro Automático
-    if not user:
-        # Generamos clave segura y la encriptamos
-        random_password = secrets.token_urlsafe(32)
-        hashed_pw = get_password_hash(random_password)
-        
-        # TRAMPA 2 CORREGIDA: Usamos 'createUser' directo del repo y lo asignamos a 'user'
-        user = createUser(
-            email=email,
-            alias=name,
-            password=hashed_pw,
-            is_adult=False,  # <--- NUESTRO MODO SEGURO (Filtro activado por defecto)
-            session=session
-        )
+    if user:
+        response = _build_token_response(user)
+        response["status"] = "existing"
+        return response
 
-    # 4. TRAMPA 3 CORREGIDA: Generamos el Token IDÉNTICO al de tu login normal
-    token_data = {
-        "sub": user.email,         
-        "user_id": user.id,        
-        "alias": user.alias,       
-        "is_adult": user.isAdult,
-        "rol": user.rol  
+    return {
+        "status": "new",
+        "email": email,
+        "suggested_alias": name
     }
 
-    access_token = create_access_token(data=token_data)
 
-    return {"access_token": access_token, "token_type": "bearer"}
+def complete_google_signup(google_token: str, alias: str, is_adult: bool, accept_terms: bool, session: Session):
+    """
+    Segundo paso del login con Google: el usuario ha rellenado el onboarding.
+    Crea el usuario con los datos elegidos y devuelve el access_token.
+    """
+    if not accept_terms:
+        raise HTTPException(status_code=400, detail="You must accept the terms of service")
+
+    if len(alias) < 3 or len(alias) > 20:
+        raise HTTPException(status_code=400, detail="Alias must be between 3 and 20 characters")
+
+    idinfo = _validate_google_token(google_token)
+    email = idinfo.get("email")
+
+    if get_user_by_email(email=email, session=session):
+        raise HTTPException(status_code=400, detail="This Google account is already registered")
+
+    if check_alias_exist(alias=alias, session=session):
+        raise HTTPException(status_code=400, detail="This alias is already taken")
+
+    random_password = secrets.token_urlsafe(32)
+    hashed_pw = get_password_hash(random_password)
+
+    user = createUser(
+        email=email,
+        alias=alias,
+        password=hashed_pw,
+        is_adult=is_adult,
+        session=session
+    )
+
+    return _build_token_response(user)

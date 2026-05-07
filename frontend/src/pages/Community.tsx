@@ -39,6 +39,8 @@ export default function Community() {
       const response = await apiClient.get('/friends/social-data');
       setFriends(response.data.friends || []);
       setRequests(response.data.pending || []);
+      const sentList = response.data.sent_pending || [];
+      setSentRequests(new Set(sentList.map((u: any) => u.id)));
     } catch (error) {
       console.error(error);
     } finally {
@@ -62,18 +64,18 @@ export default function Community() {
     try {
       await apiClient.post(`/friends/request/${userId}`);
       setSentRequests(prev => new Set(prev).add(userId));
-      showNotification('success', 'Recruitment request sent!');
+      showNotification('success', 'Friend request sent!');
     } catch (error: any) {
       const backendMessage = error.response?.data?.detail;
       if (backendMessage === "Ya son amigos" || backendMessage === "Ya existe la amistad") {
-        showNotification('error', 'This hunter already belongs to your team!');
+        showNotification('error', 'You are already friends with this user.');
       } else if (backendMessage === "Ya hay una solicitud pendiente") {
         setSentRequests(prev => new Set(prev).add(userId));
-        showNotification('error', 'Be patient, you already sent them an invitation.');
+        showNotification('error', 'You already have a pending request with this user.');
       } else if (backendMessage === "No te puedes enviar solicitud a ti mismo") {
-        showNotification('error', "You can't recruit yourself, lone wolf.");
+        showNotification('error', "You can't send a friend request to yourself.");
       } else {
-        showNotification('error', backendMessage || 'The hunter is not available.');
+        showNotification('error', backendMessage || 'Could not send the request.');
       }
     }
   };
@@ -82,7 +84,7 @@ export default function Community() {
     try {
       await apiClient.put(`/friends/accept/${userId}`);
       fetchSocialData();
-      showNotification('success', 'New ally on your team!');
+      showNotification('success', 'New friend added!');
     } catch (error: any) {
       showNotification('error', error.response?.data?.detail || 'The pact failed.');
     }
@@ -102,15 +104,15 @@ export default function Community() {
     try {
       await apiClient.delete(`/friends/remove/${confirmModal.userId}`);
       fetchSocialData();
-      showNotification('success', 'Alliance dissolved successfully.');
+      showNotification('success', 'Friend removed.');
     } catch (error: any) {
-      showNotification('error', 'Could not dissolve the alliance.');
+      showNotification('error', 'Could not remove the friend.');
     } finally {
       setConfirmModal({ isOpen: false, userId: null, alias: '' });
     }
   };
 
-  if (loading) return <Loader text="Loading Guild..." />;
+  if (loading) return <Loader text="Loading Friends..." />;
 
   return (
     <main className="min-h-screen bg-slate-50 dark:bg-[#020617] text-slate-800 dark:text-slate-200 pb-20 relative overflow-hidden">
@@ -161,10 +163,10 @@ export default function Community() {
             </Badge>
           </div>
           <h1 className="text-4xl sm:text-5xl md:text-6xl font-black text-slate-900 dark:text-white tracking-tighter italic uppercase leading-none">
-            Nakama <span className="text-yellow-500">Guild</span>
+            Nakama <span className="text-yellow-500">Friends</span>
           </h1>
           <p className="mt-3 text-slate-500 dark:text-slate-400 text-sm font-medium max-w-md">
-            Find allies, manage requests and forge your trusted team.
+            Find users, manage requests and connect with your friends.
           </p>
         </header>
 
@@ -176,7 +178,7 @@ export default function Community() {
               <TabsTrigger value="search" className="flex-1 lg:w-full justify-center lg:justify-start py-3 px-2 sm:py-3.5 sm:px-4 rounded-xl font-black text-[10px] sm:text-xs uppercase tracking-wider data-[state=active]:bg-yellow-500 data-[state=active]:text-black text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-all gap-2">
                 <Search className="w-4 h-4 shrink-0" />
                 <span className="sm:hidden">Search</span>
-                <span className="hidden sm:inline">Search Hunters</span>
+                <span className="hidden sm:inline">Search Users</span>
               </TabsTrigger>
 
               <TabsTrigger value="requests" className="flex-1 lg:w-full justify-center lg:justify-start py-3 px-2 sm:py-3.5 sm:px-4 rounded-xl font-black text-[10px] sm:text-xs uppercase tracking-wider data-[state=active]:bg-yellow-500 data-[state=active]:text-black text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-all flex items-center gap-2">
@@ -191,8 +193,8 @@ export default function Community() {
 
               <TabsTrigger value="friends" className="flex-1 lg:w-full justify-center lg:justify-start py-3 px-2 sm:py-3.5 sm:px-4 rounded-xl font-black text-[10px] sm:text-xs uppercase tracking-wider data-[state=active]:bg-yellow-500 data-[state=active]:text-black text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-all gap-2">
                 <Users className="w-4 h-4 shrink-0" />
-                <span className="sm:hidden">Team</span>
-                <span className="hidden sm:inline">My Team</span>
+                <span className="sm:hidden">Friends</span>
+                <span className="hidden sm:inline">My Friends</span>
                 {friends.length > 0 && (
                   <span className="ml-auto text-[10px] font-black text-slate-400 dark:text-slate-600">{friends.length}</span>
                 )}
@@ -204,7 +206,7 @@ export default function Community() {
               <div className="p-5 rounded-2xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
                 <ShieldCheck className="w-7 h-7 text-yellow-500/60 mb-3" />
                 <h4 className="text-slate-900 dark:text-white font-bold text-sm mb-1">Safe Zone</h4>
-                <p className="text-slate-500 text-xs leading-relaxed">Recruit wisely. A good team makes all the difference in every mission.</p>
+                <p className="text-slate-500 text-xs leading-relaxed">Connect with users you trust. Quality matters more than quantity.</p>
               </div>
               {(sentRequests.size > 0) && (
                 <div className="p-4 rounded-2xl bg-yellow-500/5 border border-yellow-500/20">
@@ -256,7 +258,7 @@ export default function Community() {
                           <p className="font-black text-slate-900 dark:text-white uppercase tracking-tight truncate">{user.alias}</p>
                           {isFriend && (
                             <span className="inline-flex items-center gap-1 text-[10px] font-bold text-yellow-500 uppercase tracking-wider">
-                              <ShieldCheck className="w-3 h-3" /> Already on your team
+                              <ShieldCheck className="w-3 h-3" /> Already your friend
                             </span>
                           )}
                           {hasSent && !isFriend && (
@@ -266,11 +268,11 @@ export default function Community() {
                           )}
                           {hasIncoming && !isFriend && (
                             <span className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-400 uppercase tracking-wider">
-                              <CheckCircle2 className="w-3 h-3" /> Wants to join you
+                              <CheckCircle2 className="w-3 h-3" /> Wants to be your friend
                             </span>
                           )}
                           {!isFriend && !hasSent && !hasIncoming && (
-                            <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">Hunter available</span>
+                            <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">User available</span>
                           )}
                         </div>
 
@@ -290,7 +292,7 @@ export default function Community() {
                             </Button>
                           ) : (
                             <Button onClick={() => sendRequest(user.id)} size="sm" className="rounded-xl bg-yellow-500 hover:bg-yellow-400 text-black font-bold text-xs gap-1.5">
-                              <UserPlus className="w-3.5 h-3.5" /> Recruit
+                              <UserPlus className="w-3.5 h-3.5" /> Add
                             </Button>
                           )}
                         </div>
@@ -323,7 +325,7 @@ export default function Community() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-black text-slate-900 dark:text-white truncate">{user.alias}</p>
-                      <p className="text-[11px] text-yellow-500 font-bold uppercase tracking-wider">Wants to join your team</p>
+                      <p className="text-[11px] text-yellow-500 font-bold uppercase tracking-wider">Wants to be your friend</p>
                     </div>
                     <div className="flex gap-2 shrink-0">
                       <Button onClick={() => acceptRequest(user.id)} size="sm" className="bg-green-600 hover:bg-green-500 text-white font-black rounded-xl px-4 gap-1.5">
@@ -342,8 +344,8 @@ export default function Community() {
               {friends.length === 0 ? (
                 <div className="text-center py-20 bg-white dark:bg-slate-900/30 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800">
                   <Users className="w-10 h-10 text-slate-300 dark:text-slate-700 mx-auto mb-3" />
-                  <p className="text-slate-500 font-bold text-sm">Your team is empty</p>
-                  <p className="text-slate-400 text-xs mt-1">Search for hunters and start recruiting</p>
+                  <p className="text-slate-500 font-bold text-sm">You have no friends yet</p>
+                  <p className="text-slate-400 text-xs mt-1">Search for users to add as friends</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">

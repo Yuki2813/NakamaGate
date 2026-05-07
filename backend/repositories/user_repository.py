@@ -1,4 +1,8 @@
+from sqlalchemy import delete, or_
 from sqlmodel import Session, select
+from backend.models.friendship import Friendship
+from backend.models.review import Review
+from backend.models.userfavorite import UserFavorite
 from backend.models.users import Users
 
 
@@ -37,6 +41,15 @@ def delete_user(id: int, session: Session):
 
     if not user:
         return None
+
+    # Borrar filas dependientes antes del usuario para que no queden huérfanas
+    session.exec(
+        delete(Friendship).where(
+            or_(Friendship.requester_id == id, Friendship.receiver_id == id)
+        )
+    )
+    session.exec(delete(Review).where(Review.id_user == id))
+    session.exec(delete(UserFavorite).where(UserFavorite.user_id == id))
 
     session.delete(user)
     session.commit()

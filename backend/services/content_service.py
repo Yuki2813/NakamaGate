@@ -13,9 +13,10 @@ SAFE_GENRES = [
     "Action", "Adventure", "Comedy", "Fantasy",
     "Mahou Shoujo", "Mecha", "Music", "Mystery",
     "Romance", "Sci-Fi", "Slice of Life", "Sports", "Supernatural",
+    "Drama","Horror", "Psychological", "Thriller"
 ]
 
-ADULT_GENRES = SAFE_GENRES + ["Drama", "Ecchi", "Horror", "Psychological", "Thriller"]
+ADULT_GENRES = SAFE_GENRES + [ "Ecchi" ]
 
 
 # ==========================================
@@ -177,11 +178,11 @@ async def get_directory_service(user_id: int, page: int, media_type: Mediatype, 
     return directory_data
 
 def check_if_favorite(user_id: int, id_api: int, session: Session):
-  
+
     all_favs = get_user_favorites(id_user=user_id, session=session)
-    
+
     for user_fav, fav in all_favs:
         if fav.id_api == id_api:
-            return {"is_favorite": True}
-            
-    return {"is_favorite": False}
+            return {"is_favorite": True, "status": user_fav.status.value}
+
+    return {"is_favorite": False, "status": None}

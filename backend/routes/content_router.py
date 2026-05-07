@@ -1,3 +1,5 @@
+import os
+import jwt
 from fastapi import APIRouter, Depends, Query, Path
 from sqlmodel import Session
 from backend.database import get_db
@@ -12,8 +14,28 @@ router = APIRouter(
 )
 
 
+def _user_id_from_request(request) -> str:
+    """Extrae el user_id del JWT en el header Authorization. Fallback a 'anon' si no hay token."""
+    if request is None:
+        return "anon"
+    auth = request.headers.get("authorization", "")
+    if not auth.startswith("Bearer "):
+        return "anon"
+    try:
+        payload = jwt.decode(
+            auth[7:],
+            os.getenv("SECRET_KEY"),
+            algorithms=[os.getenv("ALGORITHM", "HS256")]
+        )
+        return str(payload.get("user_id", "anon"))
+    except Exception:
+        return "anon"
+
+
 def home_key_builder(func, namespace="", *, request=None, response=None, args=(), kwargs={}):
-    user_id = kwargs.get("user_id", "anon")
+    user_id = kwargs.get("user_id")
+    if user_id is None:
+        user_id = _user_id_from_request(request)
     return f"home:user:{user_id}"
 
 

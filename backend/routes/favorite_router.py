@@ -1,3 +1,5 @@
+import os
+import jwt
 from fastapi import APIRouter, Query
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
@@ -7,7 +9,8 @@ from backend.models.favorite import Mediatype
 from backend.models.userfavorite import status_favorite
 from backend.security import get_current_user_id
 from backend.services.content_service import check_if_favorite
-from backend.services.interacction_service import add_media_to_list, get_favorite_ids_service, get_favorite_list_paginated, get_watching_favorites_service, remove_media_from_list, update_media_status
+from backend.services.interacction_service import add_media_to_list, get_favorite_ids_service, get_favorite_list_paginated, get_favorite_stats_service, get_watching_favorites_service, remove_media_from_list, update_media_status
+from fastapi_cache.decorator import cache
 
 router = APIRouter(
     prefix="/favorites",
@@ -43,7 +46,7 @@ async def remove_favorite(
     session: Session = Depends(get_db)
 ):
 
-    result = remove_media_from_list(id_api=media_id, user_id=user_id, session=session,media_type=media_type)
+    result = await remove_media_from_list(id_api=media_id, user_id=user_id, session=session,media_type=media_type)
     return result
 
 # ==========================================
@@ -53,10 +56,12 @@ async def remove_favorite(
 async def get_my_favorites(
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=50),
+    status: status_favorite | None = Query(None, description="Filter by status: watching, completed, or pending"),
     user_id: int = Depends(get_current_user_id),
     session: Session = Depends(get_db)
 ):
-    return await get_favorite_list_paginated(user_id=user_id, session=session, page=page, limit=limit)
+    status_value = status.value if status is not None else None
+    return await get_favorite_list_paginated(user_id=user_id, session=session, page=page, limit=limit, status=status_value)
 
 # ==========================================
 # 4. IDs DE FAVORITOS (ligero, sin llamada a AniList)
@@ -67,6 +72,43 @@ def get_favorite_ids(
     session: Session = Depends(get_db)
 ):
     return get_favorite_ids_service(user_id=user_id, session=session)
+
+
+# ==========================================
+# 4b. ESTADÍSTICAS DE FAVORITOS (cacheado, invalidado en mutaciones)
+# ==========================================
+def _user_id_from_request(request) -> str:
+    """Extrae el user_id del JWT en el header Authorization. Fallback a 'anon' si no hay token."""
+    if request is None:
+        return "anon"
+    auth = request.headers.get("authorization", "")
+    if not auth.startswith("Bearer "):
+        return "anon"
+    try:
+        payload = jwt.decode(
+            auth[7:],
+            os.getenv("SECRET_KEY"),
+            algorithms=[os.getenv("ALGORITHM", "HS256")]
+        )
+        return str(payload.get("user_id", "anon"))
+    except Exception:
+        return "anon"
+
+
+def stats_key_builder(func, namespace="", *, request=None, response=None, args=(), kwargs={}):
+    user_id = kwargs.get("user_id")
+    if user_id is None:
+        user_id = _user_id_from_request(request)
+    return f"stats:user:{user_id}"
+
+
+@router.get("/stats", summary="Estadísticas de géneros sobre todos los favoritos del usuario")
+@cache(expire=3600, key_builder=stats_key_builder)
+async def get_favorite_stats(
+    user_id: int = Depends(get_current_user_id),
+    session: Session = Depends(get_db)
+):
+    return await get_favorite_stats_service(user_id=user_id, session=session)
 
 
 # ==========================================

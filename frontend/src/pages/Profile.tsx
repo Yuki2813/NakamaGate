@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { apiClient } from '../api/client';
+import { useAuth } from '../context/AuthContext';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -34,13 +35,22 @@ interface UserProfile {
 }
 
 export default function Profile() {
+  const { user } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
   const [favoritesTotal, setFavoritesTotal] = useState(0);
   const [favPage, setFavPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<'all' | 'watching' | 'completed' | 'pending'>('all');
   const [allFavIds, setAllFavIds] = useState<{id_api: number, media_type: string, status: string}[]>([]);
+  const [stats, setStats] = useState<{
+    top_genres: [string, number][];
+    unique_genres_count: number;
+    has_action: boolean;
+    has_romance: boolean;
+    has_mystery: boolean;
+  } | null>(null);
   const [reviewCount, setReviewCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
@@ -71,16 +81,21 @@ export default function Profile() {
       setNewAlias(profileRes.data.alias);
       setIsAdult(profileRes.data.is_adult ?? false);
 
-      const [pagsRes, idsRes, reviewCountRes] = await Promise.all([
-        apiClient.get('/favorites/?page=1&limit=20'),
+      const params = new URLSearchParams({ page: '1', limit: '20' });
+      if (statusFilter !== 'all') params.set('status', statusFilter);
+      const [pagsRes, idsRes, reviewCountRes, statsRes] = await Promise.all([
+        apiClient.get(`/favorites/?${params}`),
         apiClient.get('/favorites/ids'),
-        apiClient.get('/reviews/me/count')
+        apiClient.get('/reviews/me/count'),
+        apiClient.get('/favorites/stats')
       ]);
       setFavorites(pagsRes.data.items ?? []);
       setFavoritesTotal(pagsRes.data.total ?? 0);
       setHasMore(pagsRes.data.has_more ?? false);
+      setFavPage(1);
       setAllFavIds(idsRes.data ?? []);
       setReviewCount(reviewCountRes.data.count ?? 0);
+      setStats(statsRes.data ?? null);
     } catch (err) {
       console.error("Error loading profile:", err);
     } finally {
@@ -93,7 +108,9 @@ export default function Profile() {
     setLoadingMore(true);
     try {
       const nextPage = favPage + 1;
-      const res = await apiClient.get(`/favorites/?page=${nextPage}&limit=20`);
+      const params = new URLSearchParams({ page: String(nextPage), limit: '20' });
+      if (statusFilter !== 'all') params.set('status', statusFilter);
+      const res = await apiClient.get(`/favorites/?${params}`);
       setFavorites(prev => [...prev, ...(res.data.items ?? [])]);
       setHasMore(res.data.has_more ?? false);
       setFavPage(nextPage);
@@ -104,9 +121,30 @@ export default function Profile() {
     }
   };
 
+  const fetchFilteredFavorites = async (filter: 'all' | 'watching' | 'completed' | 'pending') => {
+    try {
+      const params = new URLSearchParams({ page: '1', limit: '20' });
+      if (filter !== 'all') params.set('status', filter);
+      const res = await apiClient.get(`/favorites/?${params}`);
+      setFavorites(res.data.items ?? []);
+      setFavoritesTotal(res.data.total ?? 0);
+      setHasMore(res.data.has_more ?? false);
+      setFavPage(1);
+    } catch (err) {
+      console.error("Filter error:", err);
+    }
+  };
+
+  const handleStatusFilterChange = (filter: 'all' | 'watching' | 'completed' | 'pending') => {
+    if (filter === statusFilter) return;
+    setStatusFilter(filter);
+    setSearchTerm("");
+    fetchFilteredFavorites(filter);
+  };
+
   useEffect(() => {
-    fetchProfileData();
-  }, []);
+    if (user?.id) fetchProfileData();
+  }, [user?.id]);
 
   useEffect(() => {
     if (!searchTerm.trim()) return;
@@ -122,44 +160,35 @@ export default function Profile() {
   }, [favorites, searchTerm]);
 
   const genreStats = useMemo(() => {
-    const counts: { [key: string]: number } = {};
-    favorites.forEach(fav => {
-      fav.media.genres?.forEach(g => {
-        counts[g] = (counts[g] || 0) + 1;
-      });
-    });
-    return Object.entries(counts)
-      .sort(([, a], [, b]) => b - a)
-      .slice(0, 5);
-  }, [favorites]);
+    return stats?.top_genres ?? [];
+  }, [stats]);
 
   const badges = useMemo(() => {
+    const totalCount = allFavIds.length;
     const completedCount = allFavIds.filter(f => f.status === 'completed').length;
     const watchingCount = allFavIds.filter(f => f.status === 'watching').length;
     const pendingCount = allFavIds.filter(f => f.status === 'pending').length;
 
-    const hasAction = favorites.some(f => f.media.genres?.includes('Action'));
-    const hasRomance = favorites.some(f => f.media.genres?.includes('Romance'));
-    const hasMystery = favorites.some(f => f.media.genres?.includes('Mystery') || f.media.genres?.includes('Psychological'));
-
-    const uniqueGenres = new Set();
-    favorites.forEach(f => f.media.genres?.forEach(g => uniqueGenres.add(g)));
+    const hasAction = stats?.has_action ?? false;
+    const hasRomance = stats?.has_romance ?? false;
+    const hasMystery = stats?.has_mystery ?? false;
+    const uniqueGenresCount = stats?.unique_genres_count ?? 0;
 
     return [
-      { id: 1, name: 'Beginner', desc: 'First title added', icon: <Star className="w-4 h-4"/>, active: favoritesTotal > 0 },
-      { id: 2, name: 'Collector', desc: 'More than 10 favorites', icon: <Heart className="w-4 h-4"/>, active: favoritesTotal >= 10 },
-      { id: 3, name: 'Otaku Master', desc: 'More than 50 favorites', icon: <Flame className="w-4 h-4"/>, active: favoritesTotal >= 50 },
-      { id: 4, name: 'Finisher', desc: 'One title completed', icon: <Check className="w-4 h-4"/>, active: completedCount >= 1 },
-      { id: 5, name: 'Pillar', desc: '5 titles completed', icon: <Trophy className="w-4 h-4"/>, active: completedCount >= 5 },
+      { id: 1, name: 'Beginner', desc: 'First title added', icon: <Star className="w-4 h-4"/>, active: totalCount > 0 },
+      { id: 2, name: 'Collector', desc: 'More than 10 favorites', icon: <Heart className="w-4 h-4"/>, active: totalCount >= 10 },
+      { id: 3, name: 'Otaku Master', desc: 'More than 50 favorites', icon: <Flame className="w-4 h-4"/>, active: totalCount >= 50 },
+      { id: 4, name: 'Finisher', desc: 'One title completed', icon: <Check className="w-4 h-4"/>, active: totalCount >= 1 },
+      { id: 5, name: 'Pillar', desc: '5 titles completed', icon: <Trophy className="w-4 h-4"/>, active: totalCount >= 5 },
       { id: 6, name: 'Up to Date', desc: 'Watching 3 titles at once', icon: <PlayCircle className="w-4 h-4"/>, active: watchingCount >= 3 },
       { id: 7, name: 'Warrior', desc: 'Action fan', icon: <Swords className="w-4 h-4"/>, active: hasAction },
       { id: 8, name: 'Romantic', desc: 'Romance fan', icon: <Heart className="w-4 h-4 fill-current"/>, active: hasRomance },
       { id: 9, name: 'Mastermind', desc: 'Mystery/Psychological fan', icon: <Brain className="w-4 h-4"/>, active: hasMystery },
       { id: 10, name: 'Critic', desc: 'Write your first review', icon: <Award className="w-4 h-4"/>, active: false },
       { id: 11, name: 'Procrastinator', desc: 'You have 10 titles in "Pending"', icon: <Clock className="w-4 h-4"/>, active: pendingCount >= 10, isSecret: true, hint: 'Hint: You leave too much for tomorrow...' },
-      { id: 12, name: 'Eclectic', desc: "You've explored 5 different genres", icon: <Sparkles className="w-4 h-4"/>, active: uniqueGenres.size >= 5, isSecret: true, hint: 'Hint: Variety is the spice of life.' },
+      { id: 12, name: 'Eclectic', desc: "You've explored 5 different genres", icon: <Sparkles className="w-4 h-4"/>, active: uniqueGenresCount >= 5, isSecret: true, hint: 'Hint: Variety is the spice of life.' },
     ];
-  }, [favorites, favoritesTotal, allFavIds]);
+  }, [stats, favoritesTotal, allFavIds]);
 
   const handleUpdateAlias = async () => {
     if (!newAlias.trim() || newAlias === profile?.alias) {
@@ -179,6 +208,9 @@ export default function Profile() {
       await apiClient.put(`/favorites/${mediaId}/status`, { status: newStatus });
       setFavorites(prev => prev.map(fav =>
         fav.media.id === mediaId ? { ...fav, status: newStatus } : fav
+      ));
+      setAllFavIds(prev => prev.map(f =>
+        f.id_api === mediaId ? { ...f, status: newStatus } : f
       ));
     } catch (error) {
       console.error("Status change error:", error);
@@ -201,6 +233,12 @@ export default function Profile() {
       setFavoritesTotal(prev => Math.max(0, prev - 1));
       setDeleteModalOpen(false);
       setMediaToDelete(null);
+      try {
+        const statsRes = await apiClient.get('/favorites/stats');
+        setStats(statsRes.data ?? null);
+      } catch {
+        // silent
+      }
     } catch (error) {
       console.error("Delete error:", error);
     }
@@ -210,8 +248,12 @@ export default function Profile() {
     const newValue = !isAdult;
     setSavingAdult(true);
     try {
-      await apiClient.patch('/auth/me/adult', { is_adult: newValue });
+      const res = await apiClient.patch('/auth/me/adult', { is_adult: newValue });
       setIsAdult(newValue);
+      const removed = res.data?.removed_favorites ?? 0;
+      if (removed > 0) {
+        await fetchProfileData();
+      }
     } catch (error) {
       console.error("Preference update error:", error);
     } finally {
@@ -385,7 +427,7 @@ export default function Profile() {
             <h2 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mb-4 text-center">Record</h2>
             <div className="grid grid-cols-2 gap-3">
               <div className="bg-slate-100 dark:bg-slate-950/50 rounded-2xl p-3 text-center border border-slate-200 dark:border-slate-800/50">
-                <p className="text-xl font-black text-slate-900 dark:text-white">{favoritesTotal}</p>
+                <p className="text-xl font-black text-slate-900 dark:text-white">{allFavIds.length}</p>
                 <p className="text-[8px] uppercase text-slate-500 font-bold tracking-widest">Favorites</p>
               </div>
               <div className="bg-slate-100 dark:bg-slate-950/50 rounded-2xl p-3 text-center border border-slate-200 dark:border-slate-800/50">
@@ -422,7 +464,7 @@ export default function Profile() {
                     <span>{genre}</span><span>{count}</span>
                   </div>
                   <div className="w-full h-1.5 bg-slate-200 dark:bg-slate-950 rounded-full overflow-hidden">
-                    <div className="h-full bg-yellow-500" style={{ width: `${(count / favorites.length) * 100}%` }}></div>
+                    <div className="h-full bg-yellow-500" style={{ width: `${allFavIds.length > 0 ? (count / allFavIds.length) * 100 : 0}%` }}></div>
                   </div>
                 </div>
               )) : <p className="text-[10px] text-slate-600 italic text-center">Add titles to see your tastes.</p>}
@@ -473,7 +515,7 @@ export default function Profile() {
               <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight uppercase italic">My Library</h2>
             </div>
 
-            {favoritesTotal > 0 && (
+            {allFavIds.length > 0 && (
               <div className="relative w-full sm:w-64">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
                 <Input
@@ -486,9 +528,36 @@ export default function Profile() {
             )}
           </header>
 
+          {allFavIds.length > 0 && (
+            <div className="flex flex-wrap gap-2 mb-6">
+              {([
+                { key: 'all',       label: 'All',       count: allFavIds.length },
+                { key: 'watching',  label: 'Watching',  count: allFavIds.filter(f => f.status === 'watching').length },
+                { key: 'completed', label: 'Completed', count: allFavIds.filter(f => f.status === 'completed').length },
+                { key: 'pending',   label: 'Pending',   count: allFavIds.filter(f => f.status === 'pending').length },
+              ] as const).map(opt => {
+                const active = statusFilter === opt.key;
+                return (
+                  <button
+                    key={opt.key}
+                    onClick={() => handleStatusFilterChange(opt.key)}
+                    className={`px-3.5 py-1.5 rounded-xl text-[11px] font-bold uppercase tracking-wider border transition-all ${
+                      active
+                        ? 'bg-yellow-500 text-black border-yellow-500'
+                        : 'bg-white dark:bg-slate-900/60 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-yellow-500/50 hover:text-yellow-500'
+                    }`}
+                  >
+                    {opt.label}
+                    <span className={`ml-2 text-[10px] ${active ? 'text-black/60' : 'text-slate-400'}`}>{opt.count}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
           <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
 
-            {favorites.length === 0 ? (
+            {allFavIds.length === 0 ? (
               <div className="col-span-full flex flex-col items-center justify-center py-32 px-6 text-center bg-slate-900/30 border-2 border-dashed border-slate-800 rounded-3xl relative overflow-hidden group backdrop-blur-md">
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-yellow-500/0 group-hover:bg-yellow-500/10 blur-[80px] rounded-full pointer-events-none transition-colors duration-700"></div>
                 <Compass className="w-20 h-20 text-slate-800 mb-6 stroke-[1px] relative z-10" />
@@ -499,6 +568,11 @@ export default function Profile() {
                     Explore
                   </Button>
                 </Link>
+              </div>
+            ) : favorites.length === 0 ? (
+              <div className="col-span-full py-20 text-center text-slate-500 border border-slate-800 border-dashed rounded-3xl bg-slate-900/30 backdrop-blur-sm">
+                <p className="font-semibold text-lg mb-1">Nothing here</p>
+                <p className="text-sm">You have no titles with status &quot;{statusFilter}&quot;.</p>
               </div>
             ) : filteredFavorites.length === 0 ? (
               <div className="col-span-full py-20 text-center text-slate-500 border border-slate-800 border-dashed rounded-3xl bg-slate-900/30 backdrop-blur-sm">
