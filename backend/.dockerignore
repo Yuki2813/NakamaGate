@@ -1,0 +1,29 @@
+# Secretos / entorno local — NUNCA en la imagen
+.env
+.env.local
+*.pem.local
+
+# Entornos virtuales
+.venv/
+venv/
+
+# Cachés Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+
+# Tests (no se necesitan en producción)
+tests/
+
+# IDE / SO
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
