@@ -2,6 +2,7 @@ import secrets
 import requests
 
 from fastapi import HTTPException
+from sqlalchemy.exc import IntegrityError
 
 from sqlmodel import Session
 from passlib.context import CryptContext
@@ -57,13 +58,21 @@ def register_user(email: str, alias: str, password: str, is_adult: bool, session
     if alias_already_exists:
         raise HTTPException(status_code=400, detail="The alias is already in use try to use another alias")
 
-    new_user = createUser(
-        email=email,
-        alias=alias,
-        password=get_password_hash(password=password),
-        is_adult=is_adult,
-        session=session
-    )
+    try:
+        new_user = createUser(
+            email=email,
+            alias=alias,
+            password=get_password_hash(password=password),
+            is_adult=is_adult,
+            session=session
+        )
+    except IntegrityError:
+        # Race: otra petición concurrente registró el mismo email o alias
+        session.rollback()
+        raise HTTPException(
+            status_code=400,
+            detail="This email or alias is already in use, please try another."
+        )
 
     created_user_data = {
         "email": new_user.email,
@@ -196,12 +205,19 @@ def complete_google_signup(google_token: str, alias: str, is_adult: bool, accept
     random_password = secrets.token_urlsafe(32)
     hashed_pw = get_password_hash(random_password)
 
-    user = createUser(
-        email=email,
-        alias=alias,
-        password=hashed_pw,
-        is_adult=is_adult,
-        session=session
-    )
+    try:
+        user = createUser(
+            email=email,
+            alias=alias,
+            password=hashed_pw,
+            is_adult=is_adult,
+            session=session
+        )
+    except IntegrityError:
+        session.rollback()
+        raise HTTPException(
+            status_code=400,
+            detail="This email or alias is already in use, please try another."
+        )
 
     return _build_token_response(user)

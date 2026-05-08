@@ -35,7 +35,7 @@ interface UserProfile {
 }
 
 export default function Profile() {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
   const [favoritesTotal, setFavoritesTotal] = useState(0);
@@ -250,6 +250,7 @@ export default function Profile() {
     try {
       const res = await apiClient.patch('/auth/me/adult', { is_adult: newValue });
       setIsAdult(newValue);
+      await refreshUser();
       const removed = res.data?.removed_favorites ?? 0;
       if (removed > 0) {
         await fetchProfileData();

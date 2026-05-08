@@ -49,6 +49,14 @@ interface UserProfile {
 export default function ProfileFriend() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
+
+  // Si el usuario visita su propio perfil vía /friend/{su_id}, le redirigimos a /profile
+  useEffect(() => {
+    if (id && user?.id && Number(id) === user.id) {
+      navigate('/profile', { replace: true });
+    }
+  }, [id, user?.id, navigate]);
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
@@ -61,7 +69,6 @@ export default function ProfileFriend() {
 
   const [socialData, setSocialData] = useState<SocialData | null>(null);
 
-  const { user } = useAuth();
   const isAdmin = user?.rol === 'admin';
 
   const [loading, setLoading] = useState(true);

@@ -43,19 +43,21 @@ async def get_home_service(user_id: int, session: Session):
 
     posibles_generos = ADULT_GENRES if user.isAdult else SAFE_GENRES
 
-    # Reducimos a 4 carruseles aleatorios para encajar con el nuevo cliente
-    recomendaciones = random.sample(posibles_generos, 4)
+    # Instancia local seeded con la fecha: estable durante todo el día,
+    # safe en concurrencia (no toca el random global)
+    daily_rng = Random(date.today().toordinal())
+
+    # Géneros y páginas también deterministas por día → el "anime del día"
+    # se elegirá sobre un pool estable durante 24h
+    recomendaciones = daily_rng.sample(posibles_generos, 4)
 
     paginas_random = []
     for _ in range(4):
-        paginas_random.append(random.randint(1, 4))
+        paginas_random.append(daily_rng.randint(1, 4))
 
     data = await anilist_client.get_home_data(genres=recomendaciones, pages=paginas_random)
-    
-    # --- LÓGICA GEMA DEL DÍA ---
-    # Instancia local: no toca el random global, safe en concurrencia
-    daily_rng = Random(date.today().toordinal())
 
+    # --- GEMA DEL DÍA ---
     pool_anime = data.get("genre1", {}).get("items", [])
     anime_del_dia = daily_rng.choice(pool_anime) if pool_anime else None
 
@@ -109,10 +111,7 @@ async def search_media_service(user_id: int, search_text: str, media_type: Media
 # ==========================================
 
 async def get_media_details_service(media_id: int, user_id: int, session: Session):
-    try:
-        content = await anilist_client.get_media_details(media_id=media_id)
-    except Exception:
-        raise HTTPException(status_code=404, detail="Media not found")
+    content = await anilist_client.get_media_details(media_id=media_id)
 
     if not content:
         raise HTTPException(status_code=404, detail="No results match your search")

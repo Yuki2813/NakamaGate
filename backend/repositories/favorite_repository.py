@@ -29,7 +29,7 @@ def new_favorite(iduser: int, id_fav: int, mediatype: Mediatype, session: Sessio
         return True
 
 
-def update_status_favorite(iduser: int, idapi: int, status: status_favorite, session: Session):
+def update_status_favorite(iduser: int, idapi: int, status: status_favorite, session: Session) -> bool:
     statement = select(Favorite).where(Favorite.id_api == idapi)
     favorites_with_that_id = session.exec(statement).all()
 
@@ -43,7 +43,7 @@ def update_status_favorite(iduser: int, idapi: int, status: status_favorite, ses
             session.refresh(user_link)
             return True
 
-    return None
+    return False
 
 
 def delete_user_favorite(id_user: int, media: Mediatype, idapi: int, session: Session):

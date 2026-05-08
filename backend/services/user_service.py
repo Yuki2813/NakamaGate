@@ -106,10 +106,20 @@ async def update_adult_service(user_id: int, is_adult: bool, session: Session):
         raise HTTPException(status_code=404, detail="User not found")
 
     preference_changed = user.isAdult != is_adult
-    removed_count = 0
+    was_adult = user.isAdult
 
-    # Si el usuario está desactivando contenido adulto, limpiamos sus favoritos no permitidos
-    if user.isAdult and not is_adult:
+    # Paso 1: actualizar el flag PRIMERO (operación atómica de una fila)
+    # Si la limpieza de favoritos posterior falla, al menos la BD queda consistente con el flag.
+    updated = update_user_adult(user_id=user_id, is_adult=is_adult, session=session)
+    if not updated:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if preference_changed:
+        await invalidate_home_cache(user_id)
+
+    # Paso 2: si el usuario está desactivando contenido adulto, limpiar favoritos no permitidos
+    removed_count = 0
+    if was_adult and not is_adult:
         favorite_tuples = get_user_favorites_repo(id_user=user_id, session=session)
 
         anime_ids = []
@@ -149,14 +159,6 @@ async def update_adult_service(user_id: int, is_adult: bool, session: Session):
 
         if removed_count > 0:
             await invalidate_stats_cache(user_id)
-
-    updated = update_user_adult(user_id=user_id, is_adult=is_adult, session=session)
-    if not updated:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    # Si la preferencia cambió, las recomendaciones del home dependen de ella → invalidar
-    if preference_changed:
-        await invalidate_home_cache(user_id)
 
     return {"message": "Content preference updated", "is_adult": is_adult, "removed_favorites": removed_count}
     

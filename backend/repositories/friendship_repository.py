@@ -1,5 +1,6 @@
 
 
+from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, and_, or_, select
 
 from backend.models.friendship import Friendship, FriendshipStatus
@@ -13,13 +14,17 @@ def send_friend_request(requester_id:int, receiver_id:int ,session:Session):
         )
     )
     friend_request = session.exec(statement).first()
-    if not friend_request:
-        new_friend_request=Friendship(requester_id=requester_id,receiver_id=receiver_id)
+    if friend_request:
+        return False
+    try:
+        new_friend_request = Friendship(requester_id=requester_id, receiver_id=receiver_id)
         session.add(new_friend_request)
         session.commit()
         session.refresh(new_friend_request)
         return True
-    else:
+    except IntegrityError:
+        # Race: otra petición concurrente creó la solicitud entre el SELECT y el INSERT
+        session.rollback()
         return False
 
 def accept_friend_request(requester_id:int, receiver_id:int, session:Session):
