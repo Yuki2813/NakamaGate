@@ -50,11 +50,13 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # 5. Configurar CORS
+# Los orígenes se leen de la env var CORS_ORIGINS (separados por coma).
+# Si no se define, se usan los de desarrollo local por defecto.
+DEFAULT_ORIGINS = "http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174"
 origenes_permitidos = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "http://localhost:5174",
-    "http://127.0.0.1:5174"
+    o.strip().rstrip("/")
+    for o in os.getenv("CORS_ORIGINS", DEFAULT_ORIGINS).split(",")
+    if o.strip()
 ]
 
 app.add_middleware(
