@@ -168,7 +168,10 @@ class AniListClient:
             "sort": [sort], # Aquí usaremos POPULARITY_DESC por defecto
         }
         if genre:
-            variables["genreIn"] = [g.strip() for g in genre.split(",")]
+            genre_list = []
+            for g in genre.split(","):
+                genre_list.append(g.strip())
+            variables["genreIn"] = genre_list
         if status:
             variables["status"] = status.strip().upper()
         async with self._get_fresh_client() as session:

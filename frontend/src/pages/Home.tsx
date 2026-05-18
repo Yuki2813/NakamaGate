@@ -48,6 +48,11 @@ export default function Home() {
     message: string;
   }>({ show: false, type: 'success', message: '' });
 
+  // Pide en paralelo el contenido del home, los IDs de favoritos del
+  // usuario y los que tiene en estado "watching". Con eso monta las
+  // secciones (hero, gemas del día, top 10, continue watching, géneros)
+  // y guarda los IDs en un Set para que el icono de corazón de cada
+  // tarjeta se pinte en O(1) sin recorrer la lista entera.
   const fetchData = async () => {
     setFetchState({ loading: true, error: null });
     try {
@@ -121,6 +126,10 @@ export default function Home() {
     setTimeout(() => setNotification(prev => ({ ...prev, show: false })), 3000);
   };
 
+  // Añade o quita un favorito desde una tarjeta del carrusel. El stop/prevent
+  // evita que el <Link> envolvente navegue a /media/:id al pulsar el corazón.
+  // Tras la llamada al backend actualizamos solo el Set local en vez de hacer
+  // un refetch, para que el corazón cambie al instante.
   const toggleFavorite = async (e: React.MouseEvent, item: MediaItem) => {
     e.preventDefault();
     e.stopPropagation();

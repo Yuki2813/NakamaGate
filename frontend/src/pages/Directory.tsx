@@ -23,6 +23,8 @@ interface MediaItem {
   year: string | number;
 }
 
+const MAX_PAGE = 100;
+
 const STATUS_OPTIONS = [
   { id: "",                  label: "All",      icon: LayoutGrid  },
   { id: "RELEASING",         label: "Airing",   icon: PlayCircle  },
@@ -49,6 +51,11 @@ export default function Directory() {
       .catch(err => console.error("Genres error:", err));
   }, []);
 
+  // Debounce de 400 ms sobre cualquier cambio de filtros (tipo, página,
+  // géneros, estado): mientras el usuario sigue tocando opciones no
+  // disparamos peticiones, solo cuando se queda quieto. Si el servidor
+  // devuelve 0 ítems y no es la primera página, retrocedemos una página
+  // para que no se quede mostrando una rejilla vacía.
   useEffect(() => {
     const delayDebounceFn = setTimeout(async () => {
       setLoading(true);
@@ -83,6 +90,9 @@ export default function Directory() {
     return () => clearTimeout(delayDebounceFn);
   }, [page, mediaType, selectedGenres, selectedStatus]);
 
+  // Marca o desmarca un género en el filtro, con tope de 4 seleccionados
+  // simultáneos. Cualquier cambio en los filtros vuelve a la página 1 para
+  // no quedarte en una página que ya no existe con los filtros nuevos.
   const toggleGenre = (genre: string) => {
     setSelectedGenres(prev => {
       if (prev.includes(genre)) return prev.filter(g => g !== genre);
@@ -95,22 +105,27 @@ export default function Directory() {
   const handleJumpPage = (e: React.FormEvent) => {
     e.preventDefault();
     const targetPage = parseInt(jumpPage);
-    const max = pageInfo?.lastPage ?? 1;
+    const max = Math.min(pageInfo?.lastPage ?? 1, MAX_PAGE);
     if (!isNaN(targetPage) && targetPage >= 1 && targetPage <= max) {
       setPage(targetPage);
       setJumpPage("");
     }
   };
 
+  // Devuelve los números de página visibles en el paginador: hasta 2 antes
+  // de la actual y hasta 2 después. Solo añade las siguientes si la página
+  // actual viene completa (24 items) y la siguiente cabe dentro de
+  // pageInfo.lastPage, para no ofrecer páginas que el backend va a rechazar.
   const getPaginationRange = () => {
     const current = page;
+    const lastPage = Math.min(pageInfo?.lastPage ?? MAX_PAGE, MAX_PAGE);
     const range = [];
     if (current > 2) range.push(current - 2);
     if (current > 1) range.push(current - 1);
     range.push(current);
     if (items.length === 24) {
-      range.push(current + 1);
-      if (pageInfo?.hasNextPage) range.push(current + 2);
+      if (current + 1 <= lastPage) range.push(current + 1);
+      if (pageInfo?.hasNextPage && current + 2 <= lastPage) range.push(current + 2);
     }
     return range;
   };
@@ -320,8 +335,8 @@ export default function Directory() {
               </div>
 
               <Button
-                disabled={items.length < 24}
-                onClick={() => setPage(p => p + 1)}
+                disabled={items.length < 24 || page >= MAX_PAGE || (pageInfo?.lastPage !== undefined && page >= pageInfo.lastPage)}
+                onClick={() => setPage(p => Math.min(p + 1, MAX_PAGE))}
                 className="bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 hover:border-yellow-500 text-slate-800 dark:text-white rounded-xl sm:rounded-2xl w-9 h-9 sm:w-10 sm:h-10 md:w-12 md:h-12 p-0 transition-all disabled:opacity-30"
               >
                 <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />

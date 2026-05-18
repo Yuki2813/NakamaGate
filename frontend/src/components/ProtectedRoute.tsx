@@ -6,6 +6,10 @@ interface ProtectedRouteProps {
   children: React.ReactNode
 }
 
+// Bloquea las rutas privadas. Mientras AuthContext está hidratando el
+// usuario (loading=true) pintamos un spinner en vez de un redirect: si
+// redirigiésemos durante la carga, un refresh con sesión válida nos echaría
+// a /login antes de que /auth/me confirme la sesión.
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   const { isAuthenticated, loading } = useAuth()
 

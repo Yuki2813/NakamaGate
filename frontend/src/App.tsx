@@ -1,12 +1,6 @@
 import { BrowserRouter, Routes, Route, Outlet, useLocation } from 'react-router-dom';
 import { useEffect } from 'react';
-
-function ScrollToTop() {
-  const { pathname } = useLocation();
-  useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
-  return null;
-}
-import { GoogleOAuthProvider } from '@react-oauth/google'; // <-- 1. NUEVO IMPORT
+import { GoogleOAuthProvider } from '@react-oauth/google';
 
 import Welcome from './pages/Welcome';
 import Login from './pages/Login';
@@ -21,6 +15,14 @@ import Directory from './pages/Directory';
 import Community from './pages/Community';
 import TermsOfService from './pages/TermsOfService';
 import { ProtectedRoute } from './components/ProtectedRoute';
+
+// React Router conserva el scroll entre navegaciones; al cambiar de página
+// queremos volver arriba para que el usuario no aterrice a media página.
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
+  return null;
+}
 
 const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
@@ -38,22 +40,22 @@ function LayoutWithNavbar() {
 
 function App() {
   return (
-    // 2. ENVOLVEMOS TODA LA APP CON EL PROVEEDOR DE GOOGLE
     <GoogleOAuthProvider clientId={clientId}>
       <BrowserRouter>
         <ScrollToTop />
         <Routes>
-          {/* Rutas públicas */}
           <Route path="/" element={<Welcome />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
 
-          {/* Rutas privadas sin Navbar */}
+          {/* Vistas sin Navbar: pantallas que tienen su propia chrome
+              (perfil, términos) o no se benefician de la nav global. */}
           <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
           <Route path="/friend/:id" element={<ProtectedRoute><ProfileFriend /></ProtectedRoute>} />
           <Route path="/terms" element={<ProtectedRoute><TermsOfService /></ProtectedRoute>} />
 
-          {/* Rutas privadas con Navbar */}
+          {/* Vistas con Navbar: layout compartido envuelto en
+              ProtectedRoute para que el guard se evalúe una sola vez. */}
           <Route element={<ProtectedRoute><LayoutWithNavbar /></ProtectedRoute>}>
             <Route path="/community" element={<Community />} />
             <Route path="/directory" element={<Directory />} />

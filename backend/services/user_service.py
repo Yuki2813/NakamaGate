@@ -9,89 +9,76 @@ from backend.services.auth_service import create_access_token
 from backend.services.content_service import SAFE_GENRES
 from backend.services.interacction_service import _fetch_media_in_chunks, get_favorite_list, invalidate_home_cache, invalidate_stats_cache
 
-# ==========================================
-# GESTIÓN DE PERFIL
-# ==========================================
 
 def update_alias(user_id: int, new_alias: str, session: Session):
-    
-    # 1. Obtener usuario actual
     user = get_user_by_id(id=user_id, session=session)
     if not user:
         raise HTTPException(status_code=404, detail="User not found.")
 
-    # 2. Validaciones básicas del negocio
     if len(new_alias) < 3 or len(new_alias) > 20:
         raise HTTPException(
-            status_code=400, 
+            status_code=400,
             detail="The alias must be between 3 and 20 characters."
         )
 
-    # 3. DELEGAR EN EL REPOSITORIO (Aquí está la magia limpia)
-    # Tu función update_user_alias devuelve True si se actualiza, o False si el alias ya existe
     if new_alias != user.alias:
         update_success = update_user_alias(user_id=user_id, new_alias=new_alias, session=session)
-        
+
         if not update_success:
             raise HTTPException(
-                status_code=400, 
+                status_code=400,
                 detail="This alias is already in use. Please try another alias."
             )
 
-    # 4. Traemos los datos frescos del usuario para generar el token
+    # El JWT actual contiene el alias antiguo y sigue siendo válido hasta que
+    # expire, por lo que tras cambiarlo emitimos un token nuevo con el alias
+    # actualizado para que el frontend lo use sin forzar re-login.
     updated_user = get_user_by_id(id=user_id, session=session)
-
-    # 5. GENERAMOS EL NUEVO TOKEN
     token_data = {
-        "sub": updated_user.email,         
-        "user_id": updated_user.id,        
-        "alias": updated_user.alias,  # 👈 Este ya es el nuevo gracias a tu repositorio   
+        "sub": updated_user.email,
+        "user_id": updated_user.id,
+        "alias": updated_user.alias,
         "is_adult": updated_user.isAdult,
-        "rol": updated_user.rol  
+        "rol": updated_user.rol
     }
-
     new_access_token = create_access_token(data=token_data)
 
-    # 6. Devolvemos la respuesta
     return {
         "message": "Alias updated successfully.",
-        "access_token": new_access_token, 
+        "access_token": new_access_token,
         "token_type": "bearer"
     }
-    
+
 
 def update_avatar(user_id: int, file: UploadFile, session: Session):
-    # 1. Validar que sea una imagen
     if not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="El archivo debe ser una imagen.")
 
     try:
-        # 2. Subir directamente a Cloudinary desde la memoria (sin guardar en local)
+        # public_id fijo por usuario + overwrite=True: cada nuevo avatar
+        # reemplaza al anterior en Cloudinary en vez de acumular archivos.
         upload_result = cloudinary.uploader.upload(
             file.file,
-            folder="nakamagate/avatars",  # Organiza las fotos en una carpeta en Cloudinary
-            public_id=f"user_{user_id}",  # Nombre fijo: ej. "user_15"
-            overwrite=True,               # Si sube otra foto, pisa la anterior (ahorra espacio)
+            folder="nakamagate/avatars",
+            public_id=f"user_{user_id}",
+            overwrite=True,
             resource_type="image"
         )
-        
-        # 3. Obtener la URL segura de Cloudinary (https://...)
         ruta_web = upload_result.get("secure_url")
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al subir imagen a Cloudinary: {str(e)}")
 
-    # 4. Actualizar la base de datos (tu tabla User)
     exito = update_user_avatar(user_id=user_id, ruta=ruta_web, session=session)
-    
+
     if not exito:
-        # (Opcional) Si la BD falla y no encuentra al usuario, 
-        # podrías borrar la foto recién subida a Cloudinary para no dejar basura:
+        # Rollback: la imagen ya está en Cloudinary pero el usuario no existe.
+        # Borramos el asset para no dejar huérfanos consumiendo cuota.
         cloudinary.uploader.destroy(upload_result.get("public_id"))
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
 
-    # 5. Devolvemos la URL nueva para que el frontend pueda actualizar la imagen al instante
     return {"message": "Your avatar saved correctly", "picture": ruta_web}
+
 
 def delete_account(user_id: int, session: Session):
     deletion_result = delete_user(id=user_id, session=session)
@@ -108,16 +95,21 @@ async def update_adult_service(user_id: int, is_adult: bool, session: Session):
     preference_changed = user.isAdult != is_adult
     was_adult = user.isAdult
 
-    # Paso 1: actualizar el flag PRIMERO (operación atómica de una fila)
-    # Si la limpieza de favoritos posterior falla, al menos la BD queda consistente con el flag.
+    # Actualizamos el flag PRIMERO (operación atómica de una fila). Si la
+    # limpieza posterior falla, al menos la BD queda consistente.
     updated = update_user_adult(user_id=user_id, is_adult=is_adult, session=session)
     if not updated:
         raise HTTPException(status_code=404, detail="User not found")
 
     if preference_changed:
+        # El home se recomienda en función de isAdult, así que la caché del
+        # home de este usuario está obsoleta. Ver invalidate_home_cache.
         await invalidate_home_cache(user_id)
 
-    # Paso 2: si el usuario está desactivando contenido adulto, limpiar favoritos no permitidos
+    # Si el usuario pasa de adulto a no-adulto, hay que retirar de su lista de
+    # favoritos cualquier contenido que ahora ya no le esté permitido (hentai
+    # o géneros fuera del catálogo SAFE_GENRES). Solo recorremos esta rama
+    # cuando hay un downgrade real.
     removed_count = 0
     if was_adult and not is_adult:
         favorite_tuples = get_user_favorites_repo(id_user=user_id, session=session)
@@ -146,7 +138,12 @@ async def update_adult_service(user_id: int, is_adult: bool, session: Session):
             if not media:
                 continue
             genres = media.get("genres") or []
-            is_adult_content = media.get("is_adult") is True or any(g not in safe_set for g in genres)
+            is_adult_content = media.get("is_adult") is True
+            if not is_adult_content:
+                for g in genres:
+                    if g not in safe_set:
+                        is_adult_content = True
+                        break
             if is_adult_content:
                 deleted = delete_user_favorite(
                     id_user=user_id,
@@ -161,10 +158,7 @@ async def update_adult_service(user_id: int, is_adult: bool, session: Session):
             await invalidate_stats_cache(user_id)
 
     return {"message": "Content preference updated", "is_adult": is_adult, "removed_favorites": removed_count}
-    
-# ==========================================
-# SISTEMA DE AMIGOS
-# ==========================================
+
 
 def send_friend_request_service(requester_id: int, receiver_id: int, session: Session):
     if requester_id == receiver_id:
@@ -189,6 +183,7 @@ def accept_friend_request_service(requester_id: int, current_user_id: int, sessi
     else:
         raise HTTPException(status_code=404, detail="Something went wrong")
 
+
 def remove_friend(user_id_a: int, user_id_b: int, session: Session):
     friendship_removed = remove_friendship(user_id_A=user_id_a, user_id_B=user_id_b, session=session)
 
@@ -197,12 +192,15 @@ def remove_friend(user_id_a: int, user_id_b: int, session: Session):
     else:
         raise HTTPException(status_code=404, detail="Friendship not found")
 
+
 def get_user_social_data(user_id: int, session: Session):
     raw_friends = get_friends(user_id=user_id, session=session)
     raw_pending = get_pending_requests(user_id=user_id, session=session)
     raw_sent = get_sent_pending_requests(user_id=user_id, session=session)
 
-    # Recoge IDs únicos de amigos (el amigo puede ser requester o receiver)
+    # En una amistad cualquiera de los dos extremos puede ser requester o
+    # receiver, así que para reconstruir la lista de "amigos" hay que tomar
+    # siempre el ID del otro lado, no asumir una dirección fija.
     friend_ids_set = set()
     for rel in raw_friends:
         if rel.requester_id == user_id:
@@ -210,40 +208,35 @@ def get_user_social_data(user_id: int, session: Session):
         else:
             friend_ids_set.add(rel.requester_id)
 
-    # Recoge IDs de quien envió solicitud pendiente (otros me han mandado solicitud)
     pending_ids_set = set()
     for rel in raw_pending:
         pending_ids_set.add(rel.requester_id)
 
-    # Recoge IDs a quien yo he mandado solicitud y aún está pendiente
     sent_ids_set = set()
     for rel in raw_sent:
         sent_ids_set.add(rel.receiver_id)
 
-    # Una sola query para obtener todos los usuarios necesarios
+    # Una sola consulta para todos los usuarios involucrados (amigos +
+    # pendientes recibidas + pendientes enviadas) y luego un dict para mapear
+    # id->usuario en O(1). Evita N+1 al formatear cada lista.
     all_ids = list(friend_ids_set) + list(pending_ids_set) + list(sent_ids_set)
     users_list = get_users_by_ids(all_ids, session)
-
-    # Diccionario para buscar por ID en O(1)
     users_map = {}
     for user in users_list:
         users_map[user.id] = user
 
-    # Formatea lista de amigos
     formatted_friends = []
     for fid in friend_ids_set:
         if fid in users_map:
             u = users_map[fid]
             formatted_friends.append({"id": u.id, "alias": u.alias, "picture": u.picture})
 
-    # Formatea lista de solicitudes pendientes recibidas
     formatted_pending = []
     for pid in pending_ids_set:
         if pid in users_map:
             u = users_map[pid]
             formatted_pending.append({"id": u.id, "alias": u.alias, "picture": u.picture})
 
-    # Formatea lista de solicitudes pendientes enviadas
     formatted_sent = []
     for sid in sent_ids_set:
         if sid in users_map:
@@ -252,6 +245,7 @@ def get_user_social_data(user_id: int, session: Session):
 
     return {"friends": formatted_friends, "pending": formatted_pending, "sent_pending": formatted_sent}
 
+
 async def get_user_favorites(target_user_id: int, session: Session):
     return await get_favorite_list(user_id=target_user_id, session=session)
 
@@ -259,7 +253,6 @@ async def get_user_favorites(target_user_id: int, session: Session):
 def get_public_friends_list(target_user_id: int, session: Session):
     raw_friends = get_friends(user_id=target_user_id, session=session)
 
-    # Recoge IDs únicos de amigos
     friend_ids_set = set()
     for rel in raw_friends:
         if rel.requester_id == target_user_id:
@@ -267,15 +260,11 @@ def get_public_friends_list(target_user_id: int, session: Session):
         else:
             friend_ids_set.add(rel.requester_id)
 
-    # Una sola query para todos los amigos
     users_list = get_users_by_ids(list(friend_ids_set), session)
-
-    # Diccionario para buscar por ID en O(1)
     users_map = {}
     for user in users_list:
         users_map[user.id] = user
 
-    # Formatea la lista
     formatted_friends = []
     for fid in friend_ids_set:
         if fid in users_map:
@@ -293,11 +282,10 @@ def search_users_service(alias: str, current_user_id: int, session: Session):
 
     public_profiles = []
     for user in matched_users:
-        public_profile = {
+        public_profiles.append({
             "id": user.id,
             "alias": user.alias,
             "picture": user.picture
-        }
-        public_profiles.append(public_profile)
+        })
 
     return public_profiles

@@ -84,6 +84,11 @@ export default function MediaDetail() {
     return Array.isArray(res.data) ? res.data : [];
   };
 
+  // Carga la ficha en dos fases: primero el detalle del media (necesario
+  // para saber su tipo, que va como query param en las siguientes), luego
+  // en paralelo las reseñas y el estado de favorito. Usamos allSettled
+  // para que si una de las dos falla la otra siga viva y la página no
+  // se quede en blanco.
   useEffect(() => {
     const load = async () => {
       try {
@@ -148,6 +153,9 @@ export default function MediaDetail() {
     }
   };
 
+  // Cambia el estado del favorito (watching/completed/pending) con
+  // actualización optimista: pintamos el nuevo estado en la UI antes de
+  // confirmar, y si el PUT falla revertimos al valor previo.
   const changeStatus = async (newStatus: 'watching' | 'completed' | 'pending') => {
     if (statusLoading || newStatus === favoriteStatus) return;
     const previous = favoriteStatus;
@@ -164,6 +172,11 @@ export default function MediaDetail() {
     }
   };
 
+  // Publica o edita la reseña del usuario sobre este media. El mismo
+  // formulario sirve para ambos casos: si ya hay userReview y estamos
+  // en modo edición lanzamos PUT, si no, POST. Tras guardar recargamos
+  // la lista completa de reseñas para que aparezca con los datos del
+  // usuario (alias, picture) que pinta el bloque "Community".
   const handleSubmitReview = async () => {
     if (!reviewContent.trim() || reviewScore < 1 || reviewScore > 5) {
       showToast('Complete the review with a score and text.', 'err'); return;

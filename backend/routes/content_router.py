@@ -14,8 +14,12 @@ router = APIRouter(
 )
 
 
+# Decodifica el JWT del header Authorization para extraer el user_id.
+# Lo necesitamos en el key_builder de @cache porque fastapi-cache construye
+# la clave ANTES de resolver Depends(get_current_user_id), así que no podemos
+# reutilizar esa dependencia aquí. Si no hay token o es inválido devolvemos
+# "anon" y dejamos que el endpoint protegido rechace la petición después.
 def _user_id_from_request(request) -> str:
-    """Extrae el user_id del JWT en el header Authorization. Fallback a 'anon' si no hay token."""
     if request is None:
         return "anon"
     auth = request.headers.get("authorization", "")
@@ -32,6 +36,9 @@ def _user_id_from_request(request) -> str:
         return "anon"
 
 
+# Clave de caché por usuario: el home depende de isAdult y por eso no puede
+# compartirse entre usuarios. Formato "home:user:{id}" para que las funciones
+# invalidate_home_cache puedan purgarla con la misma clave exacta.
 def home_key_builder(func, namespace="", *, request=None, response=None, args=(), kwargs={}):
     user_id = kwargs.get("user_id")
     if user_id is None:
@@ -39,22 +46,15 @@ def home_key_builder(func, namespace="", *, request=None, response=None, args=()
     return f"home:user:{user_id}"
 
 
-# ==========================================
-# 1. PÁGINA PRINCIPAL (HOME)
-# ==========================================
 @router.get("/home")
 @cache(expire=3600, key_builder=home_key_builder)
 async def get_home(
     user_id: int = Depends(get_current_user_id),
     session: Session = Depends(get_db)
 ):
-
     return await get_home_service(user_id=user_id, session=session)
 
 
-# ==========================================
-# 2. GÉNEROS DISPONIBLES
-# ==========================================
 @router.get("/genres")
 async def get_genres(
     user_id: int = Depends(get_current_user_id),
@@ -63,11 +63,7 @@ async def get_genres(
     return await get_genres_service(user_id=user_id, session=session)
 
 
-# ==========================================
-# 3. DIRECTORIO (EXPLORAR)
-# ==========================================
 @router.get("/directory")
-# @cache(expire=3600)
 async def get_directory(
     media_type: Mediatype = Query(..., description="'ANIME' o 'MANGA'"),
     page: int = Query(default=1, ge=1, description="Número de página (mínimo 1)"),
@@ -76,51 +72,39 @@ async def get_directory(
     user_id: int = Depends(get_current_user_id),
     session: Session = Depends(get_db)
 ):
-
     return await get_directory_service(
-        user_id=user_id, 
-        page=page, 
-        media_type=media_type, 
-        session=session, 
+        user_id=user_id,
+        page=page,
+        media_type=media_type,
+        session=session,
         genre=genre,
-        status=status # <-- SE LO PASAMOS AL SERVICIO
+        status=status
     )
 
 
-# ==========================================
-# 3. BUSCADOR PREDICTIVO
-# ==========================================
 @router.get("/search")
 async def search_media(
-
     search_text: str = Query(..., min_length=3, description="Texto a buscar"),
     media_type: Mediatype = Query(..., description="Tipo de contenido a buscar"),
     user_id: int = Depends(get_current_user_id),
     session: Session = Depends(get_db)
 ):
-
     return await search_media_service(
-        user_id=user_id, 
-        search_text=search_text, 
-        media_type=media_type, 
+        user_id=user_id,
+        search_text=search_text,
+        media_type=media_type,
         session=session
     )
 
 
-# ==========================================
-# 4. DETALLES DEL ANIME/MANGA
-# ==========================================
-
 @router.get("/{media_id}")
-
 async def get_media_details(
     media_id: int = Path(..., description="ID del anime/manga en AniList"),
     user_id: int = Depends(get_current_user_id),
     session: Session = Depends(get_db)
 ):
-
     return await get_media_details_service(
-        media_id=media_id, 
-        user_id=user_id, 
+        media_id=media_id,
+        user_id=user_id,
         session=session
     )

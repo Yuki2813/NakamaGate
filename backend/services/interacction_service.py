@@ -12,7 +12,8 @@ from backend.repositories.user_repository import get_user_by_id
 
 
 async def _fetch_media_in_chunks(ids: list[int], media_type: str) -> list:
-    """AniList limita a 50 elementos por petición. Partimos los ids en trozos de 50."""
+    # AniList rechaza batches > 50 IDs; troceamos para soportar usuarios con
+    # listas largas sin reventar la query.
     chunk_size = 50
     all_results = []
     for i in range(0, len(ids), chunk_size):
@@ -22,8 +23,12 @@ async def _fetch_media_in_chunks(ids: list[int], media_type: str) -> list:
     return all_results
 
 
+# Las cachés de home y stats viven en memoria con clave por usuario
+# (ver key_builders en los routers). Cuando los datos que las alimentan
+# cambian (favoritos, preferencia adulta), hay que purgarlas explícitamente
+# o el usuario seguirá viendo la respuesta antigua hasta que expire (3600s).
+# Se silencia la excepción para que un fallo de caché nunca rompa la mutación.
 async def invalidate_stats_cache(user_id: int):
-    """Borra la caché de stats del usuario tras un cambio en favoritos."""
     try:
         backend = FastAPICache.get_backend()
         await backend.clear(key=f"stats:user:{user_id}")
@@ -32,7 +37,6 @@ async def invalidate_stats_cache(user_id: int):
 
 
 async def invalidate_home_cache(user_id: int):
-    """Borra la caché del home del usuario tras un cambio en su preferencia adulta."""
     try:
         backend = FastAPICache.get_backend()
         await backend.clear(key=f"home:user:{user_id}")
@@ -40,33 +44,27 @@ async def invalidate_home_cache(user_id: int):
         pass
 
 
-# ==========================================
-# GESTIÓN DE FAVORITOS / LISTAS (Viendo, Completado, etc.)
-# ==========================================
-
 async def add_media_to_list(user_id: int, id_api: int, media_type: MediaType, session: Session):
 
-    # 1. VALIDACIÓN EXTERNA: Preguntamos a AniList qué es realmente este ID
+    # Validamos contra AniList que el ID existe y que el tipo declarado por el
+    # cliente coincide con el real, para evitar guardar un manga marcado como
+    # anime (o viceversa) y romper consultas posteriores por media_type.
     info_real = await anilist_client.get_media_details(id_api)
-    
-    # Si AniList devuelve None, el ID ni siquiera existe en su base de datos
+
     if not info_real:
         raise HTTPException(
-            status_code=404, 
+            status_code=404,
             detail=f"This ID {id_api} don't exist."
         )
-        
-    # Extraemos el tipo real que nos dice AniList ("ANIME" o "MANGA") y lo pasamos a minúsculas
+
     tipo_real = info_real["type"].lower()
-    
-    # Comparamos el tipo real con el que el usuario intenta meter en el Swagger/Frontend
+
     if tipo_real != media_type.value:
         raise HTTPException(
-            status_code=400, 
+            status_code=400,
             detail=f"You are trying save a {tipo_real.upper()} like {media_type.value.upper()}."
         )
 
-    # 2. GUARDADO: Si pasamos las validaciones, procedemos a guardar en la base de datos
     if new_favorite(iduser=user_id, id_fav=id_api, mediatype=media_type, session=session):
         await invalidate_stats_cache(user_id)
         return {"message": "The media is now in your favorites"}
@@ -76,7 +74,6 @@ async def add_media_to_list(user_id: int, id_api: int, media_type: MediaType, se
             detail="You already have this media in your favorites"
         )
 
-    
 
 def update_media_status(user_id: int, favorite_id: int, new_status: str, session: Session):
     status_updated = update_status_favorite(iduser=user_id, idapi=favorite_id, status=new_status, session=session)
@@ -98,100 +95,85 @@ async def remove_media_from_list(user_id: int, id_api: int, media_type: Mediatyp
 
 
 async def get_favorite_list(user_id: int, session: Session):
-    # 1. Traer favoritos (vienen como tuplas)
     favorite_tuples = get_user_favorites(id_user=user_id, session=session)
-    
+
     if len(favorite_tuples) == 0:
         return []
-    
+
+    # La BD solo guarda (id_api, media_type); los metadatos (título, imagen,
+    # géneros...) viven en AniList. Separamos por tipo porque la API exige una
+    # query distinta para ANIME y MANGA, y luego indexamos el resultado por
+    # (id_api, tipo) para casarlo con cada favorito en una sola pasada.
     anime_ids = []
     manga_ids = []
-    
-    # 2. Desempaquetamos la tupla para separar los IDs
+
     for user_fav, fav_data in favorite_tuples:
         tipo = fav_data.media_type.value
         id_api = fav_data.id_api
-        
+
         if tipo == "anime":
             anime_ids.append(id_api)
         else:
             manga_ids.append(id_api)
 
-    # 3. AQUÍ CREAMOS EL MEDIA DICT haciendo las llamadas a AniList
     media_dict = {}
 
     if len(anime_ids) > 0:
         anime_results = await anilist_client.get_media_batch(anime_ids, "ANIME")
         for a in anime_results:
-            llave = (a["id"], "anime")
-            media_dict[llave] = a
+            media_dict[(a["id"], "anime")] = a
 
     if len(manga_ids) > 0:
         manga_results = await anilist_client.get_media_batch(manga_ids, "MANGA")
         for m in manga_results:
-            llave = (m["id"], "manga")
-            media_dict[llave] = m
+            media_dict[(m["id"], "manga")] = m
 
-    # 4. Construimos la lista final cruzando los datos
     lista_final = []
     for user_fav, fav_data in favorite_tuples:
-        id_api = fav_data.id_api
-        tipo_db = fav_data.media_type.value
-        
-        # Buscamos en el diccionario
-        llave_busqueda = (id_api, tipo_db)
-        datos_anilist = media_dict.get(llave_busqueda)
-        
+        datos_anilist = media_dict.get((fav_data.id_api, fav_data.media_type.value))
+
         if datos_anilist is not None:
-            resultado = {
-                # LA CLAVE ESTÁ AQUÍ: Enviamos el ID interno de la BD
-                "id": fav_data.id, 
-                "status": user_fav.status, 
-                "media": datos_anilist     
-            }
-            lista_final.append(resultado)
-            
+            # Devolvemos fav_data.id (PK interna), no id_api: el frontend
+            # necesita la PK para llamar a endpoints de update/delete.
+            lista_final.append({
+                "id": fav_data.id,
+                "status": user_fav.status,
+                "media": datos_anilist
+            })
+
     return lista_final
 
-# ==========================================
-# GESTIÓN DE RESEÑAS (REVIEWS)
-# ==========================================
 
 async def create_review_service(user_id: int, id_api: int, media_type: MediaType, score: int, content: str, session: Session):
-    
-    # 1. Validaciones básicas de formato
+
     if score < 1 or score > 5:
         raise HTTPException(status_code=400, detail="The score must be between 1 and 5.")
-    
+
     if len(content) < 1 or len(content) > 255:
         raise HTTPException(status_code=400, detail="The review content must be between 1 and 255 characters.")
-    
-    # 2. Comprobar si el usuario ya tiene una reseña para ese medio
+
     if get_user_review_for_media(user_id=user_id, id_api=id_api, media_type=media_type, session=session) is not None:
         raise HTTPException(status_code=400, detail="You have already reviewed this media. Please edit your existing review instead.")
 
-    # 3. Validación de integridad de datos con AniList
     info_real = await anilist_client.get_media_details(id_api)
-    
+
     if not info_real:
         raise HTTPException(
-            status_code=404, 
+            status_code=404,
             detail=f"The ID {id_api} does not exist in the AniList database."
         )
-        
+
     tipo_real = info_real["type"].lower()
-    
+
     if tipo_real != media_type.value:
         raise HTTPException(
-            status_code=400, 
+            status_code=400,
             detail=f"Data mismatch: You cannot review an {tipo_real.upper()} as a {media_type.value.upper()}."
         )
 
-    # 4. Guardado final
     review = create_review(user_id=user_id, id_api=id_api, media_type=media_type, score=score, content=content, session=session)
 
     return review
-
 
 
 def update_review_service(review_id: int, user_id: int, score: int, content: str, session: Session):
@@ -204,12 +186,12 @@ def update_review_service(review_id: int, user_id: int, score: int, content: str
 
     if not review:
         raise HTTPException(status_code=404, detail="Review not found")
-        
+
     if review.id_user != user_id:
         raise HTTPException(status_code=403, detail="You can only edit your own reviews")
-        
+
     updated_review = update_review(review_id=review_id, score=score, content=content, session=session)
-    
+
     return updated_review
 
 
@@ -218,18 +200,20 @@ def delete_review_service(review_id: int, user_id: int, session: Session):
     if not review:
         raise HTTPException(status_code=404, detail="Review not found")
     user = get_user_by_id(id=user_id, session=session)
-    
+
+    # Admin puede borrar cualquier reseña (moderación); el resto solo las suyas.
     is_owner = (review.id_user == user_id)
-    is_admin = (user.rol == Rol.admin) 
-    
+    is_admin = (user.rol == Rol.admin)
+
     if not is_owner and not is_admin:
         raise HTTPException(status_code=403, detail="You can only delete your own reviews")
-        
+
     if delete_review(review_id=review_id, session=session):
         return {"message": "Review deleted correctly"}
     else:
         raise HTTPException(status_code=400, detail="Unable to delete review")
-    
+
+
 def get_reviews_by_media_service(id_api: int, media_type: MediaType, session: Session):
     results = get_reviews_by_media(id_api=id_api, media_type=media_type, session=session)
 
@@ -334,12 +318,11 @@ def get_favorite_ids_service(user_id: int, session: Session):
     rows = get_user_favorite_ids(id_user=user_id, session=session)
     result = []
     for row in rows:
-        item = {
+        result.append({
             "id_api": row.id_api,
             "media_type": row.media_type.value,
             "status": row.status.value
-        }
-        result.append(item)
+        })
     return result
 
 
@@ -369,21 +352,18 @@ async def get_watching_favorites_service(user_id: int, session: Session):
 
     final = []
     for user_fav, fav_data in favorite_tuples:
-        llave = (fav_data.id_api, fav_data.media_type.value)
-        media = media_dict.get(llave)
+        media = media_dict.get((fav_data.id_api, fav_data.media_type.value))
         if media:
-            entry = {
+            final.append({
                 "id": fav_data.id,
                 "status": user_fav.status,
                 "media": media
-            }
-            final.append(entry)
+            })
 
     return final
 
 
 async def get_favorite_stats_service(user_id: int, session: Session):
-    """Calcula estadísticas de géneros sobre TODOS los favoritos del usuario."""
     rows = get_user_favorite_ids(id_user=user_id, session=session)
     if not rows:
         return {

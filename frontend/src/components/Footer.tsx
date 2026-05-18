@@ -11,13 +11,25 @@ export default function Footer() {
           <p className="text-slate-500 text-xs">© {currentYear} NakamaGate. All rights reserved.</p>
         </div>
 
-        <div className="flex items-center gap-5 text-xs text-slate-500">
+        <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs text-slate-500">
           <Link to="/terms" className="hover:text-yellow-500 transition-colors">
             Terms of Service
           </Link>
           <span className="text-slate-300 dark:text-slate-700">•</span>
           <span>
             Created by <span className="text-slate-600 dark:text-slate-400 font-semibold">Yago Puente</span>
+          </span>
+          <span className="text-slate-300 dark:text-slate-700">•</span>
+          <span>
+            Logo by{' '}
+            <a
+              href="https://x.com/Usaguilee"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-slate-600 dark:text-slate-400 font-semibold hover:text-yellow-500 transition-colors"
+            >
+              @Usaguilee
+            </a>
           </span>
         </div>
       </div>

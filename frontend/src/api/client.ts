@@ -7,7 +7,6 @@ export const apiClient = axios.create({
   },
 });
 
-// Attach auth token to every request
 apiClient.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
   if (token) {
@@ -18,7 +17,10 @@ apiClient.interceptors.request.use((config) => {
   return Promise.reject(error);
 });
 
-// Handle 401 globally
+// 401 global → token caducado o inválido: limpiamos y forzamos login.
+// Hacemos hard reload con window.location en vez de navigate() para que
+// React Query/contextos reseteen su estado y no quede caché de un usuario
+// anterior viva tras el redirect.
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {

@@ -18,10 +18,12 @@ SAFE_GENRES = [
 
 ADULT_GENRES = SAFE_GENRES + [ "Ecchi" ]
 
+# AniList rechaza con HTTP 400 ("Page exceeds maximum allowed for public
+# API requests") cualquier consulta paginada con page > 100. Aplicamos el
+# mismo tope nosotros para no llegar a hacer la llamada y para que el
+# pageInfo que devolvemos al frontend nunca sugiera páginas inválidas.
+ANILIST_MAX_PAGE = 100
 
-# ==========================================
-# GÉNEROS DISPONIBLES
-# ==========================================
 
 async def get_genres_service(user_id: int, session: Session):
     user = get_user_by_id(id=user_id, session=session)
@@ -29,10 +31,6 @@ async def get_genres_service(user_id: int, session: Session):
         raise HTTPException(status_code=404, detail="User not found")
     return {"genres": sorted(ADULT_GENRES if user.isAdult else SAFE_GENRES)}
 
-
-# ==========================================
-# PÁGINA PRINCIPAL (HOME)
-# ==========================================
 
 async def get_home_service(user_id: int, session: Session):
 
@@ -43,12 +41,12 @@ async def get_home_service(user_id: int, session: Session):
 
     posibles_generos = ADULT_GENRES if user.isAdult else SAFE_GENRES
 
-    # Instancia local seeded con la fecha: estable durante todo el día,
-    # safe en concurrencia (no toca el random global)
+    # RNG seedeado con el ordinal del día: todas las peticiones del mismo día
+    # producen las mismas elecciones (anime/manga "del día", géneros y páginas
+    # de los carruseles). Instancia local para no contaminar el random global
+    # ni sufrir condiciones de carrera bajo concurrencia.
     daily_rng = Random(date.today().toordinal())
 
-    # Géneros y páginas también deterministas por día → el "anime del día"
-    # se elegirá sobre un pool estable durante 24h
     recomendaciones = daily_rng.sample(posibles_generos, 4)
 
     paginas_random = []
@@ -57,21 +55,21 @@ async def get_home_service(user_id: int, session: Session):
 
     data = await anilist_client.get_home_data(genres=recomendaciones, pages=paginas_random)
 
-    # --- GEMA DEL DÍA ---
     pool_anime = data.get("genre1", {}).get("items", [])
     anime_del_dia = daily_rng.choice(pool_anime) if pool_anime else None
 
     pool_manga = data.get("trending_manga", [])
     manga_del_dia = daily_rng.choice(pool_manga) if pool_manga else None
-    
-    # --- MEZCLA DE CARRUSELES ---
+
+    # El orden dentro de los carruseles sí usa el random global: queremos que
+    # cada recarga muestre los ítems en distinto orden aunque el pool del día
+    # sea el mismo.
     for key in ["genre1", "genre2", "genre3", "genre4"]:
         if key in data and "items" in data[key]:
             items = data[key]["items"]
             random.shuffle(items)
             data[key]["items"] = items
-            
-    # Devolvemos la nueva estructura estructurada
+
     return {
         "anime_del_dia": anime_del_dia,
         "manga_del_dia": manga_del_dia,
@@ -85,69 +83,49 @@ async def get_home_service(user_id: int, session: Session):
     }
 
 
-# ==========================================
-# BUSCADOR 
-# ==========================================
-
 async def search_media_service(user_id: int, search_text: str, media_type: Mediatype, session: Session):
 
     if len(search_text)<3:
         raise HTTPException(status_code=400, detail="The search must be at least 3 characters long")
-    
+
     user = get_user_by_id(id=user_id, session=session)
 
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    
+
     list_media_searched=await anilist_client.search_predictive(search_text=search_text, media_type=media_type)
 
     if len(list_media_searched)==0:
         raise HTTPException(status_code=404,detail="No results match your search")
-    
+
     return list_media_searched
 
-# ==========================================
-# FICHA TÉCNICA (DETALLES DEL ANIME/MANGA)
-# ==========================================
 
 async def get_media_details_service(media_id: int, user_id: int, session: Session):
     content = await anilist_client.get_media_details(media_id=media_id)
 
     if not content:
         raise HTTPException(status_code=404, detail="No results match your search")
-        
+
     user = get_user_by_id(id=user_id, session=session)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-        
 
     es_hentai = content.get("is_adult") == True
-    
-
     generos_del_anime = content.get("genres", [])
-    
-
     generos_prohibidos_menores = ["Ecchi"]
-    
 
     tiene_genero_prohibido = False
-
-    for genero in generos_del_anime:
-
-        if genero in generos_prohibidos_menores:
-
+    for g in generos_del_anime:
+        if g in generos_prohibidos_menores:
             tiene_genero_prohibido = True
-
             break
-    
-    if not user.isAdult:
 
-        if es_hentai or tiene_genero_prohibido:
-
-            raise HTTPException(
-                status_code=403, 
-                detail="You do not have permission to view this content."
-            )
+    if not user.isAdult and (es_hentai or tiene_genero_prohibido):
+        raise HTTPException(
+            status_code=403,
+            detail="You do not have permission to view this content."
+        )
 
     return content
 
@@ -156,25 +134,34 @@ async def get_directory_service(user_id: int, page: int, media_type: Mediatype, 
 
     if page < 1:
         raise HTTPException(status_code=400, detail="Page number must be 1 or higher")
-        
+
+    if page > ANILIST_MAX_PAGE:
+        raise HTTPException(status_code=400, detail=f"Page number must be {ANILIST_MAX_PAGE} or lower")
+
     user = get_user_by_id(id=user_id, session=session)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-        
-    if genre: 
-        # ... (Mantener lógica de validación de géneros que ya tienes)
-        pass
 
-    # Llamada limpia: Sin filtros de score y con orden de popularidad
     directory_data = await anilist_client.get_directory_page(
-        page=page, 
-        per_page=24, 
-        media_type=media_type, 
-        sort="POPULARITY_DESC", # <--- Los más populares primero
+        page=page,
+        per_page=24,
+        media_type=media_type,
+        sort="POPULARITY_DESC",
         genre=genre,
         status=status
     )
+
+    # AniList puede declarar lastPage > 100 aunque rechace pedir esas páginas.
+    # Normalizamos el page_info para que la UI nunca ofrezca pasar del tope.
+    info = directory_data.get("page_info") or {}
+    if info.get("lastPage", 0) > ANILIST_MAX_PAGE:
+        info["lastPage"] = ANILIST_MAX_PAGE
+    if info.get("currentPage", 0) >= ANILIST_MAX_PAGE:
+        info["hasNextPage"] = False
+    directory_data["page_info"] = info
+
     return directory_data
+
 
 def check_if_favorite(user_id: int, id_api: int, session: Session):
 

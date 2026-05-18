@@ -74,6 +74,12 @@ export default function Profile() {
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
 
+  // Trae todo lo que pinta el perfil: datos de usuario, primera página
+  // de favoritos (con filtro de estado si lo hay), lista completa de IDs
+  // para los contadores/insignias, total de reseñas y stats de géneros.
+  // Las cuatro últimas peticiones van en paralelo porque no dependen
+  // entre sí; solo el /auth/me es secuencial porque inicializa el
+  // formulario de alias y el toggle de adulto.
   const fetchProfileData = async () => {
     try {
       const profileRes = await apiClient.get('/auth/me');
@@ -163,6 +169,10 @@ export default function Profile() {
     return stats?.top_genres ?? [];
   }, [stats]);
 
+  // Calcula las 12 insignias del perfil a partir de los IDs de favoritos
+  // y las stats de géneros. Se recalcula sola cuando cambian stats o la
+  // lista de favoritos. Las marcadas con isSecret se pintan como un
+  // candado hasta desbloquearse.
   const badges = useMemo(() => {
     const totalCount = allFavIds.length;
     const completedCount = allFavIds.filter(f => f.status === 'completed').length;
@@ -190,6 +200,10 @@ export default function Profile() {
     ];
   }, [stats, favoritesTotal, allFavIds]);
 
+  // Actualiza el alias. Tras un cambio exitoso recargamos la página entera
+  // porque el backend emite un JWT nuevo con el alias actualizado y
+  // queremos que toda la app (navbar, contextos, etc.) lo recoja sin
+  // tener que propagar el cambio manualmente.
   const handleUpdateAlias = async () => {
     if (!newAlias.trim() || newAlias === profile?.alias) {
       setIsEditingAlias(false);
@@ -237,13 +251,18 @@ export default function Profile() {
         const statsRes = await apiClient.get('/favorites/stats');
         setStats(statsRes.data ?? null);
       } catch {
-        // silent
+        // stats es solo informativo: si falla no bloqueamos el borrado.
       }
     } catch (error) {
       console.error("Delete error:", error);
     }
   };
 
+  // Activa o desactiva la preferencia de contenido adulto. Si al
+  // desactivarla el backend ha tenido que quitar favoritos +18 de la
+  // biblioteca del usuario, devolvemos removed_favorites > 0 y volvemos
+  // a pedir todo el perfil para que la rejilla y las stats reflejen los
+  // borrados.
   const handleToggleAdult = async () => {
     const newValue = !isAdult;
     setSavingAdult(true);
@@ -273,6 +292,10 @@ export default function Profile() {
     }
   };
 
+  // Coge el recorte que ha hecho el usuario en AvatarEditor, lo exporta
+  // a JPEG y lo sube como multipart al endpoint del avatar. Al terminar
+  // recargamos la página con un query string distinto (?u=timestamp) para
+  // forzar al navegador a pedir la imagen nueva y no servir la cacheada.
   const handleSaveAvatar = () => {
     if (editorRef.current) {
       setSavingAvatar(true);
