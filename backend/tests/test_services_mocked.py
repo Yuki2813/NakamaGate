@@ -4,13 +4,10 @@ Unit tests con mocks para servicios sin dependencias externas.
 Ejecutar con:
     pytest backend/tests/test_services_mocked.py -v
 """
-# pytest backend/tests/test_services_mocked.py -v
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from backend.models.review import MediaType, Review
-from backend.models.favorite import Mediatype, Favorite
-from backend.models.userfavorite import UserFavorite, status_favorite
-from backend.models.users import Users, Rol
+from backend.models.favorite import Mediatype
 
 
 @pytest.fixture
@@ -75,7 +72,7 @@ class TestCreateReviewService:
                 user_id=1,
                 id_api=1535,
                 media_type=MediaType.anime,
-                score=10,  # Inválido
+                score=10,
                 content="Excelente",
                 session=mock_session,
             )
@@ -140,7 +137,6 @@ class TestAddMediaToListService:
             "title": "One Piece",
         })
 
-        # Mock del repositorio new_favorite
         with patch("backend.services.interacction_service.new_favorite", return_value=True):
             with patch("backend.services.interacction_service.invalidate_stats_cache", new_callable=AsyncMock):
                 result = await add_media_to_list(
@@ -175,25 +171,6 @@ class TestAddMediaToListService:
         assert exc_info.value.status_code == 400
 
 
-class TestSearchMediaService:
-    """Tests para search_media_service."""
-
-    def test_search_media_basic(self, mock_session, mock_anilist_client):
-        """Búsqueda devuelve items con estructura correcta."""
-        from backend.services.content_service import search_media_service
-
-        mock_anilist_client.search_predictive = AsyncMock(return_value=[
-            {"id": 1, "title": "Naruto", "type": "ANIME", "image": "url1"},
-            {"id": 2, "title": "Naruto Shippuden", "type": "ANIME", "image": "url2"},
-        ])
-
-        # search_media_service es async, hay que mockearlo adecuadamente
-        # pero los resultados vienen de anilist_client.search_predictive
-        # que ya está mockeado arriba. Solo verificamos que se llama correctamente.
-
-        mock_anilist_client.search_predictive.assert_not_called()
-
-
 class TestGetFavoritesService:
     """Tests para get_favorite_list (lectura sin AniList)."""
 
@@ -224,43 +201,17 @@ class TestAuthService:
         assert verify_password(pwd, hash2)
         assert not verify_password("wrong", hash1)
 
-    def test_user_model_validation(self):
-        """Users model valida alias y email."""
-        from pydantic import ValidationError
-
-        # Crear sin email levanta error en SQLModel
-        try:
-            user = Users(
-                alias="test",
-                email=None,  # Requerido
-                password="hash",
-                rol=Rol.user,
-            )
-            # SQLModel podría no validar en construcción si no está strict
-            # pero al commitear a BD se vería el error.
-            # Este test es indicativo más que garantía.
-        except (ValidationError, TypeError):
-            pass  # Esperado
-
 
 class TestReviewModel:
     """Tests para validaciones del modelo Review."""
 
-    def test_review_score_bounds(self):
-        """Review solo acepta scores 1-5."""
-        from pydantic import ValidationError
-
-        # SQLModel valida con Field(ge=1, le=5)
-        # pero la validación ocurre al crear la instancia solo si está configurada.
+    def test_review_score_valid(self):
+        """Review acepta scores dentro de 1-5."""
         review = Review(
             id_user=1,
             id_api=21,
             media_type=MediaType.anime,
-            score=3,  # Válido
+            score=3,
             content="Good",
         )
         assert review.score == 3
-
-
-if __name__ == "__main__":
-    pytest.main([__file__, "-v"])
