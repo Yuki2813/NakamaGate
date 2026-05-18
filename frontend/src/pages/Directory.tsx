@@ -144,7 +144,7 @@ export default function Directory() {
         <div className="h-1 w-16 sm:w-20 bg-yellow-500 rounded-full" />
       </header>
 
-      <section className="max-w-350 mx-auto px-4 sm:px-6 md:px-16 mb-8 sm:mb-12 relative z-50">
+      <section className="max-w-350 mx-auto px-4 sm:px-6 md:px-16 mb-8 sm:mb-12 relative z-40">
         <div className="bg-white/80 dark:bg-slate-900/40 backdrop-blur-2xl border border-yellow-500/10 p-4 sm:p-5 rounded-2xl sm:rounded-3xl flex flex-col lg:flex-row gap-4 sm:gap-6 items-start lg:items-center justify-between shadow-2xl">
 
           <div className="flex flex-col sm:flex-row flex-wrap gap-3 items-stretch sm:items-center w-full xl:w-auto relative">
@@ -203,7 +203,7 @@ export default function Directory() {
               {showGenreMenu && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setShowGenreMenu(false)} />
-                  <div className="absolute top-full left-0 mt-2 w-full sm:w-80 bg-white dark:bg-slate-900/95 backdrop-blur-xl border border-slate-200 dark:border-slate-700 rounded-2xl shadow-[0_20px_40px_-15px_rgba(0,0,0,0.3)] p-4 z-50 animate-in fade-in zoom-in-95 duration-200">
+                  <div className="absolute top-full left-0 mt-2 w-full sm:w-80 bg-white dark:bg-slate-900/95 backdrop-blur-xl border border-slate-200 dark:border-slate-700 rounded-2xl shadow-[0_20px_40px_-15px_rgba(0,0,0,0.3)] p-4 z-30 animate-in fade-in zoom-in-95 duration-200">
                     <div className="flex justify-between items-center mb-3 pb-2 border-b border-slate-200 dark:border-slate-800">
                       <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Select up to 4</span>
                       {selectedGenres.length > 0 && (

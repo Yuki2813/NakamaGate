@@ -18,6 +18,7 @@ from backend.models.favorite import Favorite
 from backend.models.userfavorite import UserFavorite
 from backend.models.friendship import Friendship
 from backend.routes import auth_router, content_router, favorite_router, review_router, friend_routes
+from backend.tests.self_tests import run_self_tests
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 env_path = os.path.join(BASE_DIR, ".env")
@@ -33,6 +34,7 @@ cloudinary.config(
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     FastAPICache.init(InMemoryBackend())
+    await run_self_tests()
     yield
 
 
