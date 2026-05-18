@@ -2,7 +2,7 @@
 Tests de arranque que se ejecutan automáticamente al iniciar el servidor.
 
 Cada función comprueba una pieza concreta de la infraestructura (env, BD,
-caché, AniList) y devuelve una tupla (nombre, ok, detalle). Los resultados
+caché, Jikan) y devuelve una tupla (nombre, ok, detalle). Los resultados
 se imprimen en stdout para que aparezcan en los logs de Render.
 
 Entrada principal: run_self_tests(). Se invoca desde el lifespan de FastAPI.
@@ -13,7 +13,7 @@ import time
 from fastapi_cache import FastAPICache
 from sqlmodel import Session, select
 
-from backend.clients.anilist_client import anilist_client
+from backend.clients.jikan_client import jikan_client
 from backend.database import engine
 from backend.models.users import Users
 
@@ -79,26 +79,15 @@ async def check_cache_set_get() -> CheckResult:
         return ("cache_set_get", False, str(e))
 
 
-async def check_anilist_details() -> CheckResult:
-    """Pide a AniList los detalles de One Piece (id 21) y valida la respuesta."""
+async def check_jikan_search() -> CheckResult:
+    """Búsqueda predictiva contra Jikan con un texto conocido."""
     try:
-        data = await anilist_client.get_media_details(21)
-        if not data or not data.get("title"):
-            return ("anilist_details", False, "respuesta vacía o sin title")
-        return ("anilist_details", True, f"title={data['title']}")
-    except Exception as e:
-        return ("anilist_details", False, str(e))
-
-
-async def check_anilist_search() -> CheckResult:
-    """Búsqueda predictiva contra AniList con un texto conocido."""
-    try:
-        results = await anilist_client.search_predictive(search_text="naruto", media_type="ANIME")
+        results = await jikan_client.search_predictive(search_text="naruto", media_type="ANIME")
         if not results:
-            return ("anilist_search", False, "sin resultados")
-        return ("anilist_search", True, f"{len(results)} resultados")
+            return ("jikan_search", False, "sin resultados")
+        return ("jikan_search", True, f"{len(results)} resultados")
     except Exception as e:
-        return ("anilist_search", False, str(e))
+        return ("jikan_search", False, str(e))
 
 
 CHECKS = [
@@ -107,8 +96,7 @@ CHECKS = [
     check_db_admin_exists,
     check_cache_init,
     check_cache_set_get,
-    check_anilist_details,
-    check_anilist_search,
+    check_jikan_search,
 ]
 
 
@@ -126,10 +114,7 @@ async def run_self_tests() -> list[CheckResult]:
         print(f"[{mark}] {name} — {detail}")
         results.append(result)
 
-    failed = 0
-    for _, ok, _ in results:
-        if not ok:
-            failed += 1
+    failed = sum(1 for _, ok, _ in results if not ok)
     total = len(results)
     print(f"=== Resumen self-tests: {total - failed}/{total} OK, {failed} fallidos ===\n")
     return results

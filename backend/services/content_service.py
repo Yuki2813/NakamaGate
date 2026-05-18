@@ -4,7 +4,7 @@ import random
 from random import Random
 from datetime import date
 
-from backend.clients.anilist_client import anilist_client
+from backend.clients.jikan_client import jikan_client
 from backend.models.favorite import Mediatype
 from backend.repositories.favorite_repository import get_user_favorites
 from backend.repositories.user_repository import get_user_by_id
@@ -18,11 +18,7 @@ SAFE_GENRES = [
 
 ADULT_GENRES = SAFE_GENRES + [ "Ecchi" ]
 
-# AniList rechaza con HTTP 400 ("Page exceeds maximum allowed for public
-# API requests") cualquier consulta paginada con page > 100. Aplicamos el
-# mismo tope nosotros para no llegar a hacer la llamada y para que el
-# pageInfo que devolvemos al frontend nunca sugiera páginas inválidas.
-ANILIST_MAX_PAGE = 100
+JIKAN_MAX_PAGE = 100
 
 
 async def get_genres_service(user_id: int, session: Session):
@@ -53,7 +49,7 @@ async def get_home_service(user_id: int, session: Session):
     for _ in range(4):
         paginas_random.append(daily_rng.randint(1, 4))
 
-    data = await anilist_client.get_home_data(genres=recomendaciones, pages=paginas_random)
+    data = await jikan_client.get_home_data(genres=recomendaciones, pages=paginas_random)
 
     pool_anime = data.get("genre1", {}).get("items", [])
     anime_del_dia = daily_rng.choice(pool_anime) if pool_anime else None
@@ -93,7 +89,7 @@ async def search_media_service(user_id: int, search_text: str, media_type: Media
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    list_media_searched=await anilist_client.search_predictive(search_text=search_text, media_type=media_type)
+    list_media_searched=await jikan_client.search_predictive(search_text=search_text, media_type=media_type)
 
     if len(list_media_searched)==0:
         raise HTTPException(status_code=404,detail="No results match your search")
@@ -102,7 +98,7 @@ async def search_media_service(user_id: int, search_text: str, media_type: Media
 
 
 async def get_media_details_service(media_id: int, user_id: int, session: Session):
-    content = await anilist_client.get_media_details(media_id=media_id)
+    content = await jikan_client.get_media_details(media_id=media_id)
 
     if not content:
         raise HTTPException(status_code=404, detail="No results match your search")
@@ -135,14 +131,14 @@ async def get_directory_service(user_id: int, page: int, media_type: Mediatype, 
     if page < 1:
         raise HTTPException(status_code=400, detail="Page number must be 1 or higher")
 
-    if page > ANILIST_MAX_PAGE:
-        raise HTTPException(status_code=400, detail=f"Page number must be {ANILIST_MAX_PAGE} or lower")
+    if page > JIKAN_MAX_PAGE:
+        raise HTTPException(status_code=400, detail=f"Page number must be {JIKAN_MAX_PAGE} or lower")
 
     user = get_user_by_id(id=user_id, session=session)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    directory_data = await anilist_client.get_directory_page(
+    directory_data = await jikan_client.get_directory_page(
         page=page,
         per_page=24,
         media_type=media_type,
@@ -151,12 +147,10 @@ async def get_directory_service(user_id: int, page: int, media_type: Mediatype, 
         status=status
     )
 
-    # AniList puede declarar lastPage > 100 aunque rechace pedir esas páginas.
-    # Normalizamos el page_info para que la UI nunca ofrezca pasar del tope.
     info = directory_data.get("page_info") or {}
-    if info.get("lastPage", 0) > ANILIST_MAX_PAGE:
-        info["lastPage"] = ANILIST_MAX_PAGE
-    if info.get("currentPage", 0) >= ANILIST_MAX_PAGE:
+    if info.get("lastPage", 0) > JIKAN_MAX_PAGE:
+        info["lastPage"] = JIKAN_MAX_PAGE
+    if info.get("currentPage", 0) >= JIKAN_MAX_PAGE:
         info["hasNextPage"] = False
     directory_data["page_info"] = info
 

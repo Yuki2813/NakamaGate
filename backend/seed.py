@@ -175,10 +175,20 @@ def ensure_friendships(session: Session) -> None:
 def run_seed() -> None:
     with Session(engine) as session:
         ensure_admin(session)
+
+
+def run_demo_seed() -> None:
+    """Solo para desarrollo local. No ejecutar en producción."""
+    with Session(engine) as session:
+        ensure_admin(session)
         ensure_extra_users(session)
         ensure_reviews(session)
         ensure_friendships(session)
 
 
 if __name__ == "__main__":
-    run_seed()
+    import sys
+    if "--demo" in sys.argv:
+        run_demo_seed()
+    else:
+        run_seed()
