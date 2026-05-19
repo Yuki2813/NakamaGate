@@ -24,8 +24,8 @@ def mock_session():
 
 @pytest.fixture
 def mock_anilist_client():
-    """JikanClient mockeado (fixture renombrado para compatibilidad)."""
-    with patch("backend.services.interacction_service.jikan_client") as mock:
+    """AniListClient mockeado."""
+    with patch("backend.services.interacction_service.anilist_client") as mock:
         yield mock
 
 
