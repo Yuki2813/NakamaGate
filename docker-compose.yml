@@ -8,18 +8,15 @@ services:
       - backend/.env
     ports:
       - "8000:8000"
+    depends_on:
+      mysql:
+        condition: service_healthy
     # Para desarrollo: monta el código en caliente. Comenta esto si quieres
     # probar exactamente la imagen tal cual irá a producción.
     volumes:
       - ./backend:/app/backend
 
-  # MySQL local opcional para desarrollo offline.
-  # Por defecto el backend usa Aiven (vía backend/.env). Si quieres una BD local,
-  # arranca este servicio con: docker compose --profile local up
-  # y cambia DATABASE_URL en backend/.env a:
-  #   mysql+pymysql://nakamagate_user:abc123.@mysql:3306/nakamagate
   mysql:
-    profiles: ["local"]
     image: mysql:8.0
     container_name: nakamagate-mysql
     restart: always
@@ -32,6 +29,11 @@ services:
       - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
 
 volumes:
   mysql_data:

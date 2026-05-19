@@ -1,14 +1,6 @@
 import re
 
 class MediaAdapter:
-
-    # ─────────────────────────────────────────────
-    # ❌ BUG EXISTENTE: La limpieza de descripción
-    #    solo quitaba <br> e <i></i> pero AniList
-    #    devuelve muchos más tags (<b>, <a href="">,
-    #    <p>, etc.) que aparecían en pantalla.
-    #    Usamos una regex para eliminar cualquier tag.
-    # ─────────────────────────────────────────────
     @staticmethod
     def _clean_html(text: str) -> str:
         if not text:

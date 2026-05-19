@@ -4,6 +4,7 @@ import time
 import httpx
 
 from backend.models.favorite import Mediatype
+from backend.services.adapter.jikan_adapter import JikanAdapter
 
 GENRE_IDS: dict[str, int] = {
     "Action": 1, "Adventure": 2, "Comedy": 4, "Drama": 8,
@@ -13,9 +14,11 @@ GENRE_IDS: dict[str, int] = {
     "Supernatural": 37, "Thriller": 41,
 }
 
+
 STATUS_ANIME = {"RELEASING": "airing", "FINISHED": "complete", "NOT_YET_RELEASED": "upcoming"}
 STATUS_MANGA = {"RELEASING": "publishing", "FINISHED": "complete", "NOT_YET_RELEASED": "upcoming"}
 
+# Mapea el sort interno al par (order_by, sort) que acepta Jikan.
 SORT_MAP = {
     "POPULARITY_DESC": ("popularity", "asc"),   # rank 1 = más popular → asc pone el 1 primero
     "SCORE_DESC":      ("score",      "desc"),
@@ -25,8 +28,8 @@ SORT_MAP = {
 
 class JikanClient:
     BASE_URL = "https://api.jikan.moe/v4"
-    _SUMMARY_TTL = 86400   # 24h — info básica (title, image, genres)
-    _FULL_TTL    = 86400   # 24h — detalles completos (chars, staff, trailer…)
+    _SUMMARY_TTL = 86400 
+    _FULL_TTL    = 86400   
 
     def __init__(self):
         self._semaphore = asyncio.Semaphore(1)
@@ -56,38 +59,50 @@ class JikanClient:
             await asyncio.sleep(0.35)
         return data
 
+    async def _safe_get(self, path: str, endpoint_name: str, default):
+        """GET que devuelve `default` si Jikan falla, sin romper la llamada padre."""
+        try:
+            return await self._get(path)
+        except httpx.HTTPError as exc:
+            print(f"[jikan] {endpoint_name} falló: {exc.__class__.__name__}")
+            return default
+
     # ── Métodos públicos ───────────────────────────────────────────────────────
 
     async def get_home_data(self, genres: list[str], pages: list[int]) -> dict:
-        from backend.services.adapter.jikan_adapter import JikanAdapter
 
         async def _trending_anime():
-            r = await self._get("/top/anime", {"filter": "airing", "limit": 10})
-            return JikanAdapter.list_to_standard_format(r.get("data", []), "ANIME")
+            top_anime_resp = await self._get("/top/anime", {"filter": "airing", "limit": 10})
+            return JikanAdapter.list_to_standard_format(top_anime_resp.get("data", []), "ANIME")
 
         async def _trending_manga():
-            r = await self._get("/top/manga", {"filter": "publishing", "limit": 10})
-            return JikanAdapter.list_to_standard_format(r.get("data", []), "MANGA")
+            top_manga_resp = await self._get("/top/manga", {"filter": "publishing", "limit": 10})
+            return JikanAdapter.list_to_standard_format(top_manga_resp.get("data", []), "MANGA")
 
         async def _upcoming():
-            r = await self._get("/seasons/upcoming", {"limit": 10})
-            return JikanAdapter.list_to_standard_format(r.get("data", []), "ANIME")
+            upcoming_resp = await self._get("/seasons/upcoming", {"limit": 10})
+            return JikanAdapter.list_to_standard_format(upcoming_resp.get("data", []), "ANIME")
 
         async def _genre_rec(genre: str, page: int):
             genre_id = GENRE_IDS.get(genre)
             if not genre_id:
                 return []
-            r = await self._get("/anime", {
+            genre_resp = await self._get("/anime", {
                 "genres": genre_id, "order_by": "popularity",
                 "sort": "asc", "page": page, "limit": 20, "sfw": "true",
             })
-            return JikanAdapter.list_to_standard_format(r.get("data", []), "ANIME")
+            return JikanAdapter.list_to_standard_format(genre_resp.get("data", []), "ANIME")
+
+        # zip hace una dubla de cada género con su página correspondiente, y lanzamos una tarea por cada pareja.
+        genre_tasks = []
+        for genre_name, page_num in zip(genres, pages):
+            genre_tasks.append(_genre_rec(genre_name, page_num))
 
         results = await asyncio.gather(
             _trending_anime(),
             _trending_manga(),
             _upcoming(),
-            *[_genre_rec(g, p) for g, p in zip(genres, pages)],
+            *genre_tasks,
         )
 
         return {
@@ -101,21 +116,19 @@ class JikanClient:
         }
 
     async def search_predictive(self, search_text: str, media_type: Mediatype) -> list:
-        from backend.services.adapter.jikan_adapter import JikanAdapter
         mtype = media_type.strip().lower()
-        r = await self._get(f"/{mtype}", {"q": search_text, "limit": 5, "sfw": "true"})
-        return JikanAdapter.list_to_standard_format(r.get("data", []), media_type.strip().upper())
+        search_resp = await self._get(f"/{mtype}", {"q": search_text, "limit": 5, "sfw": "true"})
+        return JikanAdapter.list_to_standard_format(search_resp.get("data", []), media_type.strip().upper())
 
     async def _get_summary(self, media_id: int, mtype: str) -> dict | None:
         """Info básica (1 llamada). Usada en batch/favoritos/stats."""
-        from backend.services.adapter.jikan_adapter import JikanAdapter
         key = f"{mtype}:{media_id}"
         cached = self._cache_get(self._summary_cache, key, self._SUMMARY_TTL)
         if cached is not None:
             return cached
         try:
-            r = await self._get(f"/{mtype}/{media_id}")
-            item = r.get("data")
+            summary_resp = await self._get(f"/{mtype}/{media_id}")
+            item = summary_resp.get("data")
             if not item:
                 return None
             result = JikanAdapter.to_standard_format(item, mtype.upper())
@@ -126,35 +139,29 @@ class JikanClient:
 
     async def get_media_details(self, media_id: int, media_type: str = "anime") -> dict | None:
         """Detalles completos. Usada en la página de detalle."""
-        from backend.services.adapter.jikan_adapter import JikanAdapter
         mtype = media_type.strip().lower()
         key = f"{mtype}:{media_id}"
         cached = self._cache_get(self._full_cache, key, self._FULL_TTL)
         if cached is not None:
             return cached
 
-        async def _empty():
-            return {"data": []}
-
-        # return_exceptions=True: si alguna llamada falla, seguimos con lo que hay.
-        # /videos como fallback para trailer cuando youtube_id viene null en /full.
-        results = await asyncio.gather(
-            self._get(f"/{mtype}/{media_id}/full"),
-            self._get(f"/{mtype}/{media_id}/characters"),
-            self._get(f"/{mtype}/{media_id}/staff")   if mtype == "anime" else _empty(),
-            self._get(f"/{mtype}/{media_id}/videos")  if mtype == "anime" else _empty(),
-            return_exceptions=True,
-        )
-
-        full_r   = results[0] if not isinstance(results[0], Exception) else None
-        chars_r  = results[1] if not isinstance(results[1], Exception) else {"data": []}
-        staff_r  = results[2] if not isinstance(results[2], Exception) else {"data": []}
-        videos_r = results[3] if not isinstance(results[3], Exception) else {"data": {}}
-
-        if not full_r or not full_r.get("data"):
+        # Petición principal: si /full falla no merece la pena seguir.
+        full_resp = await self._safe_get(f"/{mtype}/{media_id}/full", "full", None)
+        if not full_resp or not full_resp.get("data"):
             return None
 
-        item = full_r["data"]
+        chars_resp = await self._safe_get(f"/{mtype}/{media_id}/characters", "characters", {"data": []})
+
+        # Staff y videos solo aplican a anime; en manga se devuelven vacíos.
+        # /videos sirve de fallback para el trailer cuando youtube_id viene null en /full.
+        if mtype == "anime":
+            staff_resp = await self._safe_get(f"/{mtype}/{media_id}/staff", "staff", {"data": []})
+            videos_resp = await self._safe_get(f"/{mtype}/{media_id}/videos", "videos", {"data": {}})
+        else:
+            staff_resp = {"data": []}
+            videos_resp = {"data": {}}
+
+        item = full_resp["data"]
 
         # Jikan no incluye imágenes en las relaciones → las fetcheamos por separado.
         # Solo para tipos relevantes y máx 6 entradas para no reventar el rate limit.
@@ -165,32 +172,33 @@ class JikanClient:
             if group.get("relation") not in _relevant:
                 continue
             for entry in (group.get("entry") or []):
-                rid = entry.get("mal_id")
-                rtype = (entry.get("type") or "anime").lower()
-                if rid:
-                    rel_entries.append((rid, rtype))
+                relation_id = entry.get("mal_id")
+                relation_type = (entry.get("type") or "anime").lower()
+                if relation_id:
+                    rel_entries.append((relation_id, relation_type))
                 if len(rel_entries) >= 6:
                     break
             if len(rel_entries) >= 6:
                 break
 
+        # Pide en paralelo el summary de cada relación para extraer su imagen.
         rel_image_map: dict[int, str | None] = {}
         if rel_entries:
-            summaries = await asyncio.gather(
-                *[self._get_summary(rid, rtype) for rid, rtype in rel_entries],
-                return_exceptions=True,
-            )
-            for (rid, _), summary in zip(rel_entries, summaries):
+            summary_tasks = []
+            for relation_id, relation_type in rel_entries:
+                summary_tasks.append(self._get_summary(relation_id, relation_type))
+            summaries = await asyncio.gather(*summary_tasks, return_exceptions=True)
+            for (relation_id, _), summary in zip(rel_entries, summaries):
                 if isinstance(summary, dict) and summary:
-                    rel_image_map[rid] = summary.get("image")
+                    rel_image_map[relation_id] = summary.get("image")
 
         result = JikanAdapter.to_standard_format(
             item,
             media_type=mtype.upper(),
-            characters_data=chars_r.get("data", []),
-            staff_data=staff_r.get("data", []),
+            characters_data=chars_resp.get("data", []),
+            staff_data=staff_resp.get("data", []),
             rel_image_map=rel_image_map,
-            videos_data=videos_r.get("data") or {},
+            videos_data=videos_resp.get("data") or {},
         )
         self._cache_set(self._full_cache, key, result)
         self._cache_set(self._summary_cache, key, result)
@@ -201,15 +209,21 @@ class JikanClient:
         if not ids:
             return []
         mtype = media_type.strip().lower()
-        tasks = [self._get_summary(mid, mtype) for mid in ids]
-        results = await asyncio.gather(*tasks, return_exceptions=True)
-        return [r for r in results if isinstance(r, dict) and r]
+        # Una tarea de summary por cada id solicitado.
+        summary_tasks = []
+        for media_id in ids:
+            summary_tasks.append(self._get_summary(media_id, mtype))
+        results = await asyncio.gather(*summary_tasks, return_exceptions=True)
+        valid_results = []
+        for item in results:
+            if isinstance(item, dict) and item:
+                valid_results.append(item)
+        return valid_results
 
     async def get_directory_page(
         self, page: int, per_page: int, media_type: str,
         sort: str = "POPULARITY_DESC", genre: str = None, status: str = None,
     ) -> dict:
-        from backend.services.adapter.jikan_adapter import JikanAdapter
         mtype = media_type.strip().lower()
         order_by, sort_dir = SORT_MAP.get(sort, ("popularity", "desc"))
 
@@ -219,19 +233,27 @@ class JikanClient:
             "sfw": "true",
         }
 
+        # Convierte los nombres de género recibidos a la lista de IDs de Jikan.
         if genre:
-            ids = [str(GENRE_IDS[g.strip()]) for g in genre.split(",") if g.strip() in GENRE_IDS]
-            if ids:
-                params["genres"] = ",".join(ids)
+            genre_id_list = []
+            for genre_chunk in genre.split(","):
+                genre_name = genre_chunk.strip()
+                if genre_name in GENRE_IDS:
+                    genre_id_list.append(str(GENRE_IDS[genre_name]))
+            if genre_id_list:
+                params["genres"] = ",".join(genre_id_list)
 
         if status:
-            status_map = STATUS_ANIME if mtype == "anime" else STATUS_MANGA
+            if mtype == "anime":
+                status_map = STATUS_ANIME
+            else:
+                status_map = STATUS_MANGA
             jikan_status = status_map.get(status.strip().upper())
             if jikan_status:
                 params["status"] = jikan_status
 
-        r = await self._get(f"/{mtype}", params)
-        pagination = r.get("pagination", {})
+        directory_resp = await self._get(f"/{mtype}", params)
+        pagination = directory_resp.get("pagination", {})
         items_info = pagination.get("items", {})
 
         return {
@@ -241,7 +263,7 @@ class JikanClient:
                 "lastPage":    pagination.get("last_visible_page", 1),
                 "hasNextPage": pagination.get("has_next_page", False),
             },
-            "items": JikanAdapter.list_to_standard_format(r.get("data", []), media_type.strip().upper()),
+            "items": JikanAdapter.list_to_standard_format(directory_resp.get("data", []), media_type.strip().upper()),
         }
 
 
