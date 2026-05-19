@@ -80,27 +80,16 @@ class JikanAdapter:
         rating = item.get("rating") or ""
         is_adult = "Rx" in rating
 
-        # Tráiler: youtube_id directo → embed_url → PV de /videos
-        def _extract_yt_id(raw: dict) -> str | None:
-            yt = raw.get("youtube_id")
-            if yt:
-                return yt
-            embed = raw.get("embed_url") or ""
-            m = re.search(r"/embed/([^?&]+)", embed)
-            return m.group(1) if m else None
-
+        # Tráiler: primero el campo principal, luego el primer PV de /videos
         trailer = None
         trailer_raw = item.get("trailer") or {}
-        yt_id = _extract_yt_id(trailer_raw)
-
+        yt_id = trailer_raw.get("youtube_id")
         if not yt_id and videos_data:
-            for promo in ((videos_data or {}).get("promo") or []):
-                pv_raw = promo.get("trailer") or {}
-                yt_id = _extract_yt_id(pv_raw)
-                if yt_id:
-                    trailer_raw = pv_raw
-                    break
-
+            promo_list = (videos_data or {}).get("promo") or []
+            if promo_list:
+                pv_raw = promo_list[0].get("trailer") or {}
+                yt_id = pv_raw.get("youtube_id")
+                trailer_raw = pv_raw
         if yt_id:
             thumb = ((trailer_raw.get("images") or {}).get("medium_image_url"))
             trailer = {
