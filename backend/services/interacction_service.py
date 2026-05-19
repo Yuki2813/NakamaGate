@@ -41,7 +41,7 @@ async def add_media_to_list(user_id: int, id_api: int, media_type: MediaType, se
     # Validamos contra AniList que el ID existe y que el tipo declarado por el
     # cliente coincide con el real, para evitar guardar un manga marcado como
     # anime (o viceversa) y romper consultas posteriores por media_type.
-    info_real = await jikan_client.get_media_details(id_api)
+    info_real = await jikan_client.get_media_details(id_api, media_type=media_type.value)
 
     if not info_real:
         raise HTTPException(
@@ -147,7 +147,7 @@ async def create_review_service(user_id: int, id_api: int, media_type: MediaType
     if get_user_review_for_media(user_id=user_id, id_api=id_api, media_type=media_type, session=session) is not None:
         raise HTTPException(status_code=400, detail="You have already reviewed this media. Please edit your existing review instead.")
 
-    info_real = await jikan_client.get_media_details(id_api)
+    info_real = await jikan_client.get_media_details(id_api, media_type=media_type.value)
 
     if not info_real:
         raise HTTPException(

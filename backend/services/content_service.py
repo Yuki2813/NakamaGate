@@ -97,8 +97,8 @@ async def search_media_service(user_id: int, search_text: str, media_type: Media
     return list_media_searched
 
 
-async def get_media_details_service(media_id: int, user_id: int, session: Session):
-    content = await jikan_client.get_media_details(media_id=media_id)
+async def get_media_details_service(media_id: int, user_id: int, session: Session, media_type: Mediatype = Mediatype.anime):
+    content = await jikan_client.get_media_details(media_id=media_id, media_type=media_type.value)
 
     if not content:
         raise HTTPException(status_code=404, detail="No results match your search")

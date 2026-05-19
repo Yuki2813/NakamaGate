@@ -198,7 +198,7 @@ export default function Navbar() {
                     <div
                       key={item.id}
                       onMouseDown={(e) => e.preventDefault()}
-                      onClick={() => { setShowDropdown(false); setQuery(''); navigate(`/media/${item.id}`); }}
+                      onClick={() => { setShowDropdown(false); setQuery(''); navigate(`/media/${item.id}?media_type=${item.type?.toLowerCase() || mediaType.toLowerCase()}`); }}
                       className="flex items-center gap-3 p-3 border-b border-slate-100 dark:border-slate-800 last:border-0 hover:bg-slate-50 dark:hover:bg-slate-800/80 cursor-pointer transition-colors group"
                     >
                       <div className="w-9 h-12 rounded-md overflow-hidden shrink-0 bg-slate-200 dark:bg-slate-800">

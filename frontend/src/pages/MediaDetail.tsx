@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { apiClient } from '../api/client';
 import { BACKEND_URL } from '../config/env';
@@ -47,7 +47,9 @@ const RELATION_LABELS: Record<string, string> = {
 
 export default function MediaDetail() {
   const { id }   = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const mediaTypeParam = (searchParams.get('media_type') || 'anime').toLowerCase();
 
   const getImageUrl = (path: string | null | undefined) => {
     if (!path) return null;
@@ -92,7 +94,7 @@ export default function MediaDetail() {
   useEffect(() => {
     const load = async () => {
       try {
-        const mediaRes = await apiClient.get(`/content/${id}`);
+        const mediaRes = await apiClient.get(`/content/${id}?media_type=${mediaTypeParam}`);
         const mediaData: MediaDetailData = mediaRes.data;
         setMedia(mediaData);
 
@@ -526,7 +528,7 @@ export default function MediaDetail() {
             <SectionTitle icon={<GitBranch className="w-5 h-5" />} title="You might also like" />
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
               {media.relations.map(rel => (
-                <Link key={rel.id} to={`/media/${rel.id}`} className="group flex flex-col gap-2">
+                <Link key={rel.id} to={`/media/${rel.id}?media_type=${rel.type?.toLowerCase() || 'anime'}`} className="group flex flex-col gap-2">
                   <div className="relative aspect-2/3 w-full rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 group-hover:border-yellow-500/40 transition-all shadow-lg bg-slate-100 dark:bg-slate-900 shrink-0">
                     {rel.image
                       ? <img src={rel.image} alt={rel.title} className="absolute inset-0 w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500" />

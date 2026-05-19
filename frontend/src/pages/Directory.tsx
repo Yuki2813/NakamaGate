@@ -278,7 +278,7 @@ export default function Directory() {
 
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4 md:gap-5 lg:gap-6 items-stretch">
             {items.map((item) => (
-              <Link key={item.id} to={`/media/${item.id}`} className="group flex flex-col h-full">
+              <Link key={item.id} to={`/media/${item.id}?media_type=${mediaType.toLowerCase()}`} className="group flex flex-col h-full">
                 <figure className="relative aspect-2/3 overflow-hidden rounded-xl sm:rounded-2xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 transition-all duration-500 group-hover:border-yellow-500/40 group-hover:shadow-[0_0_30px_rgba(234,179,8,0.2)] group-hover:-translate-y-1 sm:group-hover:-translate-y-2">
                   <img
                     src={getImageUrl(item.image) || ''}

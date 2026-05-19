@@ -100,11 +100,13 @@ async def search_media(
 @router.get("/{media_id}")
 async def get_media_details(
     media_id: int = Path(..., description="MAL ID del anime/manga"),
+    media_type: Mediatype = Query(Mediatype.anime, description="anime | manga"),
     user_id: int = Depends(get_current_user_id),
     session: Session = Depends(get_db)
 ):
     return await get_media_details_service(
         media_id=media_id,
+        media_type=media_type,
         user_id=user_id,
         session=session
     )

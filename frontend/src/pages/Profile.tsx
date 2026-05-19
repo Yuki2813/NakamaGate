@@ -612,7 +612,7 @@ export default function Profile() {
 
                 return (
                   <article key={fav.media.id} className="flex flex-col bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden group backdrop-blur-md hover:border-yellow-500/30 transition-colors">
-                    <Link to={`/media/${fav.media.id}`} className="relative block aspect-2/3 bg-slate-950">
+                    <Link to={`/media/${fav.media.id}?media_type=${fav.media.type?.toLowerCase() || 'anime'}`} className="relative block aspect-2/3 bg-slate-950">
                       <img src={fav.media.image} alt={fav.media.title} className="w-full h-full object-cover" />
                       <div className={`absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-widest border backdrop-blur-sm ${statusStyles}`}>
                         {fav.status === 'watching' ? 'Watching' : fav.status === 'completed' ? 'Completed' : 'Pending'}
@@ -626,7 +626,7 @@ export default function Profile() {
                     </Link>
 
                     <div className="p-2 sm:p-3 flex flex-col flex-1 gap-2">
-                      <Link to={`/media/${fav.media.id}`}>
+                      <Link to={`/media/${fav.media.id}?media_type=${fav.media.type?.toLowerCase() || 'anime'}`}>
                         <h3 className="font-bold text-[10px] sm:text-xs text-slate-700 dark:text-slate-200 line-clamp-2 hover:text-yellow-500 dark:hover:text-yellow-400 transition-colors leading-tight">{fav.media.title}</h3>
                       </Link>
                       <div className="relative mt-auto">

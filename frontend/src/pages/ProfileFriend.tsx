@@ -383,7 +383,7 @@ export default function ProfileFriend() {
                     const StatusIcon = statusBadge.icon;
                     return (
                       <article key={`${media.id}-${fav.status}`} className="group cursor-pointer">
-                        <Link to={`/media/${media.id}`} className="block focus:outline-none">
+                        <Link to={`/media/${media.id}?media_type=${media.type?.toLowerCase() || 'anime'}`} className="block focus:outline-none">
                           <figure className="relative aspect-2/3 overflow-hidden rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 group-hover:border-yellow-500/50 shadow-lg transition-all duration-300 group-hover:-translate-y-1">
                             <img src={media.image} alt={media.title} className="w-full h-full object-cover" loading="lazy" />
                             <div className="absolute inset-0 bg-linear-to-t from-[#020617]/95 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-between p-3">
@@ -446,7 +446,7 @@ export default function ProfileFriend() {
             {reviews.length > 0 ? (
               <div className="space-y-4">
                 {reviews.map((review) => (
-                  <Link to={`/media/${review.media.id}`} key={review.id} className="block group">
+                  <Link to={`/media/${review.media.id}?media_type=${review.media.type?.toLowerCase() || 'anime'}`} key={review.id} className="block group">
                     <article className="flex gap-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 group-hover:border-yellow-500/40 transition-all shadow-sm">
                       <img
                         src={review.media.image}

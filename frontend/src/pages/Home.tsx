@@ -224,7 +224,7 @@ export default function Home() {
               )}
 
               <div className="flex gap-3 justify-center md:justify-start">
-                <Link to={`/media/${heroBanner.id}`}>
+                <Link to={`/media/${heroBanner.id}?media_type=${heroBanner.type?.toLowerCase() || 'anime'}`}>
                   <button className="bg-yellow-500 hover:bg-yellow-400 text-black font-black text-base py-3 px-7 rounded-2xl transition-all hover:scale-105 shadow-xl shadow-yellow-500/20">Watch now</button>
                 </Link>
                 <button onClick={(e) => toggleFavorite(e, heroBanner)} className={`p-3 rounded-2xl backdrop-blur-md border transition-all ${favoriteIds.has(heroBanner.id) ? 'bg-yellow-500 text-black border-yellow-400' : 'bg-white/50 dark:bg-white/5 text-slate-900 dark:text-white border-slate-300 dark:border-white/10 hover:bg-white/80 dark:hover:bg-white/10'}`}>
@@ -263,7 +263,7 @@ export default function Home() {
                         <span className="text-yellow-500 font-bold text-sm">{animeOfTheDay.score}</span>
                       </div>
                     )}
-                    <Link to={`/media/${animeOfTheDay.id}`}>
+                    <Link to={`/media/${animeOfTheDay.id}?media_type=anime`}>
                       <button className="bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold py-2 px-5 rounded-xl transition-all text-sm mt-1">Explore</button>
                     </Link>
                   </div>
@@ -287,7 +287,7 @@ export default function Home() {
                         <span className="text-yellow-500 font-bold text-sm">{mangaOfTheDay.score}</span>
                       </div>
                     )}
-                    <Link to={`/media/${mangaOfTheDay.id}`}>
+                    <Link to={`/media/${mangaOfTheDay.id}?media_type=manga`}>
                       <button className="bg-amber-600 hover:bg-amber-500 text-white font-extrabold py-2 px-5 rounded-xl transition-all text-sm mt-1">Read Details</button>
                     </Link>
                   </div>
@@ -402,7 +402,7 @@ function MediaCard({
 }) {
   return (
     <Card className="bg-transparent border-none ring-0 shadow-none group/card h-full">
-      <Link to={`/media/${item.id}`} className="block h-full">
+      <Link to={`/media/${item.id}?media_type=${item.type?.toLowerCase() || 'anime'}`} className="block h-full">
         <figure className="relative aspect-2/3 rounded-2xl overflow-hidden border border-slate-200 dark:border-white/5 bg-slate-100 dark:bg-slate-900 transition-all duration-300 group-hover/card:border-yellow-500/50 group-hover/card:-translate-y-2 shadow-lg">
           <button
             onClick={(e) => toggleFavorite(e, item)}
