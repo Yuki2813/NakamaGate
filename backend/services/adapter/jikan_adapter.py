@@ -205,8 +205,15 @@ class JikanAdapter:
     def list_to_standard_format(items: list, media_type: str = "ANIME") -> list:
         if not items:
             return []
-        return [
-            JikanAdapter.to_standard_format(item, media_type)
-            for item in items
-            if item
-        ]
+        seen_ids: set[int] = set()
+        result: list = []
+        for item in items:
+            if not item:
+                continue
+            standard = JikanAdapter.to_standard_format(item, media_type)
+            item_id = standard.get("id")
+            if item_id in seen_ids:
+                continue
+            seen_ids.add(item_id)
+            result.append(standard)
+        return result
