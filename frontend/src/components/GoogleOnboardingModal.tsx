@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { User, Loader2, AlertTriangle } from 'lucide-react';
@@ -38,11 +38,28 @@ export default function GoogleOnboardingModal({ googleToken, email, suggestedAli
       await completeGoogleSignup(googleToken, alias.trim(), isAdult, acceptTerms);
       onSuccess();
     } catch (err: any) {
-      const detail = err?.response?.data?.detail;
-      setError(typeof detail === 'string' ? detail : 'Could not complete the registration.');
+      let detail;
+      if (err && err.response && err.response.data) {
+        detail = err.response.data.detail;
+      }
+
+      let message = 'Could not complete the registration.';
+      if (typeof detail === 'string') {
+        message = detail;
+      }
+      setError(message);
       setSubmitting(false);
     }
   };
+
+  let submitContent: React.ReactNode = 'Create account';
+  if (submitting) {
+    submitContent = (
+      <>
+        <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Creating...
+      </>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/70 backdrop-blur-sm px-4">
@@ -124,9 +141,7 @@ export default function GoogleOnboardingModal({ googleToken, email, suggestedAli
               disabled={submitting}
               className="flex-1 h-11 rounded-xl bg-yellow-600 hover:bg-yellow-500 text-black font-bold"
             >
-              {submitting
-                ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Creating...</>
-                : 'Create account'}
+              {submitContent}
             </Button>
           </div>
         </form>

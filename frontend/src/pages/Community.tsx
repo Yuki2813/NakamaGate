@@ -66,7 +66,10 @@ export default function Community() {
       setSentRequests(prev => new Set(prev).add(userId));
       showNotification('success', 'Friend request sent!');
     } catch (error: any) {
-      const backendMessage = error.response?.data?.detail;
+      let backendMessage;
+      if (error.response && error.response.data && error.response.data.detail) {
+        backendMessage = error.response.data.detail;
+      }
       if (backendMessage === "Ya son amigos" || backendMessage === "Ya existe la amistad") {
         showNotification('error', 'You are already friends with this user.');
       } else if (backendMessage === "Ya hay una solicitud pendiente") {
@@ -75,7 +78,11 @@ export default function Community() {
       } else if (backendMessage === "No te puedes enviar solicitud a ti mismo") {
         showNotification('error', "You can't send a friend request to yourself.");
       } else {
-        showNotification('error', backendMessage || 'Could not send the request.');
+        let fallbackMessage = 'Could not send the request.';
+        if (backendMessage) {
+          fallbackMessage = backendMessage;
+        }
+        showNotification('error', fallbackMessage);
       }
     }
   };
@@ -86,7 +93,11 @@ export default function Community() {
       fetchSocialData();
       showNotification('success', 'New friend added!');
     } catch (error: any) {
-      showNotification('error', error.response?.data?.detail || 'The pact failed.');
+      let message = 'The pact failed.';
+      if (error.response && error.response.data && error.response.data.detail) {
+        message = error.response.data.detail;
+      }
+      showNotification('error', message);
     }
   };
 
@@ -114,6 +125,18 @@ export default function Community() {
 
   if (loading) return <Loader text="Loading Friends..." />;
 
+  let notifClasses = 'bg-red-500/10 border-red-500/30 text-red-400';
+  let notifIcon = <AlertTriangle className="w-5 h-5 shrink-0" />;
+  if (notification && notification.type === 'success') {
+    notifClasses = 'bg-green-500/10 border-green-500/30 text-green-400';
+    notifIcon = <CheckCircle2 className="w-5 h-5 shrink-0" />;
+  }
+
+  let searchBtnText = 'Search';
+  if (searching) {
+    searchBtnText = 'Searching...';
+  }
+
   return (
     <main className="min-h-screen bg-slate-50 dark:bg-[#020617] text-slate-800 dark:text-slate-200 pb-20 relative overflow-hidden">
 
@@ -124,12 +147,8 @@ export default function Community() {
 
       {notification && (
         <div className="fixed top-24 right-4 md:right-8 z-50 animate-in fade-in slide-in-from-top-5 duration-300 max-w-sm">
-          <div className={`flex items-center gap-3 px-5 py-4 rounded-2xl shadow-2xl border backdrop-blur-xl ${
-            notification.type === 'success'
-              ? 'bg-green-500/10 border-green-500/30 text-green-400'
-              : 'bg-red-500/10 border-red-500/30 text-red-400'
-          }`}>
-            {notification.type === 'success' ? <CheckCircle2 className="w-5 h-5 shrink-0" /> : <AlertTriangle className="w-5 h-5 shrink-0" />}
+          <div className={`flex items-center gap-3 px-5 py-4 rounded-2xl shadow-2xl border backdrop-blur-xl ${notifClasses}`}>
+            {notifIcon}
             <span className="font-bold text-sm">{notification.text}</span>
           </div>
         </div>
@@ -231,7 +250,7 @@ export default function Community() {
                   />
                 </div>
                 <Button type="submit" disabled={searching} className="h-14 px-8 bg-yellow-500 hover:bg-yellow-400 text-black font-black rounded-2xl shadow-lg w-full sm:w-auto">
-                  {searching ? 'Searching...' : 'Search'}
+                  {searchBtnText}
                 </Button>
               </form>
 
@@ -242,13 +261,40 @@ export default function Community() {
                     const hasSent     = sentRequests.has(user.id);
                     const hasIncoming = incomingIds.has(user.id);
 
+                    let cardClasses = 'bg-white dark:bg-slate-900/70 border-slate-200 dark:border-slate-800 hover:border-yellow-500/40 hover:shadow-md';
+                    if (isFriend) {
+                      cardClasses = 'bg-yellow-500/5 border-yellow-500/30 dark:bg-yellow-500/5';
+                    } else if (hasSent) {
+                      cardClasses = 'bg-slate-100 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700';
+                    } else if (hasIncoming) {
+                      cardClasses = 'bg-blue-500/5 border-blue-500/20';
+                    }
+
+                    let actionButton;
+                    if (isFriend) {
+                      actionButton = null;
+                    } else if (hasSent) {
+                      actionButton = (
+                        <span className="px-4 py-2 rounded-xl bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400 text-xs font-bold uppercase">
+                          Sent
+                        </span>
+                      );
+                    } else if (hasIncoming) {
+                      actionButton = (
+                        <Button onClick={() => acceptRequest(user.id)} size="sm" className="rounded-xl bg-green-600 hover:bg-green-500 text-white font-bold text-xs gap-1.5">
+                          <CheckCircle2 className="w-3.5 h-3.5" /> Accept
+                        </Button>
+                      );
+                    } else {
+                      actionButton = (
+                        <Button onClick={() => sendRequest(user.id)} size="sm" className="rounded-xl bg-yellow-500 hover:bg-yellow-400 text-black font-bold text-xs gap-1.5">
+                          <UserPlus className="w-3.5 h-3.5" /> Add
+                        </Button>
+                      );
+                    }
+
                     return (
-                      <div key={user.id} className={`flex items-center gap-4 p-4 rounded-2xl border transition-all ${
-                        isFriend    ? 'bg-yellow-500/5 border-yellow-500/30 dark:bg-yellow-500/5'
-                        : hasSent   ? 'bg-slate-100 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700'
-                        : hasIncoming ? 'bg-blue-500/5 border-blue-500/20'
-                        : 'bg-white dark:bg-slate-900/70 border-slate-200 dark:border-slate-800 hover:border-yellow-500/40 hover:shadow-md'
-                      }`}>
+                      <div key={user.id} className={`flex items-center gap-4 p-4 rounded-2xl border transition-all ${cardClasses}`}>
 
                         <div className="w-14 h-14 rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shrink-0">
                           <img src={getImageUrl(user.picture) || ''} className="w-full h-full object-cover" alt={user.alias} />
@@ -282,19 +328,7 @@ export default function Community() {
                               <ExternalLink className="w-3.5 h-3.5" /> View profile
                             </Button>
                           </Link>
-                          {isFriend ? null : hasSent ? (
-                            <span className="px-4 py-2 rounded-xl bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400 text-xs font-bold uppercase">
-                              Sent
-                            </span>
-                          ) : hasIncoming ? (
-                            <Button onClick={() => acceptRequest(user.id)} size="sm" className="rounded-xl bg-green-600 hover:bg-green-500 text-white font-bold text-xs gap-1.5">
-                              <CheckCircle2 className="w-3.5 h-3.5" /> Accept
-                            </Button>
-                          ) : (
-                            <Button onClick={() => sendRequest(user.id)} size="sm" className="rounded-xl bg-yellow-500 hover:bg-yellow-400 text-black font-bold text-xs gap-1.5">
-                              <UserPlus className="w-3.5 h-3.5" /> Add
-                            </Button>
-                          )}
+                          {actionButton}
                         </div>
                       </div>
                     );

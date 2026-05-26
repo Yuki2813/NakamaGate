@@ -53,7 +53,7 @@ export default function ProfileFriend() {
 
   // Si el usuario visita su propio perfil vía /friend/{su_id}, le redirigimos a /profile
   useEffect(() => {
-    if (id && user?.id && Number(id) === user.id) {
+    if (id && user && user.id && Number(id) === user.id) {
       navigate('/profile', { replace: true });
     }
   }, [id, user?.id, navigate]);
@@ -69,7 +69,10 @@ export default function ProfileFriend() {
 
   const [socialData, setSocialData] = useState<SocialData | null>(null);
 
-  const isAdmin = user?.rol === 'admin';
+  let isAdmin = false;
+  if (user && user.rol === 'admin') {
+    isAdmin = true;
+  }
 
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
@@ -90,9 +93,25 @@ export default function ProfileFriend() {
 
       try {
         const favsRes = await apiClient.get(`/friends/${id}/favorites?page=1&limit=20`);
-        setFavorites(favsRes.data.items ?? []);
-        setFavoritesTotal(favsRes.data.total ?? 0);
-        setHasMore(favsRes.data.has_more ?? false);
+
+        let items: FavoriteItem[] = [];
+        if (favsRes.data.items) {
+          items = favsRes.data.items;
+        }
+        setFavorites(items);
+
+        let total = 0;
+        if (favsRes.data.total) {
+          total = favsRes.data.total;
+        }
+        setFavoritesTotal(total);
+
+        let moreFlag = false;
+        if (favsRes.data.has_more) {
+          moreFlag = favsRes.data.has_more;
+        }
+        setHasMore(moreFlag);
+
         setFavPage(1);
       } catch {
         setFavorites([]);
@@ -100,7 +119,11 @@ export default function ProfileFriend() {
 
       try {
         const reviewsRes = await apiClient.get(`/reviews/user/${id}`);
-        setReviews(Array.isArray(reviewsRes.data) ? reviewsRes.data : []);
+        let reviewList: ReviewItem[] = [];
+        if (Array.isArray(reviewsRes.data)) {
+          reviewList = reviewsRes.data;
+        }
+        setReviews(reviewList);
       } catch {
         setReviews([]);
       }
@@ -109,7 +132,6 @@ export default function ProfileFriend() {
         const socialRes = await apiClient.get('/friends/social-data');
         setSocialData(socialRes.data);
       } catch {
-        // no social data available
       }
 
       setLoading(false);
@@ -124,18 +146,32 @@ export default function ProfileFriend() {
     try {
       const nextPage = favPage + 1;
       const res = await apiClient.get(`/friends/${id}/favorites?page=${nextPage}&limit=20`);
-      setFavorites(prev => [...prev, ...(res.data.items ?? [])]);
-      setHasMore(res.data.has_more ?? false);
+
+      let newItems: FavoriteItem[] = [];
+      if (res.data.items) {
+        newItems = res.data.items;
+      }
+      setFavorites(prev => [...prev, ...newItems]);
+
+      let moreFlag = false;
+      if (res.data.has_more) {
+        moreFlag = res.data.has_more;
+      }
+      setHasMore(moreFlag);
+
       setFavPage(nextPage);
     } catch {
-      // could not load more
     } finally {
       setLoadingMore(false);
     }
   };
 
   const getStatusBadge = (status: string) => {
-    switch (status?.toLowerCase()) {
+    let normalized = '';
+    if (status) {
+      normalized = status.toLowerCase();
+    }
+    switch (normalized) {
       case 'watching':
         return { icon: Play, label: 'Watching', color: 'bg-blue-500/20 border-blue-500/30 text-blue-300' };
       case 'completed':
@@ -157,7 +193,6 @@ export default function ProfileFriend() {
       const res = await apiClient.get('/friends/social-data');
       setSocialData(res.data);
     } catch {
-      // ignore
     }
   };
 
@@ -229,9 +264,58 @@ export default function ProfileFriend() {
     </main>
   );
 
-  const isFriend = socialData?.friends?.some(f => f.id === profile.id);
-  const hasSentRequest = socialData?.sent_pending?.some(s => s.id === profile.id);
-  const hasIncomingRequest = socialData?.pending?.some(p => p.id === profile.id);
+  let isFriend = false;
+  if (socialData && socialData.friends) {
+    isFriend = socialData.friends.some(f => f.id === profile.id);
+  }
+
+  let hasSentRequest = false;
+  if (socialData && socialData.sent_pending) {
+    hasSentRequest = socialData.sent_pending.some(s => s.id === profile.id);
+  }
+
+  let hasIncomingRequest = false;
+  if (socialData && socialData.pending) {
+    hasIncomingRequest = socialData.pending.some(p => p.id === profile.id);
+  }
+
+  let actionButton;
+  if (isFriend) {
+    actionButton = (
+      <Button onClick={() => setShowRemoveFriendModal(true)} disabled={actionLoading} variant="outline" className="h-12 rounded-xl border-red-500/50 bg-red-500/10 hover:bg-red-500 hover:text-white text-red-500 transition-all font-semibold">
+        <UserMinus className="w-5 h-5 mr-2" /> Remove
+      </Button>
+    );
+  } else if (hasSentRequest) {
+    actionButton = (
+      <Button disabled variant="outline" className="h-12 rounded-xl border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 font-semibold cursor-not-allowed">
+        <Clock className="w-5 h-5 mr-2" /> Request sent
+      </Button>
+    );
+  } else if (hasIncomingRequest) {
+    actionButton = (
+      <Button onClick={handleAcceptRequest} disabled={actionLoading} className="h-12 rounded-xl bg-green-600 hover:bg-green-500 text-white font-bold shadow-lg transition-all">
+        <CheckCircle2 className="w-5 h-5 mr-2" /> Accept request
+      </Button>
+    );
+  } else {
+    actionButton = (
+      <Button onClick={handleSendRequest} disabled={actionLoading} className="h-12 rounded-xl bg-yellow-600 hover:bg-yellow-500 text-black font-bold shadow-lg shadow-yellow-900/20 transition-all">
+        <UserPlus className="w-5 h-5 mr-2" /> Add
+      </Button>
+    );
+  }
+
+  let loadMoreContent;
+  if (loadingMore) {
+    loadMoreContent = (
+      <>
+        <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Loading...
+      </>
+    );
+  } else {
+    loadMoreContent = `Load more · ${favoritesTotal - favorites.length} remaining`;
+  }
 
   return (
     <main className="min-h-screen bg-slate-50 dark:bg-[#020617] text-slate-800 dark:text-slate-200 font-sans selection:bg-yellow-500/30 pb-20">
@@ -318,23 +402,7 @@ export default function ProfileFriend() {
               </p>
             </div>
             <div className="flex gap-3">
-              {isFriend ? (
-                <Button onClick={() => setShowRemoveFriendModal(true)} disabled={actionLoading} variant="outline" className="h-12 rounded-xl border-red-500/50 bg-red-500/10 hover:bg-red-500 hover:text-white text-red-500 transition-all font-semibold">
-                  <UserMinus className="w-5 h-5 mr-2" /> Remove
-                </Button>
-              ) : hasSentRequest ? (
-                <Button disabled variant="outline" className="h-12 rounded-xl border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 font-semibold cursor-not-allowed">
-                  <Clock className="w-5 h-5 mr-2" /> Request sent
-                </Button>
-              ) : hasIncomingRequest ? (
-                <Button onClick={handleAcceptRequest} disabled={actionLoading} className="h-12 rounded-xl bg-green-600 hover:bg-green-500 text-white font-bold shadow-lg transition-all">
-                  <CheckCircle2 className="w-5 h-5 mr-2" /> Accept request
-                </Button>
-              ) : (
-                <Button onClick={handleSendRequest} disabled={actionLoading} className="h-12 rounded-xl bg-yellow-600 hover:bg-yellow-500 text-black font-bold shadow-lg shadow-yellow-900/20 transition-all">
-                  <UserPlus className="w-5 h-5 mr-2" /> Add
-                </Button>
-              )}
+              {actionButton}
               {isAdmin && (
                 <Button onClick={() => setShowDeleteModal(true)} variant="outline" className="h-12 rounded-xl border-red-700/50 bg-red-900/10 hover:bg-red-700 hover:text-white text-red-500 transition-all font-semibold">
                   <Trash2 className="w-5 h-5 mr-2" /> Delete account
@@ -393,7 +461,7 @@ export default function ProfileFriend() {
                               </div>
                               <div>
                                 <span className="text-xs font-bold text-yellow-500 uppercase block">{media.type}</span>
-                                <span className="text-xs text-slate-300">★ {(media.score ?? 0).toFixed(1)}</span>
+                                <span className="text-xs text-slate-300">★ {(media.score ? media.score : 0).toFixed(1)}</span>
                               </div>
                             </div>
                             <div className={`absolute top-2 right-2 flex items-center gap-1 px-2 py-1 rounded-lg border ${statusBadge.color} group-hover:hidden`}>
@@ -418,10 +486,7 @@ export default function ProfileFriend() {
                       variant="outline"
                       className="h-11 px-8 rounded-xl border-yellow-500/40 text-yellow-500 hover:bg-yellow-500 hover:text-black font-bold transition-all"
                     >
-                      {loadingMore
-                        ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Loading...</>
-                        : `Load more · ${favoritesTotal - favorites.length} remaining`
-                      }
+                      {loadMoreContent}
                     </Button>
                   </div>
                 )}

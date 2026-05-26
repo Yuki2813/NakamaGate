@@ -12,9 +12,7 @@ router = APIRouter(
     prefix="/reviews",
     tags=["Reviews"]
 )
-# ==========================================
-# 1. CREAR UNA RESEÑA
-# ==========================================
+
 class ReviewBase(BaseModel):
     score: int = Field(
         ...,
@@ -53,9 +51,7 @@ async def create_review(
         session=session
     )
 
-# ==========================================
-# 2. ACTUALIZAR UNA RESEÑA
-# ==========================================
+
 @router.put("/{review_id}")
 async def update_review(
     review_id: int,
@@ -71,9 +67,7 @@ async def update_review(
         session=session
     )
 
-# ==========================================
-# 3. ELIMINAR UNA RESEÑA
-# ==========================================
+
 @router.delete("/{review_id}")
 async def delete_review(
     review_id: int,
@@ -86,9 +80,7 @@ async def delete_review(
         session=session
     )
 
-# ==========================================
-# 4. OBTENER RESEÑAS DE UN ANIME/MANGA ESPECÍFICO
-# ==========================================
+
 @router.get("/me/count", summary="Número de reseñas del usuario actual")
 async def get_my_review_count(
     user_id: int = Depends(get_current_user_id),

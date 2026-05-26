@@ -1,6 +1,5 @@
 from slowapi import Limiter
 from slowapi.util import get_ipaddr
 
-# get_ipaddr reads X-Forwarded-For so each real client IP gets its own bucket
-# behind Nginx/Railway/Render instead of the whole world sharing the proxy's IP
+# get_ipaddr lee X-Forwarded-For para que cada cliente tenga su propio bucket detrás del proxy.
 limiter = Limiter(key_func=get_ipaddr)

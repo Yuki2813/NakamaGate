@@ -18,10 +18,7 @@ SAFE_GENRES = [
 
 ADULT_GENRES = SAFE_GENRES + [ "Ecchi" ]
 
-# AniList rechaza con HTTP 400 ("Page exceeds maximum allowed for public
-# API requests") cualquier consulta paginada con page > 100. Aplicamos el
-# mismo tope nosotros para no llegar a hacer la llamada y para que el
-# pageInfo que devolvemos al frontend nunca sugiera páginas inválidas.
+# AniList rechaza con HTTP 400 cualquier consulta paginada con page > 100.
 ANILIST_MAX_PAGE = 100
 
 
@@ -29,7 +26,11 @@ async def get_genres_service(user_id: int, session: Session):
     user = get_user_by_id(id=user_id, session=session)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    return {"genres": sorted(ADULT_GENRES if user.isAdult else SAFE_GENRES)}
+    if user.isAdult:
+        available_genres = ADULT_GENRES
+    else:
+        available_genres = SAFE_GENRES
+    return {"genres": sorted(available_genres)}
 
 
 async def get_home_service(user_id: int, session: Session):
@@ -39,12 +40,12 @@ async def get_home_service(user_id: int, session: Session):
     if not user:
         raise HTTPException(status_code=404, detail="You are not logged in, or there was an error with your request")
 
-    posibles_generos = ADULT_GENRES if user.isAdult else SAFE_GENRES
+    if user.isAdult:
+        posibles_generos = ADULT_GENRES
+    else:
+        posibles_generos = SAFE_GENRES
 
-    # RNG seedeado con el ordinal del día: todas las peticiones del mismo día
-    # producen las mismas elecciones (anime/manga "del día", géneros y páginas
-    # de los carruseles). Instancia local para no contaminar el random global
-    # ni sufrir condiciones de carrera bajo concurrencia.
+    # RNG seedeado con el ordinal del día para que todas las peticiones del mismo día devuelvan lo mismo.
     daily_rng = Random(date.today().toordinal())
 
     recomendaciones = daily_rng.sample(posibles_generos, 4)
@@ -56,14 +57,16 @@ async def get_home_service(user_id: int, session: Session):
     data = await anilist_client.get_home_data(genres=recomendaciones, pages=paginas_random)
 
     pool_anime = data.get("genre1", {}).get("items", [])
-    anime_del_dia = daily_rng.choice(pool_anime) if pool_anime else None
+    anime_del_dia = None
+    if pool_anime:
+        anime_del_dia = daily_rng.choice(pool_anime)
 
     pool_manga = data.get("trending_manga", [])
-    manga_del_dia = daily_rng.choice(pool_manga) if pool_manga else None
+    manga_del_dia = None
+    if pool_manga:
+        manga_del_dia = daily_rng.choice(pool_manga)
 
-    # El orden dentro de los carruseles sí usa el random global: queremos que
-    # cada recarga muestre los ítems en distinto orden aunque el pool del día
-    # sea el mismo.
+    # Orden dentro del carrusel con random global: cada recarga reordena aunque el pool del día sea el mismo.
     for key in ["genre1", "genre2", "genre3", "genre4"]:
         if key in data and "items" in data[key]:
             items = data[key]["items"]
@@ -151,9 +154,10 @@ async def get_directory_service(user_id: int, page: int, media_type: Mediatype, 
         status=status
     )
 
-    # AniList puede declarar lastPage > 100 aunque rechace pedir esas páginas.
-    # Normalizamos el page_info para que la UI nunca ofrezca pasar del tope.
-    info = directory_data.get("page_info") or {}
+    # AniList puede declarar lastPage > 100 aunque rechace pedirlas; capamos al tope.
+    info = directory_data.get("page_info")
+    if info is None:
+        info = {}
     if info.get("lastPage", 0) > ANILIST_MAX_PAGE:
         info["lastPage"] = ANILIST_MAX_PAGE
     if info.get("currentPage", 0) >= ANILIST_MAX_PAGE:

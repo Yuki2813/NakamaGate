@@ -1,5 +1,3 @@
-import os
-import jwt
 from fastapi import APIRouter, Query
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
@@ -7,7 +5,7 @@ from sqlmodel import Session
 from backend.database import get_db
 from backend.models.favorite import Mediatype
 from backend.models.userfavorite import status_favorite
-from backend.security import get_current_user_id
+from backend.security import get_current_user_id, user_id_from_auth_header
 from backend.services.content_service import check_if_favorite
 from backend.services.interacction_service import add_media_to_list, get_favorite_ids_service, get_favorite_list_paginated, get_favorite_stats_service, get_watching_favorites_service, remove_media_from_list, update_media_status
 from fastapi_cache.decorator import cache
@@ -54,7 +52,9 @@ async def get_my_favorites(
     user_id: int = Depends(get_current_user_id),
     session: Session = Depends(get_db)
 ):
-    status_value = status.value if status is not None else None
+    status_value = None
+    if status is not None:
+        status_value = status.value
     return await get_favorite_list_paginated(user_id=user_id, session=session, page=page, limit=limit, status=status_value)
 
 
@@ -66,33 +66,14 @@ def get_favorite_ids(
     return get_favorite_ids_service(user_id=user_id, session=session)
 
 
-# Decodifica el JWT para sacar el user_id. Necesario porque @cache construye
-# la clave antes de resolver Depends(get_current_user_id) y por tanto no
-# podemos leer el user_id de los kwargs en la primera invocación.
-def _user_id_from_request(request) -> str:
-    if request is None:
-        return "anon"
-    auth = request.headers.get("authorization", "")
-    if not auth.startswith("Bearer "):
-        return "anon"
-    try:
-        payload = jwt.decode(
-            auth[7:],
-            os.getenv("SECRET_KEY"),
-            algorithms=[os.getenv("ALGORITHM", "HS256")]
-        )
-        return str(payload.get("user_id", "anon"))
-    except Exception:
-        return "anon"
-
-
-# Clave por usuario para las stats. Mismo formato exacto que usa
-# invalidate_stats_cache en interacction_service, para que al añadir/quitar
-# un favorito se borre la entrada correcta.
+# Clave "stats:user:{id}", la misma que usa invalidate_stats_cache.
 def stats_key_builder(func, namespace="", *, request=None, response=None, args=(), kwargs={}):
     user_id = kwargs.get("user_id")
     if user_id is None:
-        user_id = _user_id_from_request(request)
+        auth = None
+        if request:
+            auth = request.headers.get("authorization")
+        user_id = user_id_from_auth_header(auth)
     return f"stats:user:{user_id}"
 
 

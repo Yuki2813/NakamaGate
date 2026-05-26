@@ -74,18 +74,18 @@ export default function Profile() {
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
 
-  // Trae todo lo que pinta el perfil: datos de usuario, primera página
-  // de favoritos (con filtro de estado si lo hay), lista completa de IDs
-  // para los contadores/insignias, total de reseñas y stats de géneros.
-  // Las cuatro últimas peticiones van en paralelo porque no dependen
-  // entre sí; solo el /auth/me es secuencial porque inicializa el
-  // formulario de alias y el toggle de adulto.
+  // /auth/me secuencial; el resto (favs, ids, reviews count, stats) en paralelo.
   const fetchProfileData = async () => {
     try {
       const profileRes = await apiClient.get('/auth/me');
       setProfile(profileRes.data);
       setNewAlias(profileRes.data.alias);
-      setIsAdult(profileRes.data.is_adult ?? false);
+
+      let adultValue = false;
+      if (profileRes.data.is_adult) {
+        adultValue = profileRes.data.is_adult;
+      }
+      setIsAdult(adultValue);
 
       const params = new URLSearchParams({ page: '1', limit: '20' });
       if (statusFilter !== 'all') params.set('status', statusFilter);
@@ -95,13 +95,44 @@ export default function Profile() {
         apiClient.get('/reviews/me/count'),
         apiClient.get('/favorites/stats')
       ]);
-      setFavorites(pagsRes.data.items ?? []);
-      setFavoritesTotal(pagsRes.data.total ?? 0);
-      setHasMore(pagsRes.data.has_more ?? false);
+
+      let items = [];
+      if (pagsRes.data.items) {
+        items = pagsRes.data.items;
+      }
+      setFavorites(items);
+
+      let total = 0;
+      if (pagsRes.data.total) {
+        total = pagsRes.data.total;
+      }
+      setFavoritesTotal(total);
+
+      let moreFlag = false;
+      if (pagsRes.data.has_more) {
+        moreFlag = pagsRes.data.has_more;
+      }
+      setHasMore(moreFlag);
+
       setFavPage(1);
-      setAllFavIds(idsRes.data ?? []);
-      setReviewCount(reviewCountRes.data.count ?? 0);
-      setStats(statsRes.data ?? null);
+
+      let favIds = [];
+      if (idsRes.data) {
+        favIds = idsRes.data;
+      }
+      setAllFavIds(favIds);
+
+      let revCount = 0;
+      if (reviewCountRes.data.count) {
+        revCount = reviewCountRes.data.count;
+      }
+      setReviewCount(revCount);
+
+      let statsData = null;
+      if (statsRes.data) {
+        statsData = statsRes.data;
+      }
+      setStats(statsData);
     } catch (err) {
       console.error("Error loading profile:", err);
     } finally {
@@ -117,11 +148,21 @@ export default function Profile() {
       const params = new URLSearchParams({ page: String(nextPage), limit: '20' });
       if (statusFilter !== 'all') params.set('status', statusFilter);
       const res = await apiClient.get(`/favorites/?${params}`);
-      setFavorites(prev => [...prev, ...(res.data.items ?? [])]);
-      setHasMore(res.data.has_more ?? false);
+
+      let newItems = [];
+      if (res.data.items) {
+        newItems = res.data.items;
+      }
+      setFavorites(prev => [...prev, ...newItems]);
+
+      let moreFlag = false;
+      if (res.data.has_more) {
+        moreFlag = res.data.has_more;
+      }
+      setHasMore(moreFlag);
+
       setFavPage(nextPage);
     } catch {
-      // silent
     } finally {
       setLoadingMore(false);
     }
@@ -132,9 +173,25 @@ export default function Profile() {
       const params = new URLSearchParams({ page: '1', limit: '20' });
       if (filter !== 'all') params.set('status', filter);
       const res = await apiClient.get(`/favorites/?${params}`);
-      setFavorites(res.data.items ?? []);
-      setFavoritesTotal(res.data.total ?? 0);
-      setHasMore(res.data.has_more ?? false);
+
+      let items = [];
+      if (res.data.items) {
+        items = res.data.items;
+      }
+      setFavorites(items);
+
+      let total = 0;
+      if (res.data.total) {
+        total = res.data.total;
+      }
+      setFavoritesTotal(total);
+
+      let moreFlag = false;
+      if (res.data.has_more) {
+        moreFlag = res.data.has_more;
+      }
+      setHasMore(moreFlag);
+
       setFavPage(1);
     } catch (err) {
       console.error("Filter error:", err);
@@ -149,7 +206,9 @@ export default function Profile() {
   };
 
   useEffect(() => {
-    if (user?.id) fetchProfileData();
+    if (user && user.id) {
+      fetchProfileData();
+    }
   }, [user?.id]);
 
   useEffect(() => {
@@ -166,23 +225,29 @@ export default function Profile() {
   }, [favorites, searchTerm]);
 
   const genreStats = useMemo(() => {
-    return stats?.top_genres ?? [];
+    if (stats && stats.top_genres) {
+      return stats.top_genres;
+    }
+    return [];
   }, [stats]);
 
-  // Calcula las 12 insignias del perfil a partir de los IDs de favoritos
-  // y las stats de géneros. Se recalcula sola cuando cambian stats o la
-  // lista de favoritos. Las marcadas con isSecret se pintan como un
-  // candado hasta desbloquearse.
+  // 12 insignias derivadas de favoriteIds y stats; isSecret se pinta como candado hasta desbloquearse.
   const badges = useMemo(() => {
     const totalCount = allFavIds.length;
     const completedCount = allFavIds.filter(f => f.status === 'completed').length;
     const watchingCount = allFavIds.filter(f => f.status === 'watching').length;
     const pendingCount = allFavIds.filter(f => f.status === 'pending').length;
 
-    const hasAction = stats?.has_action ?? false;
-    const hasRomance = stats?.has_romance ?? false;
-    const hasMystery = stats?.has_mystery ?? false;
-    const uniqueGenresCount = stats?.unique_genres_count ?? 0;
+    let hasAction = false;
+    let hasRomance = false;
+    let hasMystery = false;
+    let uniqueGenresCount = 0;
+    if (stats) {
+      hasAction = stats.has_action;
+      hasRomance = stats.has_romance;
+      hasMystery = stats.has_mystery;
+      uniqueGenresCount = stats.unique_genres_count;
+    }
 
     return [
       { id: 1, name: 'Beginner', desc: 'First title added', icon: <Star className="w-4 h-4"/>, active: totalCount > 0 },
@@ -200,12 +265,13 @@ export default function Profile() {
     ];
   }, [stats, favoritesTotal, allFavIds]);
 
-  // Actualiza el alias. Tras un cambio exitoso recargamos la página entera
-  // porque el backend emite un JWT nuevo con el alias actualizado y
-  // queremos que toda la app (navbar, contextos, etc.) lo recoja sin
-  // tener que propagar el cambio manualmente.
+  // Recargamos tras cambio de alias para que toda la app recoja el JWT nuevo.
   const handleUpdateAlias = async () => {
-    if (!newAlias.trim() || newAlias === profile?.alias) {
+    let sameAsCurrent = false;
+    if (profile && newAlias === profile.alias) {
+      sameAsCurrent = true;
+    }
+    if (!newAlias.trim() || sameAsCurrent) {
       setIsEditingAlias(false);
       return;
     }
@@ -249,20 +315,19 @@ export default function Profile() {
       setMediaToDelete(null);
       try {
         const statsRes = await apiClient.get('/favorites/stats');
-        setStats(statsRes.data ?? null);
+        let statsData = null;
+        if (statsRes.data) {
+          statsData = statsRes.data;
+        }
+        setStats(statsData);
       } catch {
-        // stats es solo informativo: si falla no bloqueamos el borrado.
       }
     } catch (error) {
       console.error("Delete error:", error);
     }
   };
 
-  // Activa o desactiva la preferencia de contenido adulto. Si al
-  // desactivarla el backend ha tenido que quitar favoritos +18 de la
-  // biblioteca del usuario, devolvemos removed_favorites > 0 y volvemos
-  // a pedir todo el perfil para que la rejilla y las stats reflejen los
-  // borrados.
+  // Toggle adulto; si el backend retira favoritos +18, recargamos el perfil entero.
   const handleToggleAdult = async () => {
     const newValue = !isAdult;
     setSavingAdult(true);
@@ -270,7 +335,10 @@ export default function Profile() {
       const res = await apiClient.patch('/auth/me/adult', { is_adult: newValue });
       setIsAdult(newValue);
       await refreshUser();
-      const removed = res.data?.removed_favorites ?? 0;
+      let removed = 0;
+      if (res.data && res.data.removed_favorites) {
+        removed = res.data.removed_favorites;
+      }
       if (removed > 0) {
         await fetchProfileData();
       }
@@ -292,10 +360,7 @@ export default function Profile() {
     }
   };
 
-  // Coge el recorte que ha hecho el usuario en AvatarEditor, lo exporta
-  // a JPEG y lo sube como multipart al endpoint del avatar. Al terminar
-  // recargamos la página con un query string distinto (?u=timestamp) para
-  // forzar al navegador a pedir la imagen nueva y no servir la cacheada.
+  // Recorte de AvatarEditor a JPEG multipart; recargamos con ?u=timestamp para invalidar caché del navegador.
   const handleSaveAvatar = () => {
     if (editorRef.current) {
       setSavingAvatar(true);
@@ -319,6 +384,239 @@ export default function Profile() {
 
   if (loading) return <Loader text="Loading profile..." />;
   if (!profile) return <div className="text-white p-10 text-center">Profile not found.</div>;
+
+  let aliasBlock;
+  if (isEditingAlias) {
+    aliasBlock = (
+      <div className="flex items-center gap-2 justify-center md:justify-start">
+        <Input value={newAlias} onChange={(e) => setNewAlias(e.target.value)} className="h-10 bg-white dark:bg-slate-800 border-yellow-500/50 text-slate-900 dark:text-white font-bold max-w-xs" autoFocus />
+        <Button onClick={handleUpdateAlias} size="icon" className="bg-green-600"><Check className="w-4 h-4"/></Button>
+        <Button onClick={() => setIsEditingAlias(false)} size="icon" variant="outline"><X className="w-4 h-4"/></Button>
+      </div>
+    );
+  } else {
+    aliasBlock = (
+      <div className="flex items-center justify-center md:justify-start gap-4">
+        <h1 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white">{profile.alias}</h1>
+        <button onClick={() => setIsEditingAlias(true)} className="p-2 hover:bg-slate-800 rounded-lg text-slate-500 transition-all"><Edit2 className="w-4 h-4" /></button>
+      </div>
+    );
+  }
+
+  let avatarBlock;
+  if (profile.picture) {
+    avatarBlock = <img src={profile.picture} alt="Avatar" className="w-full h-full object-cover" />;
+  } else {
+    avatarBlock = <div className="w-full h-full flex items-center justify-center text-5xl font-black text-yellow-500 bg-slate-900 uppercase">{profile.alias.substring(0, 2)}</div>;
+  }
+
+  const badgeItems = [];
+  for (const badge of badges) {
+    const isLockedSecret = badge.isSecret && !badge.active;
+
+    let displayIcon;
+    if (isLockedSecret) {
+      displayIcon = <Lock className="w-3.5 h-3.5" />;
+    } else {
+      displayIcon = badge.icon;
+    }
+
+    let titleName;
+    let titleDesc;
+    if (isLockedSecret) {
+      titleName = '???';
+      titleDesc = badge.hint;
+    } else {
+      titleName = badge.name;
+      titleDesc = badge.desc;
+    }
+
+    let badgeClasses;
+    if (badge.active) {
+      badgeClasses = 'bg-yellow-500/10 border-yellow-500/50 text-yellow-500 shadow-[0_0_15px_-3px_rgba(234,179,8,0.2)]';
+    } else {
+      badgeClasses = 'bg-slate-100 dark:bg-slate-950/50 border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-700 opacity-50';
+    }
+
+    badgeItems.push(
+      <div
+        key={badge.id}
+        title={`${titleName}: ${titleDesc}`}
+        className={`aspect-square rounded-xl flex items-center justify-center border transition-all cursor-help ${badgeClasses}`}
+      >
+        {displayIcon}
+      </div>
+    );
+  }
+
+  let genreStatsBlock;
+  if (genreStats.length === 0) {
+    genreStatsBlock = <p className="text-[10px] text-slate-600 italic text-center">Add titles to see your tastes.</p>;
+  } else {
+    const bars = [];
+    for (const [genre, count] of genreStats) {
+      let widthPct = 0;
+      if (allFavIds.length > 0) {
+        widthPct = (count / allFavIds.length) * 100;
+      }
+      bars.push(
+        <div key={genre}>
+          <div className="flex justify-between text-[10px] font-bold uppercase mb-1.5 text-slate-500 dark:text-slate-400">
+            <span>{genre}</span><span>{count}</span>
+          </div>
+          <div className="w-full h-1.5 bg-slate-200 dark:bg-slate-950 rounded-full overflow-hidden">
+            <div className="h-full bg-yellow-500" style={{ width: `${widthPct}%` }}></div>
+          </div>
+        </div>
+      );
+    }
+    genreStatsBlock = <>{bars}</>;
+  }
+
+  let adultToggleTitle = "Enable adult content";
+  if (isAdult) {
+    adultToggleTitle = "Disable adult content";
+  }
+
+  let adultToggleBg = 'bg-slate-700';
+  if (isAdult) {
+    adultToggleBg = 'bg-yellow-500';
+  }
+
+  let adultKnobPos = 'translate-x-1';
+  if (isAdult) {
+    adultKnobPos = 'translate-x-6';
+  }
+
+  const filterOptions = [
+    { key: 'all', label: 'All', count: allFavIds.length },
+    { key: 'watching', label: 'Watching', count: allFavIds.filter(f => f.status === 'watching').length },
+    { key: 'completed', label: 'Completed', count: allFavIds.filter(f => f.status === 'completed').length },
+    { key: 'pending', label: 'Pending', count: allFavIds.filter(f => f.status === 'pending').length },
+  ] as const;
+
+  const filterButtons = [];
+  for (const opt of filterOptions) {
+    const active = statusFilter === opt.key;
+
+    let btnClasses;
+    if (active) {
+      btnClasses = 'bg-yellow-500 text-black border-yellow-500';
+    } else {
+      btnClasses = 'bg-white dark:bg-slate-900/60 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-yellow-500/50 hover:text-yellow-500';
+    }
+
+    let countClasses = 'text-slate-400';
+    if (active) {
+      countClasses = 'text-black/60';
+    }
+
+    filterButtons.push(
+      <button
+        key={opt.key}
+        onClick={() => handleStatusFilterChange(opt.key)}
+        className={`px-3.5 py-1.5 rounded-xl text-[11px] font-bold uppercase tracking-wider border transition-all ${btnClasses}`}
+      >
+        {opt.label}
+        <span className={`ml-2 text-[10px] ${countClasses}`}>{opt.count}</span>
+      </button>
+    );
+  }
+
+  let libraryGrid;
+  if (allFavIds.length === 0) {
+    libraryGrid = (
+      <div className="col-span-full flex flex-col items-center justify-center py-32 px-6 text-center bg-slate-900/30 border-2 border-dashed border-slate-800 rounded-3xl relative overflow-hidden group backdrop-blur-md">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-yellow-500/0 group-hover:bg-yellow-500/10 blur-[80px] rounded-full pointer-events-none transition-colors duration-700"></div>
+        <Compass className="w-20 h-20 text-slate-800 mb-6 stroke-[1px] relative z-10" />
+        <h3 className="text-xl font-black text-slate-300 mb-2 tracking-tight relative z-10">Your library is empty</h3>
+        <p className="text-slate-500 max-w-sm mb-6 text-xs relative z-10">Explore the directory, filter by your favorite genres and start forging your legend in Nakamagate.</p>
+        <Link to="/directory" className="relative z-10">
+          <Button className="bg-yellow-600 hover:bg-yellow-500 text-black font-black px-6 h-10 rounded-xl transition-all active:scale-95 uppercase tracking-widest text-[10px]">
+            Explore
+          </Button>
+        </Link>
+      </div>
+    );
+  } else if (favorites.length === 0) {
+    libraryGrid = (
+      <div className="col-span-full py-20 text-center text-slate-500 border border-slate-800 border-dashed rounded-3xl bg-slate-900/30 backdrop-blur-sm">
+        <p className="font-semibold text-lg mb-1">Nothing here</p>
+        <p className="text-sm">You have no titles with status &quot;{statusFilter}&quot;.</p>
+      </div>
+    );
+  } else if (filteredFavorites.length === 0) {
+    libraryGrid = (
+      <div className="col-span-full py-20 text-center text-slate-500 border border-slate-800 border-dashed rounded-3xl bg-slate-900/30 backdrop-blur-sm">
+        <p className="font-semibold text-lg mb-1">No results</p>
+        <p className="text-sm">No title was found containing &quot;{searchTerm}&quot;.</p>
+      </div>
+    );
+  } else {
+    const cards = [];
+    for (const fav of filteredFavorites) {
+      let statusStyles = 'bg-slate-800/50 text-slate-300 border-slate-700';
+      if (fav.status === 'watching') {
+        statusStyles = 'bg-blue-500/10 text-blue-400 border-blue-500/20';
+      } else if (fav.status === 'completed') {
+        statusStyles = 'bg-green-500/10 text-green-400 border-green-500/20';
+      }
+
+      let statusLabel = 'Pending';
+      if (fav.status === 'watching') {
+        statusLabel = 'Watching';
+      } else if (fav.status === 'completed') {
+        statusLabel = 'Completed';
+      }
+
+      cards.push(
+        <article key={fav.media.id} className="flex flex-col bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden group backdrop-blur-md hover:border-yellow-500/30 transition-colors">
+          <Link to={`/media/${fav.media.id}`} className="relative block aspect-2/3 bg-slate-950">
+            <img src={fav.media.image} alt={fav.media.title} className="w-full h-full object-cover" />
+            <div className={`absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-widest border backdrop-blur-sm ${statusStyles}`}>
+              {statusLabel}
+            </div>
+            <button
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); triggerDeleteModal(fav.media.id, fav.media.type); }}
+              className="absolute top-1.5 right-1.5 p-1.5 bg-red-600/80 hover:bg-red-600 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-all"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          </Link>
+
+          <div className="p-2 sm:p-3 flex flex-col flex-1 gap-2">
+            <Link to={`/media/${fav.media.id}`}>
+              <h3 className="font-bold text-[10px] sm:text-xs text-slate-700 dark:text-slate-200 line-clamp-2 hover:text-yellow-500 dark:hover:text-yellow-400 transition-colors leading-tight">{fav.media.title}</h3>
+            </Link>
+            <div className="relative mt-auto">
+              <select
+                value={fav.status}
+                onChange={(e) => handleStatusChange(fav.media.id, e.target.value)}
+                className="w-full bg-slate-100 dark:bg-slate-950 hover:bg-slate-200 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 text-[9px] sm:text-[10px] font-semibold rounded-lg pl-2 pr-6 py-1.5 focus:ring-1 focus:ring-yellow-500 appearance-none cursor-pointer"
+              >
+                <option value="watching">Watching</option>
+                <option value="completed">Completed</option>
+                <option value="pending">Pending</option>
+              </select>
+              <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-500 pointer-events-none" />
+            </div>
+          </div>
+        </article>
+      );
+    }
+    libraryGrid = <>{cards}</>;
+  }
+
+  let loadMoreContent;
+  if (loadingMore) {
+    loadMoreContent = (
+      <>
+        <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Loading...
+      </>
+    );
+  } else {
+    loadMoreContent = `Load more · ${favoritesTotal - favorites.length} remaining`;
+  }
 
   return (
     <main className="min-h-screen bg-slate-50 dark:bg-[#020617] text-slate-800 dark:text-slate-200 pb-20 relative font-sans overflow-hidden">
@@ -412,31 +710,26 @@ export default function Profile() {
       <header className="relative z-10 max-w-300 mx-auto px-4 sm:px-6 pt-8 sm:pt-12 pb-8 sm:pb-10 flex flex-col md:flex-row items-center gap-6 sm:gap-8">
         <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
           <div className="w-32 h-32 md:w-40 md:h-40 rounded-full border-4 border-slate-200 dark:border-slate-800 overflow-hidden bg-slate-100 dark:bg-slate-900 shadow-2xl relative shadow-yellow-500/10">
-            {profile.picture ? (
-              <img src={profile.picture} alt="Avatar" className="w-full h-full object-cover" />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-5xl font-black text-yellow-500 bg-slate-900 uppercase">{profile.alias.substring(0, 2)}</div>
-            )}
+            {avatarBlock}
             <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all">
               <Camera className="w-8 h-8 text-white" />
             </div>
           </div>
-          <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={(e) => {if(e.target.files?.[0]) setSelectedFile(e.target.files[0])}} />
+          <input
+            type="file"
+            accept="image/*"
+            className="hidden"
+            ref={fileInputRef}
+            onChange={(e) => {
+              if (e.target.files && e.target.files[0]) {
+                setSelectedFile(e.target.files[0]);
+              }
+            }}
+          />
         </div>
 
         <div className="flex-1 text-center md:text-left">
-          {isEditingAlias ? (
-            <div className="flex items-center gap-2 justify-center md:justify-start">
-              <Input value={newAlias} onChange={(e) => setNewAlias(e.target.value)} className="h-10 bg-white dark:bg-slate-800 border-yellow-500/50 text-slate-900 dark:text-white font-bold max-w-xs" autoFocus />
-              <Button onClick={handleUpdateAlias} size="icon" className="bg-green-600"><Check className="w-4 h-4"/></Button>
-              <Button onClick={() => setIsEditingAlias(false)} size="icon" variant="outline"><X className="w-4 h-4"/></Button>
-            </div>
-          ) : (
-            <div className="flex items-center justify-center md:justify-start gap-4">
-              <h1 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white">{profile.alias}</h1>
-              <button onClick={() => setIsEditingAlias(true)} className="p-2 hover:bg-slate-800 rounded-lg text-slate-500 transition-all"><Edit2 className="w-4 h-4" /></button>
-            </div>
-          )}
+          {aliasBlock}
           <p className="text-yellow-500/80 font-bold mt-1 text-sm tracking-widest uppercase italic flex items-center justify-center md:justify-start gap-2">
             <Star className="w-4 h-4 fill-yellow-500" /> Nakama Hunter
           </p>
@@ -464,34 +757,14 @@ export default function Profile() {
           <section className="bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 p-5 rounded-3xl shadow-sm backdrop-blur-md">
             <h2 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mb-6 flex items-center gap-2"><Award className="w-4 h-4 text-yellow-500" /> Unlocked Achievements</h2>
             <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-              {badges.map(badge => {
-                const isLockedSecret = badge.isSecret && !badge.active;
-                const displayIcon = isLockedSecret ? <Lock className="w-3.5 h-3.5" /> : badge.icon;
-                return (
-                  <div key={badge.id} title={`${isLockedSecret ? '???' : badge.name}: ${isLockedSecret ? badge.hint : badge.desc}`}
-                    className={`aspect-square rounded-xl flex items-center justify-center border transition-all cursor-help
-                      ${badge.active ? 'bg-yellow-500/10 border-yellow-500/50 text-yellow-500 shadow-[0_0_15px_-3px_rgba(234,179,8,0.2)]' : 'bg-slate-100 dark:bg-slate-950/50 border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-700 opacity-50'}`}
-                  >
-                    {displayIcon}
-                  </div>
-                );
-              })}
+              {badgeItems}
             </div>
           </section>
 
           <section className="bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 p-5 rounded-3xl shadow-sm backdrop-blur-md">
             <h2 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mb-6 flex items-center gap-2"><BarChart3 className="w-4 h-4 text-yellow-500" /> Personal Tastes</h2>
             <div className="space-y-4">
-              {genreStats.length > 0 ? genreStats.map(([genre, count]) => (
-                <div key={genre}>
-                  <div className="flex justify-between text-[10px] font-bold uppercase mb-1.5 text-slate-500 dark:text-slate-400">
-                    <span>{genre}</span><span>{count}</span>
-                  </div>
-                  <div className="w-full h-1.5 bg-slate-200 dark:bg-slate-950 rounded-full overflow-hidden">
-                    <div className="h-full bg-yellow-500" style={{ width: `${allFavIds.length > 0 ? (count / allFavIds.length) * 100 : 0}%` }}></div>
-                  </div>
-                </div>
-              )) : <p className="text-[10px] text-slate-600 italic text-center">Add titles to see your tastes.</p>}
+              {genreStatsBlock}
             </div>
           </section>
 
@@ -511,10 +784,10 @@ export default function Profile() {
                 type="button"
                 onClick={handleToggleAdult}
                 disabled={savingAdult}
-                title={isAdult ? "Disable adult content" : "Enable adult content"}
-                className={`relative shrink-0 w-11 h-6 rounded-full overflow-hidden transition-colors duration-200 disabled:opacity-50 ${isAdult ? 'bg-yellow-500' : 'bg-slate-700'}`}
+                title={adultToggleTitle}
+                className={`relative shrink-0 w-11 h-6 rounded-full overflow-hidden transition-colors duration-200 disabled:opacity-50 ${adultToggleBg}`}
               >
-                <span className={`absolute top-1 left-0 w-4 h-4 bg-white rounded-full shadow transition-transform duration-200 ${isAdult ? 'translate-x-6' : 'translate-x-1'}`} />
+                <span className={`absolute top-1 left-0 w-4 h-4 bg-white rounded-full shadow transition-transform duration-200 ${adultKnobPos}`} />
               </button>
             </div>
             <div className="border-t border-slate-800 pt-4">
@@ -554,98 +827,12 @@ export default function Profile() {
 
           {allFavIds.length > 0 && (
             <div className="flex flex-wrap gap-2 mb-6">
-              {([
-                { key: 'all',       label: 'All',       count: allFavIds.length },
-                { key: 'watching',  label: 'Watching',  count: allFavIds.filter(f => f.status === 'watching').length },
-                { key: 'completed', label: 'Completed', count: allFavIds.filter(f => f.status === 'completed').length },
-                { key: 'pending',   label: 'Pending',   count: allFavIds.filter(f => f.status === 'pending').length },
-              ] as const).map(opt => {
-                const active = statusFilter === opt.key;
-                return (
-                  <button
-                    key={opt.key}
-                    onClick={() => handleStatusFilterChange(opt.key)}
-                    className={`px-3.5 py-1.5 rounded-xl text-[11px] font-bold uppercase tracking-wider border transition-all ${
-                      active
-                        ? 'bg-yellow-500 text-black border-yellow-500'
-                        : 'bg-white dark:bg-slate-900/60 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-yellow-500/50 hover:text-yellow-500'
-                    }`}
-                  >
-                    {opt.label}
-                    <span className={`ml-2 text-[10px] ${active ? 'text-black/60' : 'text-slate-400'}`}>{opt.count}</span>
-                  </button>
-                );
-              })}
+              {filterButtons}
             </div>
           )}
 
           <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
-
-            {allFavIds.length === 0 ? (
-              <div className="col-span-full flex flex-col items-center justify-center py-32 px-6 text-center bg-slate-900/30 border-2 border-dashed border-slate-800 rounded-3xl relative overflow-hidden group backdrop-blur-md">
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-yellow-500/0 group-hover:bg-yellow-500/10 blur-[80px] rounded-full pointer-events-none transition-colors duration-700"></div>
-                <Compass className="w-20 h-20 text-slate-800 mb-6 stroke-[1px] relative z-10" />
-                <h3 className="text-xl font-black text-slate-300 mb-2 tracking-tight relative z-10">Your library is empty</h3>
-                <p className="text-slate-500 max-w-sm mb-6 text-xs relative z-10">Explore the directory, filter by your favorite genres and start forging your legend in Nakamagate.</p>
-                <Link to="/directory" className="relative z-10">
-                  <Button className="bg-yellow-600 hover:bg-yellow-500 text-black font-black px-6 h-10 rounded-xl transition-all active:scale-95 uppercase tracking-widest text-[10px]">
-                    Explore
-                  </Button>
-                </Link>
-              </div>
-            ) : favorites.length === 0 ? (
-              <div className="col-span-full py-20 text-center text-slate-500 border border-slate-800 border-dashed rounded-3xl bg-slate-900/30 backdrop-blur-sm">
-                <p className="font-semibold text-lg mb-1">Nothing here</p>
-                <p className="text-sm">You have no titles with status &quot;{statusFilter}&quot;.</p>
-              </div>
-            ) : filteredFavorites.length === 0 ? (
-              <div className="col-span-full py-20 text-center text-slate-500 border border-slate-800 border-dashed rounded-3xl bg-slate-900/30 backdrop-blur-sm">
-                <p className="font-semibold text-lg mb-1">No results</p>
-                <p className="text-sm">No title was found containing &quot;{searchTerm}&quot;.</p>
-              </div>
-            ) : (
-              filteredFavorites.map((fav) => {
-                const statusStyles =
-                  fav.status === 'watching' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
-                  fav.status === 'completed' ? 'bg-green-500/10 text-green-400 border-green-500/20' :
-                  'bg-slate-800/50 text-slate-300 border-slate-700';
-
-                return (
-                  <article key={fav.media.id} className="flex flex-col bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden group backdrop-blur-md hover:border-yellow-500/30 transition-colors">
-                    <Link to={`/media/${fav.media.id}`} className="relative block aspect-2/3 bg-slate-950">
-                      <img src={fav.media.image} alt={fav.media.title} className="w-full h-full object-cover" />
-                      <div className={`absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-widest border backdrop-blur-sm ${statusStyles}`}>
-                        {fav.status === 'watching' ? 'Watching' : fav.status === 'completed' ? 'Completed' : 'Pending'}
-                      </div>
-                      <button
-                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); triggerDeleteModal(fav.media.id, fav.media.type); }}
-                        className="absolute top-1.5 right-1.5 p-1.5 bg-red-600/80 hover:bg-red-600 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-all"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </Link>
-
-                    <div className="p-2 sm:p-3 flex flex-col flex-1 gap-2">
-                      <Link to={`/media/${fav.media.id}`}>
-                        <h3 className="font-bold text-[10px] sm:text-xs text-slate-700 dark:text-slate-200 line-clamp-2 hover:text-yellow-500 dark:hover:text-yellow-400 transition-colors leading-tight">{fav.media.title}</h3>
-                      </Link>
-                      <div className="relative mt-auto">
-                        <select
-                          value={fav.status}
-                          onChange={(e) => handleStatusChange(fav.media.id, e.target.value)}
-                          className="w-full bg-slate-100 dark:bg-slate-950 hover:bg-slate-200 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 text-[9px] sm:text-[10px] font-semibold rounded-lg pl-2 pr-6 py-1.5 focus:ring-1 focus:ring-yellow-500 appearance-none cursor-pointer"
-                        >
-                          <option value="watching">Watching</option>
-                          <option value="completed">Completed</option>
-                          <option value="pending">Pending</option>
-                        </select>
-                        <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-500 pointer-events-none" />
-                      </div>
-                    </div>
-                  </article>
-                );
-              })
-            )}
+            {libraryGrid}
           </div>
 
           {hasMore && !searchTerm && (
@@ -656,10 +843,7 @@ export default function Profile() {
                 variant="outline"
                 className="h-11 px-8 rounded-xl border-yellow-500/40 text-yellow-500 hover:bg-yellow-500 hover:text-black font-bold transition-all"
               >
-                {loadingMore
-                  ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Loading...</>
-                  : `Load more · ${favoritesTotal - favorites.length} remaining`
-                }
+                {loadMoreContent}
               </Button>
             </div>
           )}

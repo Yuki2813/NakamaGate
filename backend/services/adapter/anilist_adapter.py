@@ -2,20 +2,13 @@ import re
 
 class MediaAdapter:
 
-    # ─────────────────────────────────────────────
-    # ❌ BUG EXISTENTE: La limpieza de descripción
-    #    solo quitaba <br> e <i></i> pero AniList
-    #    devuelve muchos más tags (<b>, <a href="">,
-    #    <p>, etc.) que aparecían en pantalla.
-    #    Usamos una regex para eliminar cualquier tag.
-    # ─────────────────────────────────────────────
     @staticmethod
     def _clean_html(text: str) -> str:
         if not text:
             return ""
         text = text.replace("<br>", "\n").replace("<br/>", "\n").replace("<br />", "\n")
-        text = re.sub(r"<[^>]+>", "", text)   # elimina cualquier otro tag HTML
-        text = re.sub(r"\n{3,}", "\n\n", text) # colapsa saltos de línea excesivos
+        text = re.sub(r"<[^>]+>", "", text)
+        text = re.sub(r"\n{3,}", "\n\n", text)
         return text.strip()
 
     @staticmethod
@@ -23,11 +16,10 @@ class MediaAdapter:
         if not anilist_item:
             return {}
 
-        units = anilist_item.get("episodes") or anilist_item.get("chapters")
+        units = anilist_item.get("episodes")
+        if not units:
+            units = anilist_item.get("chapters")
 
-        # ── Trailer ──────────────────────────────────
-        # AniList devuelve { id, site, thumbnail }
-        # Solo procesamos YouTube (que es casi siempre)
         trailer_raw = anilist_item.get("trailer")
         trailer = None
         if trailer_raw and trailer_raw.get("site", "").lower() == "youtube":
@@ -37,82 +29,167 @@ class MediaAdapter:
                 "thumbnail": trailer_raw.get("thumbnail"),
             }
 
-        # ── Dónde verlo (solo links de tipo STREAMING) ──
+        external_links = anilist_item.get("externalLinks")
+        if external_links is None:
+            external_links = []
+
         streaming = []
-        for link in anilist_item.get("externalLinks") or []:
+        for link in external_links:
             if link.get("type") == "STREAMING":
                 streaming.append({
                     "site":  link.get("site"),
                     "url":   link.get("url"),
-                    "color": link.get("color"),   # color de marca de la plataforma
-                    "icon":  link.get("icon"),    # icono SVG que da AniList
+                    "color": link.get("color"),
+                    "icon":  link.get("icon"),
                 })
 
-        # ── Personajes principales ────────────────────
+        characters_data = anilist_item.get("characters")
+        if characters_data is None:
+            characters_data = {}
+
+        char_nodes = characters_data.get("nodes")
+        if char_nodes is None:
+            char_nodes = []
+
+        char_edges = characters_data.get("edges")
+        if char_edges is None:
+            char_edges = []
+
         characters = []
-        char_nodes = (anilist_item.get("characters") or {}).get("nodes") or []
-        char_edges = (anilist_item.get("characters") or {}).get("edges") or []
         for node, edge in zip(char_nodes, char_edges):
+            node_name = node.get("name")
+            if node_name is None:
+                node_name = {}
+
+            node_image = node.get("image")
+            if node_image is None:
+                node_image = {}
+
             characters.append({
                 "id":    node.get("id"),
-                "name":  (node.get("name") or {}).get("full"),
-                "image": (node.get("image") or {}).get("medium"),
-                "role":  edge.get("role"),   # MAIN / SUPPORTING / BACKGROUND
+                "name":  node_name.get("full"),
+                "image": node_image.get("medium"),
+                "role":  edge.get("role"),
             })
 
-        # ── Relaciones (secuelas, precuelas, spin-offs) ──
+        relations_data = anilist_item.get("relations")
+        if relations_data is None:
+            relations_data = {}
+
+        rel_nodes = relations_data.get("nodes")
+        if rel_nodes is None:
+            rel_nodes = []
+
+        rel_edges = relations_data.get("edges")
+        if rel_edges is None:
+            rel_edges = []
+
         relations = []
-        rel_nodes = (anilist_item.get("relations") or {}).get("nodes") or []
-        rel_edges = (anilist_item.get("relations") or {}).get("edges") or []
         for node, edge in zip(rel_nodes, rel_edges):
             rel_type = edge.get("relationType", "")
-            # Filtramos solo las relaciones narrativas relevantes
             if rel_type in ("SEQUEL", "PREQUEL", "SIDE_STORY", "SPIN_OFF", "PARENT", "ALTERNATIVE"):
+                node_title = node.get("title")
+                if node_title is None:
+                    node_title = {}
+
+                node_cover = node.get("coverImage")
+                if node_cover is None:
+                    node_cover = {}
+
                 relations.append({
                     "id":       node.get("id"),
-                    "title":    (node.get("title") or {}).get("romaji"),
-                    "image":    (node.get("coverImage") or {}).get("medium"),
-                    "type":     node.get("type"),      # ANIME / MANGA
-                    "format":   node.get("format"),    # TV, MOVIE, OVA, MANGA…
+                    "title":    node_title.get("romaji"),
+                    "image":    node_cover.get("medium"),
+                    "type":     node.get("type"),
+                    "format":   node.get("format"),
                     "relation": rel_type,
                 })
 
-        # ── Staff relevante ───────────────────────────
+        staff_data = anilist_item.get("staff")
+        if staff_data is None:
+            staff_data = {}
+
+        staff_nodes = staff_data.get("nodes")
+        if staff_nodes is None:
+            staff_nodes = []
+
+        staff_edges = staff_data.get("edges")
+        if staff_edges is None:
+            staff_edges = []
+
         staff = []
-        staff_nodes = (anilist_item.get("staff") or {}).get("nodes") or []
-        staff_edges = (anilist_item.get("staff") or {}).get("edges") or []
         for node, edge in zip(staff_nodes, staff_edges):
+            node_name = node.get("name")
+            if node_name is None:
+                node_name = {}
+
+            node_image = node.get("image")
+            if node_image is None:
+                node_image = {}
+
             staff.append({
                 "id":    node.get("id"),
-                "name":  (node.get("name") or {}).get("full"),
-                "image": (node.get("image") or {}).get("medium"),
-                "role":  edge.get("role"),  # "Director", "Original Creator", etc.
+                "name":  node_name.get("full"),
+                "image": node_image.get("medium"),
+                "role":  edge.get("role"),
             })
 
-        # ── Estudio principal ─────────────────────────
-        studios = [
-            {"id": s.get("id"), "name": s.get("name"), "url": s.get("siteUrl")}
-            for s in ((anilist_item.get("studios") or {}).get("nodes") or [])
-        ]
+        studios_data = anilist_item.get("studios")
+        if studios_data is None:
+            studios_data = {}
+
+        studio_nodes = studios_data.get("nodes")
+        if studio_nodes is None:
+            studio_nodes = []
+
+        studios = []
+        for s in studio_nodes:
+            studios.append({
+                "id":   s.get("id"),
+                "name": s.get("name"),
+                "url":  s.get("siteUrl"),
+            })
+
+        title_data = anilist_item.get("title")
+        if title_data is None:
+            title_data = {}
+
+        cover_data = anilist_item.get("coverImage")
+        if cover_data is None:
+            cover_data = {}
+
+        image = cover_data.get("extraLarge")
+        if not image:
+            image = cover_data.get("large")
+
+        score = anilist_item.get("averageScore")
+        if not score:
+            score = 0
+
+        units_value = 0
+        if units:
+            units_value = units
+
+        start_date = anilist_item.get("startDate")
+        if start_date is None:
+            start_date = {}
+        year = start_date.get("year", "N/A")
 
         return {
-            # ── Campos existentes ──────────────────────
             "id":          anilist_item.get("id"),
             "type":        anilist_item.get("type"),
-            "title":       (anilist_item.get("title") or {}).get("romaji"),
-            "title_en":    (anilist_item.get("title") or {}).get("english"),
-            "image":       (anilist_item.get("coverImage") or {}).get("extraLarge")
-                           or (anilist_item.get("coverImage") or {}).get("large"),
-            "image_thumb": (anilist_item.get("coverImage") or {}).get("medium"),
+            "title":       title_data.get("romaji"),
+            "title_en":    title_data.get("english"),
+            "image":       image,
+            "image_thumb": cover_data.get("medium"),
             "banner":      anilist_item.get("bannerImage"),
-            "score":       anilist_item.get("averageScore") or 0,
+            "score":       score,
             "status":      anilist_item.get("status"),
             "description": MediaAdapter._clean_html(anilist_item.get("description", "")),
-            "units":       units if units else 0,
+            "units":       units_value,
             "genres":      anilist_item.get("genres", []),
-            "year":        (anilist_item.get("startDate") or {}).get("year", "N/A"),
+            "year":        year,
             "is_adult":    anilist_item.get("isAdult", False),
-            # ── Campos nuevos ──────────────────────────
             "trailer":    trailer,
             "streaming":  streaming,
             "characters": characters,
@@ -125,8 +202,8 @@ class MediaAdapter:
     def list_to_standar_format(anilist_list: list) -> list:
         if not anilist_list:
             return []
-        return [
-            MediaAdapter.to_standar_format(item)
-            for item in anilist_list
-            if item
-        ]
+        result = []
+        for item in anilist_list:
+            if item:
+                result.append(MediaAdapter.to_standar_format(item))
+        return result

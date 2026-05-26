@@ -6,11 +6,21 @@ from fastapi.security import HTTPBearer
 
 security=HTTPBearer()
 
-# Usa las mismas variables que tienes en tu auth_service
 SECRET_KEY = os.getenv("SECRET_KEY")
 if not SECRET_KEY:
     raise ValueError("No SECRET_KEY set for JWT application")
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
+
+# Extrae el user_id sin lanzar excepciones; para key_builders de fastapi-cache que corren antes de Depends.
+def user_id_from_auth_header(auth_header: str | None) -> str:
+    if not auth_header or not auth_header.startswith("Bearer "):
+        return "anon"
+    try:
+        payload = jwt.decode(auth_header[7:], SECRET_KEY, algorithms=[ALGORITHM])
+        return str(payload.get("user_id", "anon"))
+    except Exception:
+        return "anon"
+
 
 def get_current_user_id(credentials = Depends(security)) -> int:
     credentials_exception = HTTPException(

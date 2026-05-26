@@ -12,8 +12,7 @@ from backend.repositories.user_repository import get_user_by_id
 
 
 async def _fetch_media_in_chunks(ids: list[int], media_type: str) -> list:
-    # AniList rechaza batches > 50 IDs; troceamos para soportar usuarios con
-    # listas largas sin reventar la query.
+    # AniList rechaza batches > 50 IDs.
     chunk_size = 50
     all_results = []
     for i in range(0, len(ids), chunk_size):
@@ -23,11 +22,7 @@ async def _fetch_media_in_chunks(ids: list[int], media_type: str) -> list:
     return all_results
 
 
-# Las cachés de home y stats viven en memoria con clave por usuario
-# (ver key_builders en los routers). Cuando los datos que las alimentan
-# cambian (favoritos, preferencia adulta), hay que purgarlas explícitamente
-# o el usuario seguirá viendo la respuesta antigua hasta que expire (3600s).
-# Se silencia la excepción para que un fallo de caché nunca rompa la mutación.
+# Purga manual de la caché por-usuario tras mutaciones. Silenciamos errores para que un fallo de caché no rompa la mutación.
 async def invalidate_stats_cache(user_id: int):
     try:
         backend = FastAPICache.get_backend()
@@ -46,9 +41,7 @@ async def invalidate_home_cache(user_id: int):
 
 async def add_media_to_list(user_id: int, id_api: int, media_type: MediaType, session: Session):
 
-    # Validamos contra AniList que el ID existe y que el tipo declarado por el
-    # cliente coincide con el real, para evitar guardar un manga marcado como
-    # anime (o viceversa) y romper consultas posteriores por media_type.
+    # Validamos contra AniList que id y media_type coinciden con el real.
     info_real = await anilist_client.get_media_details(id_api)
 
     if not info_real:
@@ -100,10 +93,7 @@ async def get_favorite_list(user_id: int, session: Session):
     if len(favorite_tuples) == 0:
         return []
 
-    # La BD solo guarda (id_api, media_type); los metadatos (título, imagen,
-    # géneros...) viven en AniList. Separamos por tipo porque la API exige una
-    # query distinta para ANIME y MANGA, y luego indexamos el resultado por
-    # (id_api, tipo) para casarlo con cada favorito en una sola pasada.
+    # Separamos por tipo porque AniList exige una query distinta para ANIME y MANGA.
     anime_ids = []
     manga_ids = []
 
@@ -133,8 +123,7 @@ async def get_favorite_list(user_id: int, session: Session):
         datos_anilist = media_dict.get((fav_data.id_api, fav_data.media_type.value))
 
         if datos_anilist is not None:
-            # Devolvemos fav_data.id (PK interna), no id_api: el frontend
-            # necesita la PK para llamar a endpoints de update/delete.
+            # Devolvemos fav_data.id (PK interna), el frontend la necesita para update/delete.
             lista_final.append({
                 "id": fav_data.id,
                 "status": user_fav.status,
@@ -201,7 +190,7 @@ def delete_review_service(review_id: int, user_id: int, session: Session):
         raise HTTPException(status_code=404, detail="Review not found")
     user = get_user_by_id(id=user_id, session=session)
 
-    # Admin puede borrar cualquier reseña (moderación); el resto solo las suyas.
+    # Admin puede borrar cualquier reseña; el resto solo las suyas.
     is_owner = (review.id_user == user_id)
     is_admin = (user.rol == Rol.admin)
 
@@ -396,7 +385,10 @@ async def get_favorite_stats_service(user_id: int, session: Session):
     has_mystery = False
 
     for media in media_list:
-        for g in (media.get("genres") or []):
+        genres = media.get("genres")
+        if genres is None:
+            genres = []
+        for g in genres:
             genre_counts[g] = genre_counts.get(g, 0) + 1
             if g == "Action":
                 has_action = True
@@ -406,7 +398,9 @@ async def get_favorite_stats_service(user_id: int, session: Session):
                 has_mystery = True
 
     sorted_genres = sorted(genre_counts.items(), key=lambda x: x[1], reverse=True)
-    top_genres = [[name, count] for name, count in sorted_genres[:5]]
+    top_genres = []
+    for name, count in sorted_genres[:5]:
+        top_genres.append([name, count])
 
     return {
         "top_genres": top_genres,

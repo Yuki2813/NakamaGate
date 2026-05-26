@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Eye, EyeOff, Mail, Lock } from 'lucide-react';
@@ -39,10 +39,20 @@ export default function Login() {
       if (result.status === 'existing') {
         navigate('/home');
       } else {
+        let emailValue = '';
+        if (result.email) {
+          emailValue = result.email;
+        }
+
+        let aliasValue = '';
+        if (result.suggested_alias) {
+          aliasValue = result.suggested_alias;
+        }
+
         setOnboarding({
           token: credentialResponse.credential,
-          email: result.email ?? '',
-          suggestedAlias: result.suggested_alias ?? '',
+          email: emailValue,
+          suggestedAlias: aliasValue,
         });
         setLoading(false);
       }
@@ -51,6 +61,11 @@ export default function Login() {
       setLoading(false);
     }
   };
+
+  let submitContent: React.ReactNode = "Sign In";
+  if (loading) {
+    submitContent = <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin"></div>;
+  }
 
   return (
     <main className="min-h-screen flex items-center justify-center bg-[#020617] relative px-4 transition-colors duration-500 overflow-hidden">
@@ -123,7 +138,7 @@ export default function Login() {
             </div>
 
             <Button type="submit" disabled={loading} className="w-full h-12 rounded-xl bg-yellow-600 hover:bg-yellow-500 text-black font-bold text-base shadow-lg shadow-yellow-900/20 transition-all active:scale-[0.98] mt-2">
-              {loading ? <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin"></div> : "Sign In"}
+              {submitContent}
             </Button>
           </form>
 

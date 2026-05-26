@@ -71,7 +71,7 @@ export default function Navbar() {
         setResults(res.data.items || res.data);
       } catch (error: any) {
         if (error.code === 'ERR_CANCELED' || error.name === 'CanceledError') return;
-        if (error.response?.data?.detail) {
+        if (error.response && error.response.data && error.response.data.detail) {
           setSearchError(error.response.data.detail);
         } else {
           setSearchError("Error connecting to the database.");
@@ -92,15 +92,99 @@ export default function Navbar() {
     navigate('/login');
   };
 
+  let logoSrc = 'https://res.cloudinary.com/dlalpfup4/image/upload/v1777901506/1000091274_wegamg.png';
+  if (isDark) {
+    logoSrc = 'https://res.cloudinary.com/dlalpfup4/image/upload/v1777901507/1000091271_cyfjfk.png';
+  }
+
+  let userPicture;
+  if (user) {
+    userPicture = getImageUrl(user.picture);
+  }
+
+  let avatarBlock;
+  if (userPicture) {
+    avatarBlock = <img src={userPicture} alt="Avatar" className="w-5 h-5 md:w-6 md:h-6 rounded-full object-cover border border-slate-300 dark:border-slate-600 shrink-0" />;
+  } else {
+    avatarBlock = (
+      <div className="w-5 h-5 md:w-6 md:h-6 rounded-full bg-yellow-500/20 text-yellow-500 flex items-center justify-center shrink-0">
+        <User className="w-3 h-3" />
+      </div>
+    );
+  }
+
+  let userLabel = 'Profile';
+  if (user && user.alias) {
+    userLabel = user.alias;
+  }
+
+  let searchDropdown = null;
+  if (searchError) {
+    searchDropdown = (
+      <div className="p-6 text-center text-red-400 text-sm font-bold flex flex-col items-center gap-3 bg-red-950/20">
+        <AlertTriangle className="w-7 h-7 text-red-500" />
+        <span>{searchError}</span>
+      </div>
+    );
+  } else if (results.length > 0) {
+    const rows = [];
+    for (const item of results as any[]) {
+      let thumb = item.image;
+      if (item.image_thumb) {
+        thumb = item.image_thumb;
+      }
+
+      let itemType = mediaType;
+      if (item.type) {
+        itemType = item.type;
+      }
+
+      let itemYear = 'N/A';
+      if (item.year) {
+        itemYear = item.year;
+      }
+
+      rows.push(
+        <div
+          key={item.id}
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => { setShowDropdown(false); setQuery(''); navigate(`/media/${item.id}`); }}
+          className="flex items-center gap-3 p-3 border-b border-slate-100 dark:border-slate-800 last:border-0 hover:bg-slate-50 dark:hover:bg-slate-800/80 cursor-pointer transition-colors group"
+        >
+          <div className="w-9 h-12 rounded-md overflow-hidden shrink-0 bg-slate-200 dark:bg-slate-800">
+            <img src={thumb} alt={item.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+          </div>
+          <div className="flex flex-col text-left min-w-0">
+            <span className="font-bold text-sm text-slate-700 dark:text-slate-200 group-hover:text-yellow-500 dark:group-hover:text-yellow-400 transition-colors line-clamp-1">{item.title}</span>
+            <div className="flex items-center gap-2 mt-0.5">
+              <span className="font-medium text-xs text-slate-500 uppercase">{itemType}</span>
+              <span className="w-1 h-1 rounded-full bg-slate-400 dark:bg-slate-600"></span>
+              <span className="font-medium text-xs text-slate-500">{itemYear}</span>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    searchDropdown = <>{rows}</>;
+  } else {
+    let emptyText = 'No results found.';
+    if (isSearching) {
+      emptyText = 'Searching the catalog...';
+    }
+    searchDropdown = (
+      <div className="p-5 text-center text-slate-500 dark:text-slate-400 text-sm">
+        {emptyText}
+      </div>
+    );
+  }
+
   return (
     <nav className="sticky top-0 z-50 w-full bg-white/80 dark:bg-[#020617]/80 backdrop-blur-xl border-b border-yellow-500/20 py-2 md:py-3 transition-colors">
       <div className="max-w-screen-2xl mx-auto px-3 sm:px-4 md:px-6 flex flex-wrap items-center gap-x-1.5 gap-y-2 md:grid md:grid-cols-[auto_1fr_auto] md:gap-x-4">
 
         <Link to="/home" className="shrink-0 hover:scale-105 transition-transform">
           <img
-            src={isDark
-              ? 'https://res.cloudinary.com/dlalpfup4/image/upload/v1777901507/1000091271_cyfjfk.png'
-              : 'https://res.cloudinary.com/dlalpfup4/image/upload/v1777901506/1000091274_wegamg.png'}
+            src={logoSrc}
             alt="NakamaGate"
             className="h-8 md:h-10 w-auto object-contain"
           />
@@ -132,14 +216,8 @@ export default function Navbar() {
 
           <Link to="/profile">
             <Button className="h-9 md:h-10 px-2 md:px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white/80 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 hover:border-yellow-500/50 text-slate-800 dark:text-slate-200 transition-all font-semibold flex items-center gap-1.5">
-              {getImageUrl(user?.picture) ? (
-                <img src={getImageUrl(user?.picture)!} alt="Avatar" className="w-5 h-5 md:w-6 md:h-6 rounded-full object-cover border border-slate-300 dark:border-slate-600 shrink-0" />
-              ) : (
-                <div className="w-5 h-5 md:w-6 md:h-6 rounded-full bg-yellow-500/20 text-yellow-500 flex items-center justify-center shrink-0">
-                  <User className="w-3 h-3" />
-                </div>
-              )}
-              <span className="max-w-20 truncate hidden sm:inline text-sm">{user?.alias || 'Profile'}</span>
+              {avatarBlock}
+              <span className="max-w-20 truncate hidden sm:inline text-sm">{userLabel}</span>
             </Button>
           </Link>
 
@@ -188,37 +266,7 @@ export default function Navbar() {
 
             {showDropdown && (
               <div className="absolute top-12 md:top-14 left-0 w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-[0_20px_40px_-15px_rgba(0,0,0,0.3)] flex flex-col z-50 max-h-72 overflow-y-auto custom-scrollbar overflow-hidden">
-                {searchError ? (
-                  <div className="p-6 text-center text-red-400 text-sm font-bold flex flex-col items-center gap-3 bg-red-950/20">
-                    <AlertTriangle className="w-7 h-7 text-red-500" />
-                    <span>{searchError}</span>
-                  </div>
-                ) : results.length > 0 ? (
-                  results.map((item: any) => (
-                    <div
-                      key={item.id}
-                      onMouseDown={(e) => e.preventDefault()}
-                      onClick={() => { setShowDropdown(false); setQuery(''); navigate(`/media/${item.id}`); }}
-                      className="flex items-center gap-3 p-3 border-b border-slate-100 dark:border-slate-800 last:border-0 hover:bg-slate-50 dark:hover:bg-slate-800/80 cursor-pointer transition-colors group"
-                    >
-                      <div className="w-9 h-12 rounded-md overflow-hidden shrink-0 bg-slate-200 dark:bg-slate-800">
-                        <img src={item.image_thumb || item.image} alt={item.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-                      </div>
-                      <div className="flex flex-col text-left min-w-0">
-                        <span className="font-bold text-sm text-slate-700 dark:text-slate-200 group-hover:text-yellow-500 dark:group-hover:text-yellow-400 transition-colors line-clamp-1">{item.title}</span>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          <span className="font-medium text-xs text-slate-500 uppercase">{item.type || mediaType}</span>
-                          <span className="w-1 h-1 rounded-full bg-slate-400 dark:bg-slate-600"></span>
-                          <span className="font-medium text-xs text-slate-500">{item.year || 'N/A'}</span>
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="p-5 text-center text-slate-500 dark:text-slate-400 text-sm">
-                    {isSearching ? 'Searching the catalog...' : 'No results found.'}
-                  </div>
-                )}
+                {searchDropdown}
               </div>
             )}
           </div>

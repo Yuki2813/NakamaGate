@@ -34,25 +34,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
 
-  // Pedimos el perfil al backend en vez de leerlo del payload del JWT: el
-  // JWT puede tener datos desfasados (alias cambiado, isAdult toggled) y
-  // además los datos del JWT son legibles por cualquiera, así que no es la
-  // fuente de verdad. /auth/me siempre devuelve el estado real de la BD.
+  // /auth/me en vez del JWT: el payload puede estar desfasado y es legible por cualquiera.
   const fetchUser = async () => {
     const res = await apiClient.get('/auth/me')
+
+    let picture = null;
+    if (res.data.picture) {
+      picture = res.data.picture;
+    }
+
+    let isAdult = false;
+    if (res.data.is_adult) {
+      isAdult = res.data.is_adult;
+    }
+
     setUser({
       id: res.data.id,
       email: res.data.email,
       alias: res.data.alias,
-      picture: res.data.picture ?? null,
+      picture: picture,
       rol: res.data.rol,
-      is_adult: res.data.is_adult ?? false,
+      is_adult: isAdult,
     })
   }
 
-  // Al recargar la página solo persiste el token en localStorage. Si existe
-  // intentamos hidratar el usuario; si falla (token caducado/inválido) lo
-  // borramos para evitar un bucle de 401 en cada petición.
+  // Hidratamos desde el token persistido; si /auth/me falla lo borramos para evitar bucles de 401.
   useEffect(() => {
     const token = localStorage.getItem('token')
     if (!token) {
@@ -79,10 +85,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }
 
-  // Login con Google en dos fases: si el email ya existía el backend nos
-  // devuelve directamente el access_token; si es nuevo devolvemos los datos
-  // sugeridos (email, alias propuesto) y la UI muestra el modal de
-  // onboarding antes de llamar a completeGoogleSignup.
+  // Login Google en dos fases: si el email existe devuelve token; si es nuevo muestra onboarding.
   const loginWithGoogle = async (credential: string): Promise<GoogleCheckResult> => {
     const response = await apiClient.post('/auth/google', { token: credential })
     if (response.data.status === 'existing') {
@@ -137,9 +140,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }
 
-  // Logout solo client-side: el JWT sigue siendo válido en backend hasta su
-  // expiración. Si en el futuro se necesita revocación inmediata habría que
-  // mantener una blacklist server-side o un tokenVersion por usuario.
+  // Logout solo client-side: el JWT sigue válido en backend hasta su expiración.
   const logout = () => {
     localStorage.removeItem('token')
     setUser(null)

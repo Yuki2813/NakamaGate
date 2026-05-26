@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { apiClient } from '../api/client';
 import { Button } from "@/components/ui/button";
@@ -62,6 +62,11 @@ export default function Register() {
       setLoading(false);
     }
   };
+
+  let submitContent: React.ReactNode = "Create account";
+  if (loading) {
+    submitContent = <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin"></div>;
+  }
 
   return (
     <main className="min-h-screen flex items-center justify-center bg-[#020617] relative px-4 py-12 transition-colors duration-500 overflow-hidden">
@@ -208,11 +213,7 @@ export default function Register() {
               disabled={loading}
               className="w-full h-12 rounded-xl bg-yellow-500 hover:bg-yellow-400 text-black font-extrabold text-base shadow-lg shadow-yellow-900/20 mt-2 transition-all active:scale-[0.98]"
             >
-              {loading ? (
-                <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
-              ) : (
-                "Create account"
-              )}
+              {submitContent}
             </Button>
           </form>
 

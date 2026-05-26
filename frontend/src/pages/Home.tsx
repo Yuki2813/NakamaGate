@@ -48,11 +48,7 @@ export default function Home() {
     message: string;
   }>({ show: false, type: 'success', message: '' });
 
-  // Pide en paralelo el contenido del home, los IDs de favoritos del
-  // usuario y los que tiene en estado "watching". Con eso monta las
-  // secciones (hero, gemas del día, top 10, continue watching, géneros)
-  // y guarda los IDs en un Set para que el icono de corazón de cada
-  // tarjeta se pinte en O(1) sin recorrer la lista entera.
+  // Trae home + favoriteIds (Set para O(1) en el corazón de cada tarjeta) + watching, todo en paralelo.
   const fetchData = async () => {
     setFetchState({ loading: true, error: null });
     try {
@@ -126,15 +122,16 @@ export default function Home() {
     setTimeout(() => setNotification(prev => ({ ...prev, show: false })), 3000);
   };
 
-  // Añade o quita un favorito desde una tarjeta del carrusel. El stop/prevent
-  // evita que el <Link> envolvente navegue a /media/:id al pulsar el corazón.
-  // Tras la llamada al backend actualizamos solo el Set local en vez de hacer
-  // un refetch, para que el corazón cambie al instante.
+  // Toggle favorito desde tarjeta; stop/prevent evita navegar al Link envolvente.
   const toggleFavorite = async (e: React.MouseEvent, item: MediaItem) => {
     e.preventDefault();
     e.stopPropagation();
     const isFav = favoriteIds.has(item.id);
-    const safeType = (item.type || 'anime').toLowerCase();
+
+    let safeType = 'anime';
+    if (item.type) {
+      safeType = item.type.toLowerCase();
+    }
 
     try {
       if (isFav) {
@@ -181,13 +178,63 @@ export default function Home() {
   const continueWatchingSection = sections.find(s => s.section_title.includes("Continue"));
   const remainingSections = sections.filter(s => !s.section_title.includes("Continue"));
 
+  let notificationClasses = 'bg-red-500/10 border-red-500/20 text-red-400';
+  if (notification.type === 'success') {
+    notificationClasses = 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400';
+  }
+
+  let notificationIcon;
+  if (notification.type === 'success') {
+    notificationIcon = <CheckCircle2 className="w-5 h-5 shrink-0" />;
+  } else {
+    notificationIcon = <AlertCircle className="w-5 h-5 shrink-0" />;
+  }
+
+  let heroFavBtnClasses = 'bg-white/50 dark:bg-white/5 text-slate-900 dark:text-white border-slate-300 dark:border-white/10 hover:bg-white/80 dark:hover:bg-white/10';
+  let heroHeartClasses = '';
+  if (heroBanner && favoriteIds.has(heroBanner.id)) {
+    heroFavBtnClasses = 'bg-yellow-500 text-black border-yellow-400';
+    heroHeartClasses = 'fill-current';
+  }
+
+  let continueWatchingBlock;
+  if (continueWatchingSection && continueWatchingSection.items.length > 0) {
+    continueWatchingBlock = (
+      <div className="px-3 sm:px-4 md:px-8">
+        <Carousel opts={{ align: "start", loop: true }} className="w-full">
+          <CarouselContent className="-ml-3 sm:-ml-4">
+            {continueWatchingSection.items.map((item) => (
+              <CarouselItem key={item.id} className="pl-3 sm:pl-4 basis-[48%] sm:basis-1/3 md:basis-1/4 lg:basis-1/5 xl:basis-1/6">
+                <MediaCard item={item} favoriteIds={favoriteIds} toggleFavorite={toggleFavorite} />
+              </CarouselItem>
+            ))}
+          </CarouselContent>
+          <CarouselPrevious className="hidden md:flex -left-10 bg-white/80 dark:bg-slate-900/80 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white hover:bg-yellow-500 hover:text-black hover:border-yellow-500" />
+          <CarouselNext className="hidden md:flex -right-10 bg-white/80 dark:bg-slate-900/80 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white hover:bg-yellow-500 hover:text-black hover:border-yellow-500" />
+        </Carousel>
+      </div>
+    );
+  } else {
+    continueWatchingBlock = (
+      <div className="flex flex-col items-center justify-center py-12 rounded-2xl border border-dashed border-slate-300 dark:border-white/10 gap-4">
+        <Play className="w-10 h-10 text-slate-400 dark:text-slate-600" />
+        <p className="text-slate-500 font-bold">You&apos;re not watching anything yet</p>
+        <Link to="/directory">
+          <button className="bg-yellow-500 hover:bg-yellow-400 text-black font-black py-2 px-6 rounded-xl transition-all text-sm">
+            Explore the directory
+          </button>
+        </Link>
+      </div>
+    );
+  }
+
   return (
     <main className="min-h-screen text-slate-800 dark:text-slate-200 pb-20 relative overflow-hidden">
 
       {notification.show && (
         <div className="fixed inset-0 z-200 flex items-end justify-center sm:items-center p-4 pointer-events-none">
-          <div className={`pointer-events-auto flex items-center gap-3 px-5 py-3.5 rounded-2xl border backdrop-blur-xl shadow-2xl animate-in fade-in slide-in-from-bottom-8 duration-300 ${notification.type === 'success' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-red-500/10 border-red-500/20 text-red-400'}`}>
-            {notification.type === 'success' ? <CheckCircle2 className="w-5 h-5 shrink-0" /> : <AlertCircle className="w-5 h-5 shrink-0" />}
+          <div className={`pointer-events-auto flex items-center gap-3 px-5 py-3.5 rounded-2xl border backdrop-blur-xl shadow-2xl animate-in fade-in slide-in-from-bottom-8 duration-300 ${notificationClasses}`}>
+            {notificationIcon}
             <p className="font-bold text-sm">{notification.message}</p>
             <X className="w-4 h-4 cursor-pointer opacity-50 shrink-0" onClick={() => setNotification(prev => ({...prev, show: false}))} />
           </div>
@@ -227,8 +274,8 @@ export default function Home() {
                 <Link to={`/media/${heroBanner.id}`}>
                   <button className="bg-yellow-500 hover:bg-yellow-400 text-black font-black text-base py-3 px-7 rounded-2xl transition-all hover:scale-105 shadow-xl shadow-yellow-500/20">Watch now</button>
                 </Link>
-                <button onClick={(e) => toggleFavorite(e, heroBanner)} className={`p-3 rounded-2xl backdrop-blur-md border transition-all ${favoriteIds.has(heroBanner.id) ? 'bg-yellow-500 text-black border-yellow-400' : 'bg-white/50 dark:bg-white/5 text-slate-900 dark:text-white border-slate-300 dark:border-white/10 hover:bg-white/80 dark:hover:bg-white/10'}`}>
-                  <Heart className={`w-5 h-5 ${favoriteIds.has(heroBanner.id) ? 'fill-current' : ''}`} />
+                <button onClick={(e) => toggleFavorite(e, heroBanner)} className={`p-3 rounded-2xl backdrop-blur-md border transition-all ${heroFavBtnClasses}`}>
+                  <Heart className={`w-5 h-5 ${heroHeartClasses}`} />
                 </button>
               </div>
             </div>
@@ -306,31 +353,7 @@ export default function Home() {
             <Link to="/directory" className="text-xs font-bold text-yellow-500 uppercase tracking-widest hover:underline">View all</Link>
           </div>
 
-          {continueWatchingSection && continueWatchingSection.items.length > 0 ? (
-            <div className="px-3 sm:px-4 md:px-8">
-            <Carousel opts={{ align: "start", loop: true }} className="w-full">
-              <CarouselContent className="-ml-3 sm:-ml-4">
-                {continueWatchingSection.items.map((item) => (
-                  <CarouselItem key={item.id} className="pl-3 sm:pl-4 basis-[48%] sm:basis-1/3 md:basis-1/4 lg:basis-1/5 xl:basis-1/6">
-                    <MediaCard item={item} favoriteIds={favoriteIds} toggleFavorite={toggleFavorite} />
-                  </CarouselItem>
-                ))}
-              </CarouselContent>
-              <CarouselPrevious className="hidden md:flex -left-10 bg-white/80 dark:bg-slate-900/80 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white hover:bg-yellow-500 hover:text-black hover:border-yellow-500" />
-              <CarouselNext className="hidden md:flex -right-10 bg-white/80 dark:bg-slate-900/80 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white hover:bg-yellow-500 hover:text-black hover:border-yellow-500" />
-            </Carousel>
-            </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center py-12 rounded-2xl border border-dashed border-slate-300 dark:border-white/10 gap-4">
-              <Play className="w-10 h-10 text-slate-400 dark:text-slate-600" />
-              <p className="text-slate-500 font-bold">You&apos;re not watching anything yet</p>
-              <Link to="/directory">
-                <button className="bg-yellow-500 hover:bg-yellow-400 text-black font-black py-2 px-6 rounded-xl transition-all text-sm">
-                  Explore the directory
-                </button>
-              </Link>
-            </div>
-          )}
+          {continueWatchingBlock}
         </section>
 
         {remainingSections.map((section, idx) => {
@@ -349,9 +372,15 @@ export default function Home() {
               <div className="px-6 sm:px-10 md:px-20">
                 <Carousel opts={{ align: "start", loop: true }} className="w-full">
                   <CarouselContent className="-ml-3 sm:-ml-4">
-                    {section.items.map((item, itemIdx) => (
-                      <CarouselItem key={item.id} className={`pl-3 sm:pl-4 ${isTop10 ? 'basis-[60%] sm:basis-[42%] md:basis-[30%] lg:basis-[25%] xl:basis-[20%] overflow-visible' : 'basis-[48%] sm:basis-1/3 md:basis-1/4 lg:basis-1/5 xl:basis-1/6'}`}>
-                        {isTop10 ? (
+                    {section.items.map((item, itemIdx) => {
+                      let itemSizeClasses = 'basis-[48%] sm:basis-1/3 md:basis-1/4 lg:basis-1/5 xl:basis-1/6';
+                      if (isTop10) {
+                        itemSizeClasses = 'basis-[60%] sm:basis-[42%] md:basis-[30%] lg:basis-[25%] xl:basis-[20%] overflow-visible';
+                      }
+
+                      let itemContent;
+                      if (isTop10) {
+                        itemContent = (
                           <div className="relative h-full py-4 flex items-end justify-end">
                             <span
                               className="absolute -left-3.75 sm:-left-2.5 bottom-1 font-black leading-none select-none pointer-events-none"
@@ -370,11 +399,17 @@ export default function Home() {
                               <MediaCard item={item} favoriteIds={favoriteIds} toggleFavorite={toggleFavorite} fixedTitleHeight />
                             </div>
                           </div>
-                        ) : (
-                          <MediaCard item={item} favoriteIds={favoriteIds} toggleFavorite={toggleFavorite} />
-                        )}
-                      </CarouselItem>
-                    ))}
+                        );
+                      } else {
+                        itemContent = <MediaCard item={item} favoriteIds={favoriteIds} toggleFavorite={toggleFavorite} />;
+                      }
+
+                      return (
+                        <CarouselItem key={item.id} className={`pl-3 sm:pl-4 ${itemSizeClasses}`}>
+                          {itemContent}
+                        </CarouselItem>
+                      );
+                    })}
                   </CarouselContent>
                   <CarouselPrevious className="hidden md:flex -left-10 bg-white/80 dark:bg-slate-900/80 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white hover:bg-yellow-500 hover:text-black hover:border-yellow-500" />
                   <CarouselNext className="hidden md:flex -right-10 bg-white/80 dark:bg-slate-900/80 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white hover:bg-yellow-500 hover:text-black hover:border-yellow-500" />
@@ -400,15 +435,32 @@ function MediaCard({
   toggleFavorite: (e: React.MouseEvent, item: MediaItem) => void;
   fixedTitleHeight?: boolean;
 }) {
+  const isFav = favoriteIds.has(item.id);
+
+  let favBtnClasses = 'bg-black/50 text-white border-transparent opacity-0 group-hover/card:opacity-100 hover:scale-110';
+  if (isFav) {
+    favBtnClasses = 'bg-yellow-500 text-black border-yellow-400';
+  }
+
+  let heartFillClass = '';
+  if (isFav) {
+    heartFillClass = 'fill-current';
+  }
+
+  let titleExtraClass = '';
+  if (fixedTitleHeight) {
+    titleExtraClass = ' min-h-8 sm:min-h-10';
+  }
+
   return (
     <Card className="bg-transparent border-none ring-0 shadow-none group/card h-full">
       <Link to={`/media/${item.id}`} className="block h-full">
         <figure className="relative aspect-2/3 rounded-2xl overflow-hidden border border-slate-200 dark:border-white/5 bg-slate-100 dark:bg-slate-900 transition-all duration-300 group-hover/card:border-yellow-500/50 group-hover/card:-translate-y-2 shadow-lg">
           <button
             onClick={(e) => toggleFavorite(e, item)}
-            className={`absolute top-2.5 right-2.5 p-2 rounded-full backdrop-blur-md z-20 border transition-all ${favoriteIds.has(item.id) ? 'bg-yellow-500 text-black border-yellow-400' : 'bg-black/50 text-white border-transparent opacity-0 group-hover/card:opacity-100 hover:scale-110'}`}
+            className={`absolute top-2.5 right-2.5 p-2 rounded-full backdrop-blur-md z-20 border transition-all ${favBtnClasses}`}
           >
-            <Heart className={`w-3.5 h-3.5 ${favoriteIds.has(item.id) ? 'fill-current' : ''}`} />
+            <Heart className={`w-3.5 h-3.5 ${heartFillClass}`} />
           </button>
           <img src={item.image} className="w-full h-full object-cover transition-transform duration-700 group-hover/card:scale-110" alt="media" />
           {item.score > 0 && (
@@ -418,7 +470,7 @@ function MediaCard({
             </div>
           )}
         </figure>
-        <h3 className={`mt-2.5 text-xs sm:text-sm font-bold text-slate-600 dark:text-slate-300 line-clamp-2 group-hover/card:text-yellow-500 dark:group-hover/card:text-white transition-colors${fixedTitleHeight ? ' min-h-8 sm:min-h-10' : ''}`}>
+        <h3 className={`mt-2.5 text-xs sm:text-sm font-bold text-slate-600 dark:text-slate-300 line-clamp-2 group-hover/card:text-yellow-500 dark:group-hover/card:text-white transition-colors${titleExtraClass}`}>
           {item.title}
         </h3>
       </Link>

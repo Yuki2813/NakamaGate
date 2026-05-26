@@ -17,10 +17,7 @@ apiClient.interceptors.request.use((config) => {
   return Promise.reject(error);
 });
 
-// 401 global → token caducado o inválido: limpiamos y forzamos login.
-// Hacemos hard reload con window.location en vez de navigate() para que
-// React Query/contextos reseteen su estado y no quede caché de un usuario
-// anterior viva tras el redirect.
+// 401 global: hard reload a /login para resetear contextos y cachés.
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {

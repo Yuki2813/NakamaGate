@@ -43,11 +43,10 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 DEFAULT_ORIGINS = "http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174"
-origenes_permitidos = [
-    o.strip().rstrip("/")
-    for o in os.getenv("CORS_ORIGINS", DEFAULT_ORIGINS).split(",")
-    if o.strip()
-]
+origenes_permitidos = []
+for o in os.getenv("CORS_ORIGINS", DEFAULT_ORIGINS).split(","):
+    if o.strip():
+        origenes_permitidos.append(o.strip().rstrip("/"))
 
 app.add_middleware(
     CORSMiddleware,
@@ -58,16 +57,18 @@ app.add_middleware(
 )
 
 
-# Endpoints con respuesta personalizada por usuario: fastapi-cache añade
-# Cache-Control: max-age=... que permitiría al navegador (o a un proxy) servir
-# la respuesta de otro usuario. Forzamos no-store para que la caché viva solo
-# en el servidor, donde la clave incluye el user_id.
+# No-store en endpoints por usuario para evitar que un proxy sirva la respuesta de otro.
 NO_BROWSER_CACHE_PREFIXES = ("/content/home", "/favorites/stats")
 
 @app.middleware("http")
 async def disable_browser_cache_for_user_endpoints(request: Request, call_next):
     response = await call_next(request)
-    if any(request.url.path.startswith(p) for p in NO_BROWSER_CACHE_PREFIXES):
+    matches_prefix = False
+    for p in NO_BROWSER_CACHE_PREFIXES:
+        if request.url.path.startswith(p):
+            matches_prefix = True
+            break
+    if matches_prefix:
         response.headers["Cache-Control"] = "no-store"
     return response
 

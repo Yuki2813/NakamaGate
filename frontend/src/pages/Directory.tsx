@@ -51,11 +51,7 @@ export default function Directory() {
       .catch(err => console.error("Genres error:", err));
   }, []);
 
-  // Debounce de 400 ms sobre cualquier cambio de filtros (tipo, página,
-  // géneros, estado): mientras el usuario sigue tocando opciones no
-  // disparamos peticiones, solo cuando se queda quieto. Si el servidor
-  // devuelve 0 ítems y no es la primera página, retrocedemos una página
-  // para que no se quede mostrando una rejilla vacía.
+  // Debounce de 400 ms sobre cambios de filtros; si la página queda vacía retrocedemos una.
   useEffect(() => {
     const delayDebounceFn = setTimeout(async () => {
       setLoading(true);
@@ -77,7 +73,11 @@ export default function Directory() {
         setPageInfo(response.data.page_info || null);
         window.scrollTo({ top: 0, behavior: 'smooth' });
       } catch (error: any) {
-        if (error.response?.status === 403) {
+        let statusCode;
+        if (error.response) {
+          statusCode = error.response.status;
+        }
+        if (statusCode === 403) {
           setErrorMsg("The Guild has restricted this access (+18). Check your user rank.");
         } else {
           setErrorMsg("Error connecting to the Nakama library.");
@@ -90,9 +90,7 @@ export default function Directory() {
     return () => clearTimeout(delayDebounceFn);
   }, [page, mediaType, selectedGenres, selectedStatus]);
 
-  // Marca o desmarca un género en el filtro, con tope de 4 seleccionados
-  // simultáneos. Cualquier cambio en los filtros vuelve a la página 1 para
-  // no quedarte en una página que ya no existe con los filtros nuevos.
+  // Tope de 4 géneros simultáneos; cualquier cambio resetea a página 1.
   const toggleGenre = (genre: string) => {
     setSelectedGenres(prev => {
       if (prev.includes(genre)) return prev.filter(g => g !== genre);
@@ -105,32 +103,51 @@ export default function Directory() {
   const handleJumpPage = (e: React.FormEvent) => {
     e.preventDefault();
     const targetPage = parseInt(jumpPage);
-    const max = Math.min(pageInfo?.lastPage ?? 1, MAX_PAGE);
+
+    let lastKnownPage = 1;
+    if (pageInfo) {
+      lastKnownPage = pageInfo.lastPage;
+    }
+    const max = Math.min(lastKnownPage, MAX_PAGE);
+
     if (!isNaN(targetPage) && targetPage >= 1 && targetPage <= max) {
       setPage(targetPage);
       setJumpPage("");
     }
   };
 
-  // Devuelve los números de página visibles en el paginador: hasta 2 antes
-  // de la actual y hasta 2 después. Solo añade las siguientes si la página
-  // actual viene completa (24 items) y la siguiente cabe dentro de
-  // pageInfo.lastPage, para no ofrecer páginas que el backend va a rechazar.
+  // Páginas visibles en el paginador: 2 antes y 2 después, capadas a pageInfo.lastPage.
   const getPaginationRange = () => {
     const current = page;
-    const lastPage = Math.min(pageInfo?.lastPage ?? MAX_PAGE, MAX_PAGE);
+
+    let lastKnownPage = MAX_PAGE;
+    if (pageInfo) {
+      lastKnownPage = pageInfo.lastPage;
+    }
+    const lastPage = Math.min(lastKnownPage, MAX_PAGE);
+
     const range = [];
     if (current > 2) range.push(current - 2);
     if (current > 1) range.push(current - 1);
     range.push(current);
     if (items.length === 24) {
       if (current + 1 <= lastPage) range.push(current + 1);
-      if (pageInfo?.hasNextPage && current + 2 <= lastPage) range.push(current + 2);
+      let hasNext = false;
+      if (pageInfo && pageInfo.hasNextPage) {
+        hasNext = true;
+      }
+      if (hasNext && current + 2 <= lastPage) range.push(current + 2);
     }
     return range;
   };
 
   if (loading && page === 1 && items.length === 0) return <Loader text="Syncing files..." />;
+
+  let reachedKnownLastPage = false;
+  if (pageInfo && pageInfo.lastPage !== undefined && page >= pageInfo.lastPage) {
+    reachedKnownLastPage = true;
+  }
+  const nextDisabled = items.length < 24 || page >= MAX_PAGE || reachedKnownLastPage;
 
   return (
     <main className="min-h-screen bg-slate-50 dark:bg-[#020617] text-slate-800 dark:text-slate-200 pb-20 relative overflow-hidden">
@@ -214,18 +231,27 @@ export default function Directory() {
                       {availableGenres.map(g => {
                         const isSelected  = selectedGenres.includes(g);
                         const isDisabled  = !isSelected && selectedGenres.length >= 4;
+
+                        let genreBtnClasses = 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 border border-transparent hover:border-slate-200 dark:hover:border-slate-700';
+                        if (isSelected) {
+                          genreBtnClasses = 'bg-yellow-500/10 text-yellow-500 border border-yellow-500/30';
+                        } else if (isDisabled) {
+                          genreBtnClasses = 'opacity-30 cursor-not-allowed text-slate-500 border border-transparent';
+                        }
+
+                        let checkboxClasses = 'bg-black/20 dark:bg-black/40 border border-slate-400 dark:border-slate-600';
+                        if (isSelected) {
+                          checkboxClasses = 'bg-yellow-500 text-black';
+                        }
+
                         return (
                           <button
                             key={g}
                             onClick={() => toggleGenre(g)}
                             disabled={isDisabled}
-                            className={`flex items-center text-left gap-2 p-2.5 rounded-xl text-xs font-bold transition-all ${
-                              isSelected  ? 'bg-yellow-500/10 text-yellow-500 border border-yellow-500/30'
-                              : isDisabled ? 'opacity-30 cursor-not-allowed text-slate-500 border border-transparent'
-                              : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 border border-transparent hover:border-slate-200 dark:hover:border-slate-700'
-                            }`}
+                            className={`flex items-center text-left gap-2 p-2.5 rounded-xl text-xs font-bold transition-all ${genreBtnClasses}`}
                           >
-                            <div className={`w-4 h-4 rounded-md flex items-center justify-center shrink-0 transition-colors ${isSelected ? 'bg-yellow-500 text-black' : 'bg-black/20 dark:bg-black/40 border border-slate-400 dark:border-slate-600'}`}>
+                            <div className={`w-4 h-4 rounded-md flex items-center justify-center shrink-0 transition-colors ${checkboxClasses}`}>
                               {isSelected && <Check className="w-3 h-3" />}
                             </div>
                             <span className="truncate">{g}</span>
@@ -335,7 +361,7 @@ export default function Directory() {
               </div>
 
               <Button
-                disabled={items.length < 24 || page >= MAX_PAGE || (pageInfo?.lastPage !== undefined && page >= pageInfo.lastPage)}
+                disabled={nextDisabled}
                 onClick={() => setPage(p => Math.min(p + 1, MAX_PAGE))}
                 className="bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 hover:border-yellow-500 text-slate-800 dark:text-white rounded-xl sm:rounded-2xl w-9 h-9 sm:w-10 sm:h-10 md:w-12 md:h-12 p-0 transition-all disabled:opacity-30"
               >

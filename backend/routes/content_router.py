@@ -1,10 +1,8 @@
-import os
-import jwt
 from fastapi import APIRouter, Depends, Query, Path
 from sqlmodel import Session
 from backend.database import get_db
 from backend.models.favorite import Mediatype
-from backend.security import get_current_user_id
+from backend.security import get_current_user_id, user_id_from_auth_header
 from backend.services.content_service import get_directory_service, get_genres_service, get_home_service, get_media_details_service, search_media_service
 from fastapi_cache.decorator import cache
 
@@ -14,35 +12,14 @@ router = APIRouter(
 )
 
 
-# Decodifica el JWT del header Authorization para extraer el user_id.
-# Lo necesitamos en el key_builder de @cache porque fastapi-cache construye
-# la clave ANTES de resolver Depends(get_current_user_id), así que no podemos
-# reutilizar esa dependencia aquí. Si no hay token o es inválido devolvemos
-# "anon" y dejamos que el endpoint protegido rechace la petición después.
-def _user_id_from_request(request) -> str:
-    if request is None:
-        return "anon"
-    auth = request.headers.get("authorization", "")
-    if not auth.startswith("Bearer "):
-        return "anon"
-    try:
-        payload = jwt.decode(
-            auth[7:],
-            os.getenv("SECRET_KEY"),
-            algorithms=[os.getenv("ALGORITHM", "HS256")]
-        )
-        return str(payload.get("user_id", "anon"))
-    except Exception:
-        return "anon"
-
-
-# Clave de caché por usuario: el home depende de isAdult y por eso no puede
-# compartirse entre usuarios. Formato "home:user:{id}" para que las funciones
-# invalidate_home_cache puedan purgarla con la misma clave exacta.
+# Clave "home:user:{id}", la misma que usa invalidate_home_cache.
 def home_key_builder(func, namespace="", *, request=None, response=None, args=(), kwargs={}):
     user_id = kwargs.get("user_id")
     if user_id is None:
-        user_id = _user_id_from_request(request)
+        auth = None
+        if request:
+            auth = request.headers.get("authorization")
+        user_id = user_id_from_auth_header(auth)
     return f"home:user:{user_id}"
 
 

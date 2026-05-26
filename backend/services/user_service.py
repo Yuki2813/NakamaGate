@@ -30,9 +30,7 @@ def update_alias(user_id: int, new_alias: str, session: Session):
                 detail="This alias is already in use. Please try another alias."
             )
 
-    # El JWT actual contiene el alias antiguo y sigue siendo válido hasta que
-    # expire, por lo que tras cambiarlo emitimos un token nuevo con el alias
-    # actualizado para que el frontend lo use sin forzar re-login.
+    # Reemitimos JWT con el alias nuevo para que el front no tenga que re-loguear.
     updated_user = get_user_by_id(id=user_id, session=session)
     token_data = {
         "sub": updated_user.email,
@@ -55,8 +53,7 @@ def update_avatar(user_id: int, file: UploadFile, session: Session):
         raise HTTPException(status_code=400, detail="El archivo debe ser una imagen.")
 
     try:
-        # public_id fijo por usuario + overwrite=True: cada nuevo avatar
-        # reemplaza al anterior en Cloudinary en vez de acumular archivos.
+        # public_id fijo + overwrite=True: cada avatar reemplaza al anterior en Cloudinary.
         upload_result = cloudinary.uploader.upload(
             file.file,
             folder="nakamagate/avatars",
@@ -72,8 +69,7 @@ def update_avatar(user_id: int, file: UploadFile, session: Session):
     exito = update_user_avatar(user_id=user_id, ruta=ruta_web, session=session)
 
     if not exito:
-        # Rollback: la imagen ya está en Cloudinary pero el usuario no existe.
-        # Borramos el asset para no dejar huérfanos consumiendo cuota.
+        # Rollback: borramos el asset en Cloudinary para no dejar huérfanos.
         cloudinary.uploader.destroy(upload_result.get("public_id"))
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
 
@@ -95,21 +91,15 @@ async def update_adult_service(user_id: int, is_adult: bool, session: Session):
     preference_changed = user.isAdult != is_adult
     was_adult = user.isAdult
 
-    # Actualizamos el flag PRIMERO (operación atómica de una fila). Si la
-    # limpieza posterior falla, al menos la BD queda consistente.
+    # Actualizamos el flag primero para que la BD quede consistente aunque la limpieza posterior falle.
     updated = update_user_adult(user_id=user_id, is_adult=is_adult, session=session)
     if not updated:
         raise HTTPException(status_code=404, detail="User not found")
 
     if preference_changed:
-        # El home se recomienda en función de isAdult, así que la caché del
-        # home de este usuario está obsoleta. Ver invalidate_home_cache.
         await invalidate_home_cache(user_id)
 
-    # Si el usuario pasa de adulto a no-adulto, hay que retirar de su lista de
-    # favoritos cualquier contenido que ahora ya no le esté permitido (hentai
-    # o géneros fuera del catálogo SAFE_GENRES). Solo recorremos esta rama
-    # cuando hay un downgrade real.
+    # Downgrade adulto->no-adulto: retiramos favoritos con hentai o géneros fuera de SAFE_GENRES.
     removed_count = 0
     if was_adult and not is_adult:
         favorite_tuples = get_user_favorites_repo(id_user=user_id, session=session)
@@ -137,7 +127,9 @@ async def update_adult_service(user_id: int, is_adult: bool, session: Session):
             media = media_dict.get((fav_data.id_api, fav_data.media_type.value))
             if not media:
                 continue
-            genres = media.get("genres") or []
+            genres = media.get("genres")
+            if genres is None:
+                genres = []
             is_adult_content = media.get("is_adult") is True
             if not is_adult_content:
                 for g in genres:
@@ -198,9 +190,7 @@ def get_user_social_data(user_id: int, session: Session):
     raw_pending = get_pending_requests(user_id=user_id, session=session)
     raw_sent = get_sent_pending_requests(user_id=user_id, session=session)
 
-    # En una amistad cualquiera de los dos extremos puede ser requester o
-    # receiver, así que para reconstruir la lista de "amigos" hay que tomar
-    # siempre el ID del otro lado, no asumir una dirección fija.
+    # En una amistad cualquier extremo puede ser requester; tomamos siempre el ID del otro lado.
     friend_ids_set = set()
     for rel in raw_friends:
         if rel.requester_id == user_id:
@@ -216,9 +206,7 @@ def get_user_social_data(user_id: int, session: Session):
     for rel in raw_sent:
         sent_ids_set.add(rel.receiver_id)
 
-    # Una sola consulta para todos los usuarios involucrados (amigos +
-    # pendientes recibidas + pendientes enviadas) y luego un dict para mapear
-    # id->usuario en O(1). Evita N+1 al formatear cada lista.
+    # Una sola consulta para todos los usuarios involucrados, evitando N+1.
     all_ids = list(friend_ids_set) + list(pending_ids_set) + list(sent_ids_set)
     users_list = get_users_by_ids(all_ids, session)
     users_map = {}

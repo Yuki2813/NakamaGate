@@ -54,25 +54,25 @@ export default function MediaDetail() {
     return path.startsWith('http') ? path : `${BACKEND_URL}${path}`;
   };
 
-  const [media,        setMedia]        = useState<MediaDetailData | null>(null);
-  const [reviews,      setReviews]      = useState<Review[]>([]);
-  const [loading,      setLoading]      = useState(true);
-  const [accessError,  setAccessError]  = useState<string | null>(null);
+  const [media, setMedia] = useState<MediaDetailData | null>(null);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [accessError, setAccessError] = useState<string | null>(null);
   const { user } = useAuth();
 
-  const [isFavorite,    setIsFavorite]    = useState(false);
+  const [isFavorite, setIsFavorite] = useState(false);
   const [favoriteStatus, setFavoriteStatus] = useState<'watching' | 'completed' | 'pending'>('pending');
   const [statusLoading, setStatusLoading] = useState(false);
 
-  const [reviewScore,      setReviewScore]      = useState(3);
-  const [reviewContent,    setReviewContent]    = useState('');
-  const [userReview,       setUserReview]       = useState<Review | null>(null);
-  const [isEditingReview,  setIsEditingReview]  = useState(false);
+  const [reviewScore, setReviewScore] = useState(3);
+  const [reviewContent, setReviewContent] = useState('');
+  const [userReview, setUserReview] = useState<Review | null>(null);
+  const [isEditingReview, setIsEditingReview] = useState(false);
   const [submittingReview, setSubmittingReview] = useState(false);
 
-  const [toast,          setToast]          = useState<{ msg: string; type: 'ok' | 'err' } | null>(null);
+  const [toast, setToast] = useState<{ msg: string; type: 'ok' | 'err' } | null>(null);
   const [reviewToDelete, setReviewToDelete] = useState<number | null>(null);
-  const [trailerOpen,    setTrailerOpen]    = useState(false);
+  const [trailerOpen, setTrailerOpen] = useState(false);
 
   const showToast = (msg: string, type: 'ok' | 'err' = 'ok') => {
     setToast({ msg, type });
@@ -84,11 +84,7 @@ export default function MediaDetail() {
     return Array.isArray(res.data) ? res.data : [];
   };
 
-  // Carga la ficha en dos fases: primero el detalle del media (necesario
-  // para saber su tipo, que va como query param en las siguientes), luego
-  // en paralelo las reseñas y el estado de favorito. Usamos allSettled
-  // para que si una de las dos falla la otra siga viva y la página no
-  // se quede en blanco.
+  // Carga en dos fases: primero el media (su type va como query param), luego reseñas y favorito en paralelo.
   useEffect(() => {
     const load = async () => {
       try {
@@ -96,7 +92,10 @@ export default function MediaDetail() {
         const mediaData: MediaDetailData = mediaRes.data;
         setMedia(mediaData);
 
-        const mediaType = mediaData.type?.toLowerCase() || 'anime';
+        let mediaType = 'anime';
+        if (mediaData.type) {
+          mediaType = mediaData.type.toLowerCase();
+        }
 
         const [reviewsRes, favRes] = await Promise.allSettled([
           apiClient.get(`/reviews/media/${id}?media_type=${mediaType}`),
@@ -104,9 +103,19 @@ export default function MediaDetail() {
         ]);
 
         if (reviewsRes.status === 'fulfilled') {
-          const allReviews: Review[] = Array.isArray(reviewsRes.value.data) ? reviewsRes.value.data : [];
+          let allReviews: Review[] = [];
+          if (Array.isArray(reviewsRes.value.data)) {
+            allReviews = reviewsRes.value.data;
+          }
           setReviews(allReviews);
-          const myExistingReview = allReviews.find(r => r.user.id === user?.id) || null;
+
+          let myExistingReview: Review | null = null;
+          if (user) {
+            const found = allReviews.find(r => r.user.id === user.id);
+            if (found) {
+              myExistingReview = found;
+            }
+          }
           setUserReview(myExistingReview);
           if (myExistingReview) {
             setReviewScore(myExistingReview.score);
@@ -120,8 +129,12 @@ export default function MediaDetail() {
           }
         }
       } catch (err: any) {
-        if (err.response?.status === 403) {
-          setAccessError(err.response?.data?.detail || "Restricted access (+18).");
+        if (err.response && err.response.status === 403) {
+          let detail = "Restricted access (+18).";
+          if (err.response.data && err.response.data.detail) {
+            detail = err.response.data.detail;
+          }
+          setAccessError(detail);
         }
       } finally {
         setLoading(false);
@@ -134,7 +147,10 @@ export default function MediaDetail() {
     if (statusLoading) return;
     setStatusLoading(true);
     try {
-      const mediaType = media?.type?.toLowerCase() || 'anime';
+      let mediaType = 'anime';
+      if (media && media.type) {
+        mediaType = media.type.toLowerCase();
+      }
       if (isFavorite) {
         await apiClient.delete(`/favorites/${id}?media_type=${mediaType}`);
         setIsFavorite(false);
@@ -153,9 +169,7 @@ export default function MediaDetail() {
     }
   };
 
-  // Cambia el estado del favorito (watching/completed/pending) con
-  // actualización optimista: pintamos el nuevo estado en la UI antes de
-  // confirmar, y si el PUT falla revertimos al valor previo.
+  // Cambio de estado con actualización optimista; revertimos si el PUT falla.
   const changeStatus = async (newStatus: 'watching' | 'completed' | 'pending') => {
     if (statusLoading || newStatus === favoriteStatus) return;
     const previous = favoriteStatus;
@@ -172,18 +186,17 @@ export default function MediaDetail() {
     }
   };
 
-  // Publica o edita la reseña del usuario sobre este media. El mismo
-  // formulario sirve para ambos casos: si ya hay userReview y estamos
-  // en modo edición lanzamos PUT, si no, POST. Tras guardar recargamos
-  // la lista completa de reseñas para que aparezca con los datos del
-  // usuario (alias, picture) que pinta el bloque "Community".
+  // POST nuevo o PUT en edición; tras guardar recargamos para tener alias y picture.
   const handleSubmitReview = async () => {
     if (!reviewContent.trim() || reviewScore < 1 || reviewScore > 5) {
       showToast('Complete the review with a score and text.', 'err'); return;
     }
     setSubmittingReview(true);
     try {
-      const mediaType = media?.type?.toLowerCase();
+      let mediaType;
+      if (media && media.type) {
+        mediaType = media.type.toLowerCase();
+      }
       if (userReview && isEditingReview) {
         await apiClient.put(`/reviews/${userReview.id}`, {
           id_api: id, media_type: mediaType, score: reviewScore, content: reviewContent
@@ -198,7 +211,11 @@ export default function MediaDetail() {
         setUserReview(res.data);
         showToast('Review published.');
       }
-      setReviews(await reloadReviews(media?.type?.toLowerCase() || 'anime'));
+      let typeForReload = 'anime';
+      if (media && media.type) {
+        typeForReload = media.type.toLowerCase();
+      }
+      setReviews(await reloadReviews(typeForReload));
     } catch {
       showToast('Error saving the review.', 'err');
     } finally {
@@ -210,13 +227,18 @@ export default function MediaDetail() {
     if (!reviewToDelete) return;
     try {
       await apiClient.delete(`/reviews/${reviewToDelete}`);
-      if (userReview?.id === reviewToDelete) {
+      if (userReview && userReview.id === reviewToDelete) {
         setUserReview(null);
         setReviewScore(3);
         setReviewContent('');
       }
       setReviewToDelete(null);
-      setReviews(await reloadReviews(media?.type?.toLowerCase() || 'anime'));
+
+      let typeForReload = 'anime';
+      if (media && media.type) {
+        typeForReload = media.type.toLowerCase();
+      }
+      setReviews(await reloadReviews(typeForReload));
       showToast('Review deleted.');
     } catch {
       showToast('Error deleting the review.', 'err');
@@ -257,7 +279,213 @@ export default function MediaDetail() {
   );
 
   const bgImage = media.banner || media.image;
-  const isAnime = media.type?.toUpperCase() === 'ANIME';
+
+  let isAnime = false;
+  if (media.type) {
+    isAnime = media.type.toUpperCase() === 'ANIME';
+  }
+
+  let favBtnClasses;
+  if (isFavorite) {
+    favBtnClasses = 'bg-yellow-500 border-yellow-400 text-black shadow-[0_0_20px_rgba(234,179,8,0.3)]';
+  } else {
+    favBtnClasses = 'bg-slate-100 dark:bg-slate-800/60 border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-yellow-500/50 hover:text-yellow-500 dark:hover:text-yellow-400 hover:bg-slate-200 dark:hover:bg-slate-800';
+  }
+
+  let favBtnLabel = 'Add';
+  if (isFavorite) {
+    favBtnLabel = 'In Favorites';
+  }
+
+  let myReviewSection;
+  if (userReview && !isEditingReview) {
+    myReviewSection = (
+      <div className="relative bg-linear-to-br from-yellow-500/5 to-slate-900/60 border border-yellow-500/20 rounded-2xl p-5 sm:p-8">
+        <div className="flex items-start justify-between mb-4">
+          <div className="flex gap-1">
+            {Array.from({ length: 5 }).map((_, i) => {
+              let starFill = 'transparent';
+              let starColor = '#94a3b8';
+              if (i < userReview.score) {
+                starFill = '#eab308';
+                starColor = '#eab308';
+              }
+              return (
+                <Star key={i} className="w-5 h-5 sm:w-6 sm:h-6" style={{ fill: starFill, color: starColor }} />
+              );
+            })}
+          </div>
+          <div className="flex gap-2">
+            <button onClick={() => setIsEditingReview(true)} className="p-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-xl transition-all">
+              <Edit2 className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+            </button>
+            <button onClick={() => setReviewToDelete(userReview.id)} className="p-2 bg-slate-100 dark:bg-slate-800 hover:bg-red-50 dark:hover:bg-red-900/30 border border-slate-200 dark:border-slate-700 hover:border-red-500/30 rounded-xl transition-all">
+              <Trash2 className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+            </button>
+          </div>
+        </div>
+        <p className="text-slate-600 dark:text-slate-300 leading-relaxed text-sm sm:text-base">{userReview.content}</p>
+      </div>
+    );
+  } else {
+    let submitButtonLabel = 'Publish';
+    if (isEditingReview) {
+      submitButtonLabel = 'Update';
+    }
+    myReviewSection = (
+      <div className="bg-slate-100 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 sm:p-8 space-y-5">
+        <div>
+          <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Score</label>
+          <div className="flex gap-2">
+            {Array.from({ length: 5 }).map((_, i) => {
+              let starFill = 'transparent';
+              let starColor = '#334155';
+              if (i < reviewScore) {
+                starFill = '#eab308';
+                starColor = '#eab308';
+              }
+              return (
+                <button key={i} onClick={() => setReviewScore(i + 1)} className="hover:scale-125 transition-transform">
+                  <Star className="w-7 h-7 sm:w-8 sm:h-8 cursor-pointer" style={{ fill: starFill, color: starColor }} />
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        <div>
+          <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Your opinion</label>
+          <textarea
+            value={reviewContent}
+            onChange={e => setReviewContent(e.target.value.slice(0, 255))}
+            placeholder="Share your experience with this title..."
+            className="w-full bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 focus:border-yellow-500/50 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 rounded-xl p-4 focus:outline-none resize-none transition-colors text-sm"
+            rows={4}
+          />
+          <p className="text-xs text-slate-500 mt-1 text-right">{reviewContent.length}/255</p>
+        </div>
+        <div className="flex gap-3 justify-end">
+          {isEditingReview && (
+            <button
+              onClick={() => {
+                setIsEditingReview(false);
+                if (userReview) {
+                  setReviewScore(userReview.score);
+                  setReviewContent(userReview.content);
+                }
+              }}
+              className="px-5 py-2.5 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-white font-bold rounded-xl transition-all text-sm"
+            >
+              Cancel
+            </button>
+          )}
+          <button
+            onClick={handleSubmitReview}
+            disabled={submittingReview}
+            className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 disabled:opacity-50 text-black font-black px-5 py-2.5 rounded-xl transition-all hover:scale-105 text-sm"
+          >
+            <Send className="w-4 h-4" />
+            {submitButtonLabel}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  let communitySection;
+  if (reviews.length === 0) {
+    communitySection = (
+      <div className="flex flex-col items-center justify-center py-12 bg-slate-100 dark:bg-slate-900/30 border border-dashed border-slate-300 dark:border-slate-800 rounded-2xl gap-3">
+        <Heart className="w-10 h-10 text-slate-400 dark:text-slate-700" />
+        <p className="text-slate-500 font-bold text-sm">Be the first to review</p>
+      </div>
+    );
+  } else {
+    const reviewCards = [];
+    for (const review of reviews) {
+      let isOwn = false;
+      if (user && review.user.id === user.id) {
+        isOwn = true;
+      }
+      let isAdmin = false;
+      if (user && user.rol === 'admin') {
+        isAdmin = true;
+      }
+
+      let cardClasses = 'border-slate-200 dark:border-slate-800';
+      if (isOwn) {
+        cardClasses = 'border-yellow-500/30 bg-yellow-500/5';
+      }
+
+      let avatar;
+      if (review.user.picture) {
+        avatar = (
+          <img
+            src={getImageUrl(review.user.picture)!}
+            alt={review.user.alias}
+            className="w-9 h-9 rounded-full object-cover border-2 border-slate-300 dark:border-slate-700"
+          />
+        );
+      } else {
+        avatar = (
+          <div className="w-9 h-9 rounded-full bg-yellow-500/20 border-2 border-yellow-500/30 flex items-center justify-center shrink-0">
+            <span className="text-sm font-black text-yellow-400">{review.user.alias[0].toUpperCase()}</span>
+          </div>
+        );
+      }
+
+      const stars = [];
+      for (let i = 0; i < 5; i++) {
+        let starFill = 'transparent';
+        let starColor = '#334155';
+        if (i < review.score) {
+          starFill = '#eab308';
+          starColor = '#eab308';
+        }
+        stars.push(
+          <Star key={i} className="w-3 h-3" style={{ fill: starFill, color: starColor }} />
+        );
+      }
+
+      reviewCards.push(
+        <div
+          key={review.id}
+          className={`relative bg-slate-100 dark:bg-slate-900/40 border rounded-2xl p-4 sm:p-6 transition-all ${cardClasses}`}
+        >
+          <div className="absolute top-3 right-3 flex items-center gap-2">
+            {isOwn && (
+              <span className="text-[10px] font-black text-yellow-500 uppercase tracking-widest bg-yellow-500/10 border border-yellow-500/20 px-2 py-0.5 rounded-full">
+                Your review
+              </span>
+            )}
+            {isAdmin && !isOwn && (
+              <button
+                onClick={() => setReviewToDelete(review.id)}
+                className="p-1.5 bg-slate-800 hover:bg-red-900/30 border border-slate-700 hover:border-red-500/30 rounded-lg transition-all"
+                title="Delete review (admin)"
+              >
+                <Trash2 className="w-3.5 h-3.5 text-slate-500 hover:text-red-400" />
+              </button>
+            )}
+          </div>
+          <div className="flex items-center gap-3 mb-3">
+            {avatar}
+            <div>
+              <p className="font-bold text-slate-900 dark:text-white text-sm">{review.user.alias}</p>
+              <div className="flex gap-0.5 mt-0.5">
+                {stars}
+              </div>
+            </div>
+          </div>
+          <p className="text-slate-600 dark:text-slate-300 text-sm leading-relaxed">{review.content}</p>
+        </div>
+      );
+    }
+    communitySection = (
+      <div className="grid gap-3 sm:gap-4">
+        {reviewCards}
+      </div>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-slate-50 dark:bg-[#020617] text-slate-900 dark:text-slate-100 pb-20 relative overflow-x-hidden">
@@ -348,14 +576,10 @@ export default function MediaDetail() {
               <button
                 onClick={toggleFavorite}
                 disabled={statusLoading}
-                className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-black text-sm border transition-all duration-300 disabled:opacity-50 group ${
-                  isFavorite
-                    ? 'bg-yellow-500 border-yellow-400 text-black shadow-[0_0_20px_rgba(234,179,8,0.3)]'
-                    : 'bg-slate-100 dark:bg-slate-800/60 border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-yellow-500/50 hover:text-yellow-500 dark:hover:text-yellow-400 hover:bg-slate-200 dark:hover:bg-slate-800'
-                }`}
+                className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-black text-sm border transition-all duration-300 disabled:opacity-50 group ${favBtnClasses}`}
               >
                 <Heart className={`w-4 h-4 transition-transform group-hover:scale-110 ${isFavorite ? 'fill-current' : ''}`} />
-                {isFavorite ? 'In Favorites' : 'Add'}
+                {favBtnLabel}
               </button>
 
               {isFavorite && (
@@ -549,135 +773,12 @@ export default function MediaDetail() {
 
         <section className="mb-10">
           <SectionTitle title="My Review" />
-
-          {userReview && !isEditingReview ? (
-            <div className="relative bg-linear-to-br from-yellow-500/5 to-slate-900/60 border border-yellow-500/20 rounded-2xl p-5 sm:p-8">
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex gap-1">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <Star key={i} className="w-5 h-5 sm:w-6 sm:h-6" style={{ fill: i < userReview.score ? '#eab308' : 'transparent', color: i < userReview.score ? '#eab308' : '#94a3b8' }} />
-                  ))}
-                </div>
-                <div className="flex gap-2">
-                  <button onClick={() => setIsEditingReview(true)} className="p-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-xl transition-all">
-                    <Edit2 className="w-4 h-4 text-slate-500 dark:text-slate-400" />
-                  </button>
-                  <button onClick={() => setReviewToDelete(userReview.id)} className="p-2 bg-slate-100 dark:bg-slate-800 hover:bg-red-50 dark:hover:bg-red-900/30 border border-slate-200 dark:border-slate-700 hover:border-red-500/30 rounded-xl transition-all">
-                    <Trash2 className="w-4 h-4 text-slate-500 dark:text-slate-400" />
-                  </button>
-                </div>
-              </div>
-              <p className="text-slate-600 dark:text-slate-300 leading-relaxed text-sm sm:text-base">{userReview.content}</p>
-            </div>
-          ) : (
-            <div className="bg-slate-100 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 sm:p-8 space-y-5">
-              <div>
-                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Score</label>
-                <div className="flex gap-2">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <button key={i} onClick={() => setReviewScore(i + 1)} className="hover:scale-125 transition-transform">
-                      <Star className="w-7 h-7 sm:w-8 sm:h-8 cursor-pointer" style={{ fill: i < reviewScore ? '#eab308' : 'transparent', color: i < reviewScore ? '#eab308' : '#334155' }} />
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Your opinion</label>
-                <textarea
-                  value={reviewContent}
-                  onChange={e => setReviewContent(e.target.value.slice(0, 255))}
-                  placeholder="Share your experience with this title..."
-                  className="w-full bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 focus:border-yellow-500/50 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 rounded-xl p-4 focus:outline-none resize-none transition-colors text-sm"
-                  rows={4}
-                />
-                <p className="text-xs text-slate-500 mt-1 text-right">{reviewContent.length}/255</p>
-              </div>
-              <div className="flex gap-3 justify-end">
-                {isEditingReview && (
-                  <button
-                    onClick={() => {
-                      setIsEditingReview(false);
-                      if (userReview) { setReviewScore(userReview.score); setReviewContent(userReview.content); }
-                    }}
-                    className="px-5 py-2.5 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-white font-bold rounded-xl transition-all text-sm"
-                  >
-                    Cancel
-                  </button>
-                )}
-                <button
-                  onClick={handleSubmitReview}
-                  disabled={submittingReview}
-                  className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 disabled:opacity-50 text-black font-black px-5 py-2.5 rounded-xl transition-all hover:scale-105 text-sm"
-                >
-                  <Send className="w-4 h-4" />
-                  {isEditingReview ? 'Update' : 'Publish'}
-                </button>
-              </div>
-            </div>
-          )}
+          {myReviewSection}
         </section>
 
         <section>
           <SectionTitle title="Community" badge={reviews.length} />
-
-          {reviews.length > 0 ? (
-            <div className="grid gap-3 sm:gap-4">
-              {reviews.map(review => {
-                const isOwn = review.user.id === user?.id;
-                const isAdmin = user?.rol === 'admin';
-                return (
-                  <div
-                    key={review.id}
-                    className={`relative bg-slate-100 dark:bg-slate-900/40 border rounded-2xl p-4 sm:p-6 transition-all ${isOwn ? 'border-yellow-500/30 bg-yellow-500/5' : 'border-slate-200 dark:border-slate-800'}`}
-                  >
-                    <div className="absolute top-3 right-3 flex items-center gap-2">
-                      {isOwn && (
-                        <span className="text-[10px] font-black text-yellow-500 uppercase tracking-widest bg-yellow-500/10 border border-yellow-500/20 px-2 py-0.5 rounded-full">
-                          Your review
-                        </span>
-                      )}
-                      {isAdmin && !isOwn && (
-                        <button
-                          onClick={() => setReviewToDelete(review.id)}
-                          className="p-1.5 bg-slate-800 hover:bg-red-900/30 border border-slate-700 hover:border-red-500/30 rounded-lg transition-all"
-                          title="Delete review (admin)"
-                        >
-                          <Trash2 className="w-3.5 h-3.5 text-slate-500 hover:text-red-400" />
-                        </button>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-3 mb-3">
-                      {review.user.picture ? (
-                        <img
-                          src={getImageUrl(review.user.picture)!}
-                          alt={review.user.alias}
-                          className="w-9 h-9 rounded-full object-cover border-2 border-slate-300 dark:border-slate-700"
-                        />
-                      ) : (
-                        <div className="w-9 h-9 rounded-full bg-yellow-500/20 border-2 border-yellow-500/30 flex items-center justify-center shrink-0">
-                          <span className="text-sm font-black text-yellow-400">{review.user.alias[0].toUpperCase()}</span>
-                        </div>
-                      )}
-                      <div>
-                        <p className="font-bold text-slate-900 dark:text-white text-sm">{review.user.alias}</p>
-                        <div className="flex gap-0.5 mt-0.5">
-                          {Array.from({ length: 5 }).map((_, i) => (
-                            <Star key={i} className="w-3 h-3" style={{ fill: i < review.score ? '#eab308' : 'transparent', color: i < review.score ? '#eab308' : '#334155' }} />
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                    <p className="text-slate-600 dark:text-slate-300 text-sm leading-relaxed">{review.content}</p>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center py-12 bg-slate-100 dark:bg-slate-900/30 border border-dashed border-slate-300 dark:border-slate-800 rounded-2xl gap-3">
-              <Heart className="w-10 h-10 text-slate-400 dark:text-slate-700" />
-              <p className="text-slate-500 font-bold text-sm">Be the first to review</p>
-            </div>
-          )}
+          {communitySection}
         </section>
       </div>
     </main>

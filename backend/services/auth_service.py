@@ -67,10 +67,7 @@ def register_user(email: str, alias: str, password: str, is_adult: bool, session
             session=session
         )
     except IntegrityError:
-        # Carrera: otra petición concurrente acaba de insertar el mismo email
-        # o alias entre nuestro check y este insert. La constraint UNIQUE de
-        # la BD es la única garantía real, los checks previos solo evitan ir
-        # a BD en el caso feliz.
+        # Carrera con otra petición concurrente; la constraint UNIQUE es la garantía real.
         session.rollback()
         raise HTTPException(
             status_code=400,
@@ -122,9 +119,7 @@ def get_user_by_email_service(email: str, session: Session):
 
 
 def _validate_google_token(google_token: str) -> dict:
-    # Verifica el ID token contra Google (firma, expiración) y exige que el
-    # aud coincida con nuestro client_id, para que un token emitido para otra
-    # app no pueda autenticarse aquí.
+    # Verifica el id_token contra Google y exige aud == nuestro client_id.
     google_client_id = os.getenv("GOOGLE_CLIENT_ID")
 
     resp = requests.get(
@@ -162,10 +157,7 @@ def _build_token_response(user) -> dict:
 
 
 def check_google_user(google_token: str, session: Session):
-    # Paso 1 del login con Google: si el email ya existe en la BD devolvemos
-    # token directamente (login normal); si no, NO creamos el usuario aún,
-    # devolvemos status="new" para que el front pinte el onboarding (alias,
-    # mayoría de edad, términos) y luego llame a complete_google_signup.
+    # Paso 1 del login Google: si el email existe devolvemos token; si no, status="new" para el onboarding.
     idinfo = _validate_google_token(google_token)
     email = idinfo.get("email")
     name = idinfo.get("name", "")
@@ -185,10 +177,7 @@ def check_google_user(google_token: str, session: Session):
 
 
 def complete_google_signup(google_token: str, alias: str, is_adult: bool, accept_terms: bool, session: Session):
-    # Paso 2 del login con Google: revalidamos el id_token (no nos fiamos de
-    # que el que llega sea el mismo del paso 1) y creamos el usuario con el
-    # alias/edad/términos que ha elegido en el onboarding. La contraseña es
-    # un valor aleatorio inutilizable: estos usuarios solo entran por Google.
+    # Paso 2 del login Google: revalida id_token y crea el usuario con contraseña aleatoria inutilizable.
     if not accept_terms:
         raise HTTPException(status_code=400, detail="You must accept the terms of service")
 

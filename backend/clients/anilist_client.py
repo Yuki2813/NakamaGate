@@ -68,7 +68,6 @@ class AniListClient:
             return MediaAdapter.list_to_standar_format(result.get("Page", {}).get("media", []))
 
     async def get_media_details(self, media_id: int):
-        # ── Query ampliada con los nuevos campos ──────────────────────────────
         query = gql("""
             query ($id: Int) {
               Media(id: $id) {
@@ -87,19 +86,12 @@ class AniListClient:
                 startDate { year }
                 isAdult
 
-                # Tráiler (casi siempre YouTube)
                 trailer { id site thumbnail }
-
-                # Links externos filtrados por tipo STREAMING en el adaptador
                 externalLinks { url site color icon type }
-
-                # Personajes principales (máx 6, ordenados por relevancia)
                 characters(perPage: 6, sort: [ROLE, RELEVANCE]) {
                   nodes { id name { full } image { medium } }
                   edges { role }
                 }
-
-                # Relaciones narrativas (secuelas, precuelas, spin-offs…)
                 relations {
                   nodes {
                     id type format
@@ -108,14 +100,10 @@ class AniListClient:
                   }
                   edges { relationType }
                 }
-
-                # Staff relevante (director, autor, compositor…)
                 staff(perPage: 6, sort: [RELEVANCE]) {
                   nodes { id name { full } image { medium } }
                   edges { role }
                 }
-
-                # Estudio de producción principal
                 studios(isMain: true) {
                   nodes { id name siteUrl }
                 }
