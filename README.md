@@ -186,18 +186,17 @@ npm run dev
 # http://localhost:5173
 ```
 
-### 3. Opcional: backend en Docker
+### 3. Opcional: backend + MySQL en Docker
 
 ```bash
 docker compose up --build
+# MySQL local en localhost:3306
 # Backend en http://localhost:8000
 ```
 
-El compose usa `backend/.env`. Si quieres una BD MySQL local en lugar de Aiven:
-```bash
-docker compose --profile local up
-# (cambia DATABASE_URL en .env para apuntar a mysql:3306)
-```
+El compose levanta `mysql` (con healthcheck) y luego `backend`, que espera a que la BD esté lista, aplica migraciones (`alembic upgrade head`), corre `backend.seed` y arranca uvicorn. Usa `backend/.env`, cuya `DATABASE_URL` apunta por defecto al host `mysql:3306` interno de la red de Compose.
+
+Para apuntar a Aiven en lugar del MySQL local, descomenta la línea correspondiente en `backend/.env` y vuelve a `docker compose up`.
 
 ---
 
