@@ -1,5 +1,5 @@
 @import "tailwindcss";
-@custom-variant dark (&:where(.dark, .dark *)); /* 👈 ESTA ES LA LÍNEA MÁGICA QUE FALTABA */
+@custom-variant dark (&:where(.dark, .dark *)); 
 
 @import "tw-animate-css";
 @import "@fontsource-variable/geist";
@@ -49,7 +49,7 @@
   }
 }
 
-/* 2. TAILWIND v4 LEE NUESTRAS VARIABLES DINÁMICAS */
+
 @theme inline {
   --color-background: oklch(var(--background));
   --color-foreground: oklch(var(--foreground));
@@ -75,11 +75,11 @@
   --radius-lg: 0.75rem;
 }
 
-/* Variable para el stroke del número Top 10 */
+
 :root  { --top10-stroke: rgba(0,0,0,0.15); }
 .dark  { --top10-stroke: rgba(255,255,255,0.85); }
 
-/* 3. TUS REGLAS GLOBALES */
+
 @layer base {
   * {
     @apply border-border;

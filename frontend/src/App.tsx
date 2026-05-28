@@ -47,12 +47,12 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
 
-          {/* Vistas sin Navbar (perfil y términos tienen su propia chrome). */}
+        
           <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
           <Route path="/friend/:id" element={<ProtectedRoute><ProfileFriend /></ProtectedRoute>} />
           <Route path="/terms" element={<ProtectedRoute><TermsOfService /></ProtectedRoute>} />
 
-          {/* Vistas con Navbar; envueltas en ProtectedRoute una sola vez. */}
+
           <Route element={<ProtectedRoute><LayoutWithNavbar /></ProtectedRoute>}>
             <Route path="/community" element={<Community />} />
             <Route path="/directory" element={<Directory />} />

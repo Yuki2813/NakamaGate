@@ -74,7 +74,6 @@ export default function Profile() {
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
 
-  // /auth/me secuencial; el resto (favs, ids, reviews count, stats) en paralelo.
   const fetchProfileData = async () => {
     try {
       const profileRes = await apiClient.get('/auth/me');
@@ -360,7 +359,7 @@ export default function Profile() {
     }
   };
 
-  // Recorte de AvatarEditor a JPEG multipart; recargamos con ?u=timestamp para invalidar caché del navegador.
+
   const handleSaveAvatar = () => {
     if (editorRef.current) {
       setSavingAvatar(true);

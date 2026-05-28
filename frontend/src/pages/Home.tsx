@@ -48,7 +48,7 @@ export default function Home() {
     message: string;
   }>({ show: false, type: 'success', message: '' });
 
-  // Trae home + favoriteIds (Set para O(1) en el corazón de cada tarjeta) + watching, todo en paralelo.
+  // Trae home + favoriteIds (Set para O(1) en el corazón de cada tarjeta) + watching
   const fetchData = async () => {
     setFetchState({ loading: true, error: null });
     try {
